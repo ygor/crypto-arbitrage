@@ -1,213 +1,98 @@
 # Crypto Arbitrage Bot
 
-A .NET-based cryptocurrency arbitrage trading bot that automatically detects and executes profitable arbitrage opportunities across multiple exchanges.
+A real-time cryptocurrency arbitrage detection and trading system that monitors multiple exchanges for price differences and executes trades to profit from these differences.
 
 ## Project Overview
 
-The Crypto Arbitrage Bot is designed to:
+This project consists of two main components:
 
-1. Monitor price differences for cryptocurrencies across multiple exchanges
-2. Detect profitable arbitrage opportunities
-3. Execute trades automatically when opportunities meet criteria
-4. Track performance and provide notifications
-
-The system is built with a clean architecture approach, separating concerns into distinct layers:
-
-- **Domain**: Core business entities and logic
-- **Application**: Business use cases and orchestration
-- **Infrastructure**: External dependencies and technical details
-- **Worker**: Background service that runs the arbitrage bot
+1. **Backend (C# / .NET 7)**: A high-performance arbitrage detection and trading engine with a REST API and real-time SignalR hubs.
+2. **Frontend (React/TypeScript)**: A web dashboard for monitoring arbitrage opportunities, trade results, and controlling the bot.
 
 ## Features
 
-- **Multi-Exchange Support**: Works with Binance, Coinbase, Kraken, and more (extensible)
-- **Configurable Risk Management**: Fine-tune risk parameters through risk profiles
-- **Performance Tracking**: Track arbitrage opportunities, executed trades, and profit/loss
-- **Notifications**: Email and webhook notifications for important events
-- **Flexible Configuration**: Easy to configure via appsettings.json
-- **Paper Trading Mode**: Test strategies without risking real funds
+- Real-time arbitrage opportunity detection across multiple cryptocurrency exchanges
+- Configurable risk management and trade parameters
+- Paper trading mode for testing without real funds
+- Dashboard for visualization of opportunities, trades, and statistics
+- SignalR-based real-time updates
+- Detailed statistics and performance metrics
+- Extensible architecture for adding new exchanges
+
+## Project Structure
+
+- `src/ArbitrageBot.Domain` - Domain models and entities
+- `src/ArbitrageBot.Application` - Application logic, interfaces, and services
+- `src/ArbitrageBot.Infrastructure` - Implementation of interfaces, repositories, exchange clients
+- `src/ArbitrageBot.Api` - REST API and SignalR hubs for frontend communication
+- `src/ArbitrageBot.Worker` - Background worker for running the bot
+- `src/ArbitrageBot.Tests` - Unit and integration tests
+- `frontend/arbitrage-dashboard` - React web dashboard
 
 ## Getting Started
 
 ### Prerequisites
 
-- .NET 7.0 SDK or later
-- API access to cryptocurrency exchanges
+- .NET 7 SDK
+- Node.js (v16+) and npm
+- Git
 
-### Installation
+### Backend Setup
 
 1. Clone the repository:
-   ```
+   ```bash
    git clone https://github.com/yourusername/crypto-arbitrage.git
    cd crypto-arbitrage
    ```
 
 2. Build the solution:
-   ```
+   ```bash
    dotnet build
    ```
 
-3. Update the configuration in `src/ArbitrageBot.Worker/appsettings.json` with your exchange API keys and settings.
+3. Run the API:
+   ```bash
+   cd src/ArbitrageBot.Api
+   dotnet run
+   ```
 
-### Configuration
+The API will be available at `https://localhost:7000` with Swagger documentation at `https://localhost:7000/swagger`.
 
-Configure the bot by editing `appsettings.json`. Key settings include:
+### Frontend Setup
 
-- **Exchange API credentials**: Set up your exchange API keys
-- **Trading pairs**: Configure which cryptocurrency pairs to monitor
-- **Risk profile**: Set risk parameters like maximum capital per trade
-- **Notification settings**: Configure email and webhook notifications
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend/arbitrage-dashboard
+   ```
 
-Example configuration:
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```json
-{
-  "ArbitrageBot": {
-    "IsEnabled": true,
-    "AutoTradeEnabled": false,
-    "PaperTradingEnabled": true,
-    "MinimumProfitPercentage": 0.5,
-    "MaxConcurrentOperations": 3,
-    "PollingIntervalMs": 1000,
-    "TradingPairs": ["BTC/USDT", "ETH/USDT", "BNB/USDT"],
-    "RiskProfile": {
-      "Type": "Balanced",
-      "MaxCapitalPerTradePercent": 10.0,
-      "MinimumProfitPercentage": 0.5
-    },
-    "Exchanges": {
-      "Binance": {
-        "IsEnabled": true,
-        "ApiKey": "your-api-key",
-        "ApiSecret": "your-api-secret"
-      },
-      "Coinbase": {
-        "IsEnabled": true,
-        "ApiKey": "your-api-key",
-        "ApiSecret": "your-api-secret"
-      }
-    },
-    "Notifications": {
-      "Email": {
-        "Enabled": true,
-        "SmtpServer": "smtp.example.com",
-        "SmtpPort": 587,
-        "Username": "your-email@example.com",
-        "Password": "your-password",
-        "FromAddress": "bot@example.com",
-        "ToAddresses": ["you@example.com"]
-      },
-      "Webhook": {
-        "Enabled": false,
-        "Url": "https://example.com/webhook"
-      }
-    }
-  }
-}
-```
+3. Start the development server:
+   ```bash
+   npm start
+   ```
 
-### Running the Bot
+The dashboard will be available at `http://localhost:3000`.
 
-To run the bot:
+## Configuration
 
-```
-cd src/ArbitrageBot.Worker
-dotnet run
-```
+To use the bot with real exchanges, you need to configure API keys for each exchange in the settings section of the dashboard or in the `appsettings.json` file.
 
-For production deployment, consider using a service manager like systemd or Docker.
-
-## Paper Trading Mode
-
-The system includes a paper trading mode that allows you to test strategies without risking real funds. Paper trading simulates trades based on real market data but only updates virtual balances.
-
-### Enabling Paper Trading
-
-To enable paper trading mode, update your `appsettings.json`:
-
-```json
-{
-  "ArbitrageBot": {
-    "PaperTradingEnabled": true,
-    // Other settings...
-  }
-}
-```
-
-### How Paper Trading Works
-
-When paper trading is enabled:
-
-1. The bot detects arbitrage opportunities using real market data
-2. Instead of executing real trades, it simulates the trades against virtual balances
-3. All trade results and balance updates are tracked just like real trades
-4. You can review the performance without risking actual funds
-
-### Initial Balances
-
-By default, paper trading starts with:
-- 10,000 USDT/USD/EUR for each exchange
-- 1 BTC/ETH/XRP for each exchange
-
-### Using Paper Trading Service
-
-The `IPaperTradingService` interface provides methods to interact with paper trading:
-
-```csharp
-// Get the paper trading service from dependency injection
-var paperTradingService = serviceProvider.GetRequiredService<IPaperTradingService>();
-
-// Check if paper trading is enabled
-bool isEnabled = paperTradingService.IsPaperTradingEnabled;
-
-// Initialize with custom balances
-var initialBalances = new Dictionary<string, Dictionary<string, decimal>>
-{
-    ["binance"] = new Dictionary<string, decimal>
-    {
-        ["BTC"] = 2.0m,
-        ["USDT"] = 50000.0m
-    }
-};
-await paperTradingService.InitializeAsync(initialBalances);
-
-// Simulate market buy order
-var buyResult = await paperTradingService.SimulateMarketBuyOrderAsync(
-    "binance", 
-    new TradingPair("BTC", "USDT"), 
-    0.1m);
-
-// Simulate market sell order
-var sellResult = await paperTradingService.SimulateMarketSellOrderAsync(
-    "binance", 
-    new TradingPair("BTC", "USDT"), 
-    0.1m);
-
-// Get balances
-var allBalances = await paperTradingService.GetAllBalancesAsync();
-var btcBalance = await paperTradingService.GetBalanceAsync("binance", "BTC");
-
-// Get trade history
-var tradeHistory = await paperTradingService.GetTradeHistoryAsync();
-
-// Reset paper trading data
-await paperTradingService.ResetAsync();
-```
-
-Paper trading is ideal for:
-- Testing new strategies
-- Learning how the system works
-- Validating configuration before using real funds
-- Backtesting against historical market conditions
+Default configuration is set to paper trading mode for safety.
 
 ## Architecture
 
-The application follows the principles of Clean Architecture:
+The project follows a clean architecture approach with:
 
-- **Domain Layer**: Contains business entities and logic (TradingPair, Order, etc.)
-- **Application Layer**: Contains application services and interfaces (ArbitrageService, MarketDataService, etc.)
-- **Infrastructure Layer**: Contains implementations of interfaces (ExchangeClients, Repositories, etc.)
-- **Worker Layer**: Contains the background service that runs the arbitrage bot
+- Domain-driven design principles
+- CQRS pattern for separating reads and writes
+- Repository pattern for data access
+- Dependency injection for loose coupling
+- SignalR for real-time communication
+- React with Material-UI for the frontend
 
 ## Contributing
 
