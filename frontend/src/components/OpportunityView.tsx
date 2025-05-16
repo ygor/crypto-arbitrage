@@ -93,6 +93,8 @@ const OpportunityView: React.FC<OpportunityViewProps> = ({ maxOpportunities = 10
         return 'Executed';
       case ArbitrageOpportunityStatus.Failed:
         return 'Failed';
+      case ArbitrageOpportunityStatus.Missed:
+        return 'Missed';
       default:
         return 'Unknown';
     }

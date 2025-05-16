@@ -10,7 +10,8 @@ export enum ArbitrageOpportunityStatus {
   Detected = 0,
   Executing = 1,
   Executed = 2,
-  Failed = 3
+  Failed = 3,
+  Missed = 4
 }
 
 export interface TradingPair {
@@ -29,6 +30,12 @@ export interface ArbitrageOpportunity {
   timestamp: string;
   status: ArbitrageOpportunityStatus;
   potentialProfit: number;
+  spreadPercentage?: number;
+  estimatedProfit?: number;
+  detectedAt?: string;
+  spread?: number;
+  effectiveQuantity?: number;
+  isQualified?: boolean;
 }
 
 export interface PriceQuote {

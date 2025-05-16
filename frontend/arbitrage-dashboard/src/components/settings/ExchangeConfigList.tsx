@@ -19,7 +19,7 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon
 } from '@mui/icons-material';
-import { ExchangeConfig } from '../../models/types';
+import { ExchangeConfig } from '../../../../src/models/types';
 
 interface ExchangeConfigListProps {
   exchangeConfigs: ExchangeConfig[];

@@ -30,6 +30,16 @@ const getStatusColor = (status: ArbitrageOpportunityStatus) => {
   }
 };
 
+// Calculate spread percentage as a fallback
+const calculateSpreadPercentage = (buyPrice: number, sellPrice: number): number => {
+  return ((sellPrice - buyPrice) / buyPrice) * 100;
+};
+
+// Calculate estimated profit as a fallback
+const calculateEstimatedProfit = (buyPrice: number, sellPrice: number, quantity: number): number => {
+  return (sellPrice - buyPrice) * quantity;
+};
+
 const OpportunitiesList: React.FC<OpportunitiesListProps> = ({ 
   opportunities, 
   title = 'Arbitrage Opportunities' 
@@ -71,8 +81,18 @@ const OpportunitiesList: React.FC<OpportunitiesListProps> = ({
                   <TableCell>${opportunity.buyPrice.toFixed(2)}</TableCell>
                   <TableCell>{opportunity.sellExchangeId}</TableCell>
                   <TableCell>${opportunity.sellPrice.toFixed(2)}</TableCell>
-                  <TableCell>{opportunity.spreadPercentage.toFixed(2)}%</TableCell>
-                  <TableCell>${opportunity.estimatedProfit.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {opportunity.spreadPercentage !== undefined 
+                      ? opportunity.spreadPercentage.toFixed(2) 
+                      : calculateSpreadPercentage(opportunity.buyPrice, opportunity.sellPrice).toFixed(2)}%
+                  </TableCell>
+                  <TableCell>
+                    ${opportunity.estimatedProfit !== undefined 
+                      ? opportunity.estimatedProfit.toFixed(2) 
+                      : (opportunity.potentialProfit !== undefined 
+                          ? opportunity.potentialProfit.toFixed(2)
+                          : calculateEstimatedProfit(opportunity.buyPrice, opportunity.sellPrice, opportunity.quantity).toFixed(2))}
+                  </TableCell>
                   <TableCell>
                     <Chip 
                       label={opportunity.status} 
@@ -80,7 +100,9 @@ const OpportunitiesList: React.FC<OpportunitiesListProps> = ({
                       size="small"
                     />
                   </TableCell>
-                  <TableCell>{new Date(opportunity.detectedAt).toLocaleString()}</TableCell>
+                  <TableCell>
+                    {new Date(opportunity.detectedAt || opportunity.timestamp).toLocaleString()}
+                  </TableCell>
                 </TableRow>
               ))
             )}
