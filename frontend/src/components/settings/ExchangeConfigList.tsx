@@ -60,8 +60,8 @@ const ExchangeConfigList: React.FC<ExchangeConfigListProps> = ({ exchangeConfigs
     setConfigs(newConfigs);
   };
 
-  const handleSaveConfig = (config: ExchangeConfig) => {
-    onSave(config);
+  const handleSaveConfig = (index: number) => {
+    onSave(configs[index]);
   };
 
   const getStatusColor = (isEnabled: boolean) => {
@@ -161,7 +161,7 @@ const ExchangeConfigList: React.FC<ExchangeConfigListProps> = ({ exchangeConfigs
                 <Button 
                   variant="contained" 
                   color="primary"
-                  onClick={() => handleSaveConfig(configs[index])}
+                  onClick={() => handleSaveConfig(index)}
                 >
                   Save {config.exchangeId} Configuration
                 </Button>

@@ -1,4 +1,4 @@
-# Crypto Arbitrage Bot
+# Crypto Arbitrage
 
 A real-time cryptocurrency arbitrage detection and trading system that monitors multiple exchanges for price differences and executes trades to profit from these differences.
 
@@ -21,12 +21,12 @@ This project consists of two main components:
 
 ## Project Structure
 
-- `src/ArbitrageBot.Domain` - Domain models and entities
-- `src/ArbitrageBot.Application` - Application logic, interfaces, and services
-- `src/ArbitrageBot.Infrastructure` - Implementation of interfaces, repositories, exchange clients
-- `src/ArbitrageBot.Api` - REST API and SignalR hubs for frontend communication
-- `src/ArbitrageBot.Worker` - Background worker for running the bot
-- `src/ArbitrageBot.Tests` - Unit and integration tests
+- `src/CryptoArbitrage.Domain` - Domain models and entities
+- `src/CryptoArbitrage.Application` - Application logic, interfaces, and services
+- `src/CryptoArbitrage.Infrastructure` - Implementation of interfaces, repositories, exchange clients
+- `src/CryptoArbitrage.Api` - REST API and SignalR hubs for frontend communication
+- `src/CryptoArbitrage.Worker` - Background worker for running the bot
+- `src/CryptoArbitrage.Tests` - Unit and integration tests
 - `frontend/arbitrage-dashboard` - React web dashboard
 
 ## Getting Started
@@ -52,7 +52,7 @@ This project consists of two main components:
 
 3. Run the API:
    ```bash
-   cd src/ArbitrageBot.Api
+   cd src/CryptoArbitrage.Api
    dotnet run
    ```
 

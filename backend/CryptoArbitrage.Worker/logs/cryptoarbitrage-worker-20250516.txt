@@ -1,0 +1,258 @@
+2025-05-16 17:46:11.823 +02:00 [INF] CryptoArbitrage Worker starting at: "2025-05-16T17:46:11.8138750+02:00"
+2025-05-16 17:46:11.837 +02:00 [INF] Loading configuration
+2025-05-16 17:46:11.838 +02:00 [DBG] Getting configuration
+2025-05-16 17:46:11.838 +02:00 [INF] Configuration not found, using default configuration
+2025-05-16 17:46:11.839 +02:00 [DBG] Getting risk profile
+2025-05-16 17:46:11.839 +02:00 [INF] Risk profile not found, using default risk profile
+2025-05-16 17:46:11.839 +02:00 [DBG] Getting all exchange configurations
+2025-05-16 17:46:11.845 +02:00 [DBG] Getting notification configuration
+2025-05-16 17:46:11.845 +02:00 [INF] Notification configuration not found, using default notification configuration
+2025-05-16 17:46:11.845 +02:00 [INF] Configuration loaded successfully
+2025-05-16 17:46:11.846 +02:00 [INF] Configuration loaded successfully
+2025-05-16 17:46:11.846 +02:00 [DBG] Getting configuration
+2025-05-16 17:46:11.846 +02:00 [INF] Configuration not found, using default configuration
+2025-05-16 17:46:11.846 +02:00 [INF] Auto-start is enabled, starting arbitrage bot...
+2025-05-16 17:46:11.849 +02:00 [INF] Starting arbitrage service
+2025-05-16 17:46:11.849 +02:00 [DBG] Getting configuration
+2025-05-16 17:46:11.849 +02:00 [INF] Configuration not found, using default configuration
+2025-05-16 17:46:11.851 +02:00 [INF] Starting arbitrage detection service
+2025-05-16 17:46:11.852 +02:00 [DBG] Getting risk profile
+2025-05-16 17:46:11.852 +02:00 [INF] Risk profile not found, using default risk profile
+2025-05-16 17:46:11.853 +02:00 [INF] Risk profile updated. Minimum profit percentage: 0.5%
+2025-05-16 17:46:11.859 +02:00 [INF] Subscribing to order book updates for BTC/USDT on all exchanges
+2025-05-16 17:46:11.860 +02:00 [DBG] Getting all exchange configurations
+2025-05-16 17:46:11.862 +02:00 [INF] Creating exchange client for coinbase
+2025-05-16 17:46:11.933 +02:00 [INF] Subscribing to order book updates for BTC/USDT on coinbase
+2025-05-16 17:46:11.936 +02:00 [INF] Creating exchange client for coinbase
+2025-05-16 17:46:11.959 +02:00 [INF] Connecting to coinbase...
+2025-05-16 17:46:12.039 +02:00 [INF] Performance diagnostics service started
+2025-05-16 17:46:12.044 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-05-16 17:46:12.045 +02:00 [INF] Hosting environment: Development
+2025-05-16 17:46:12.045 +02:00 [INF] Content root path: /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Worker
+2025-05-16 17:46:12.697 +02:00 [INF] Connected to coinbase WebSocket at wss://ws-feed.exchange.coinbase.com
+2025-05-16 17:46:12.705 +02:00 [INF] Starting to process order book updates for BTC/USDT on coinbase
+2025-05-16 17:46:12.708 +02:00 [INF] Subscribing to order book for BTC/USDT (BTC-USDT) on Coinbase
+2025-05-16 17:46:12.874 +02:00 [INF] Start processing HTTP request GET https://api.exchange.coinbase.com/products/BTC-USDT/book?level=2
+2025-05-16 17:46:12.882 +02:00 [INF] Sending HTTP request GET https://api.exchange.coinbase.com/products/BTC-USDT/book?level=2
+2025-05-16 17:46:12.898 +02:00 [INF] Subscribed to order book updates for BTC/USDT on coinbase
+2025-05-16 17:46:12.898 +02:00 [INF] Creating exchange client for kraken
+2025-05-16 17:46:12.910 +02:00 [WRN] Skipping exchange kraken as it does not support real-time streaming
+2025-05-16 17:46:12.910 +02:00 [INF] Creating exchange client for binance
+2025-05-16 17:46:12.911 +02:00 [INF] Subscribing to order book updates for BTC/USDT on binance
+2025-05-16 17:46:12.911 +02:00 [INF] Creating exchange client for binance
+2025-05-16 17:46:12.912 +02:00 [INF] Connecting to binance
+2025-05-16 17:46:12.968 +02:00 [ERR] Received error from Coinbase WebSocket: Failed to subscribe
+2025-05-16 17:46:12.969 +02:00 [INF] Received subscriptions confirmation from Coinbase: {"type":"subscriptions","channels":[{"name":"heartbeat","product_ids":["BTC-USDT"],"account_ids":null}]}
+2025-05-16 17:46:13.015 +02:00 [INF] Connected to binance
+2025-05-16 17:46:13.015 +02:00 [INF] Starting to process order book updates for BTC/USDT on binance
+2025-05-16 17:46:13.016 +02:00 [INF] Subscribing to order book for BTC/USDT on binance
+2025-05-16 17:46:13.038 +02:00 [INF] Subscribed to order book updates for BTC/USDT on binance
+2025-05-16 17:46:13.038 +02:00 [INF] Subscribed to order book updates for BTC/USDT on 2 exchanges
+2025-05-16 17:46:13.042 +02:00 [INF] Starting real-time arbitrage detection for BTC/USDT
+2025-05-16 17:46:13.058 +02:00 [INF] Added trading pair BTC/USDT for arbitrage detection
+2025-05-16 17:46:13.061 +02:00 [INF] Subscribing to order book updates for ETH/USDT on all exchanges
+2025-05-16 17:46:13.061 +02:00 [DBG] Getting all exchange configurations
+2025-05-16 17:46:13.062 +02:00 [INF] Creating exchange client for coinbase
+2025-05-16 17:46:13.063 +02:00 [INF] Subscribing to order book updates for ETH/USDT on coinbase
+2025-05-16 17:46:13.063 +02:00 [INF] Starting to process order book updates for ETH/USDT on coinbase
+2025-05-16 17:46:13.064 +02:00 [INF] Subscribing to order book for ETH/USDT (ETH-USDT) on Coinbase
+2025-05-16 17:46:13.068 +02:00 [INF] Received HTTP response headers after 180.0435ms - 200
+2025-05-16 17:46:13.068 +02:00 [INF] Start processing HTTP request GET https://api.exchange.coinbase.com/products/ETH-USDT/book?level=2
+2025-05-16 17:46:13.071 +02:00 [INF] Sending HTTP request GET https://api.exchange.coinbase.com/products/ETH-USDT/book?level=2
+2025-05-16 17:46:13.073 +02:00 [INF] End processing HTTP request after 211.1427ms - 200
+2025-05-16 17:46:13.075 +02:00 [INF] Subscribed to order book updates for ETH/USDT on coinbase
+2025-05-16 17:46:13.075 +02:00 [INF] Creating exchange client for kraken
+2025-05-16 17:46:13.076 +02:00 [WRN] Skipping exchange kraken as it does not support real-time streaming
+2025-05-16 17:46:13.076 +02:00 [INF] Creating exchange client for binance
+2025-05-16 17:46:13.076 +02:00 [INF] Subscribing to order book updates for ETH/USDT on binance
+2025-05-16 17:46:13.077 +02:00 [INF] Starting to process order book updates for ETH/USDT on binance
+2025-05-16 17:46:13.077 +02:00 [INF] Subscribing to order book for ETH/USDT on binance
+2025-05-16 17:46:13.078 +02:00 [INF] Subscribed to order book updates for ETH/USDT on binance
+2025-05-16 17:46:13.078 +02:00 [INF] Subscribed to order book updates for ETH/USDT on 2 exchanges
+2025-05-16 17:46:13.079 +02:00 [INF] Starting real-time arbitrage detection for ETH/USDT
+2025-05-16 17:46:13.082 +02:00 [INF] Added trading pair ETH/USDT for arbitrage detection
+2025-05-16 17:46:13.083 +02:00 [INF] Arbitrage detection service started for 2 trading pairs
+2025-05-16 17:46:13.084 +02:00 [INF] Arbitrage service started, auto-trading: false
+2025-05-16 17:46:13.087 +02:00 [INF] Starting arbitrage opportunities processing
+2025-05-16 17:46:13.087 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 17:46:13.159 +02:00 [ERR] Error fetching order book for BTC/USDT on Coinbase
+System.NotSupportedException: The collection type 'Newtonsoft.Json.Linq.JToken' is abstract, an interface, or is read only, and could not be instantiated and populated. Path: $.bids | LineNumber: 0 | BytePositionInLine: 9.
+ ---> System.NotSupportedException: The collection type 'Newtonsoft.Json.Linq.JToken' is abstract, an interface, or is read only, and could not be instantiated and populated.
+   --- End of inner exception stack trace ---
+   at System.Text.Json.ThrowHelper.ThrowNotSupportedException(ReadStack& state, Utf8JsonReader& reader, Exception innerException)
+   at System.Text.Json.ThrowHelper.ThrowNotSupportedException_CannotPopulateCollection(Type type, Utf8JsonReader& reader, ReadStack& state)
+   at System.Text.Json.Serialization.Converters.IEnumerableOfTConverter`2.CreateCollection(Utf8JsonReader& reader, ReadStack& state, JsonSerializerOptions options)
+   at System.Text.Json.Serialization.JsonCollectionConverter`2.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, TCollection& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.JsonDictionaryConverter`3.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, TDictionary& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, T& value, JsonSerializerOptions options, ReadStack& state)
+   at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.ContinueDeserialize(ReadBufferState& bufferState, JsonReaderState& jsonReaderState, ReadStack& readStack, T& value)
+   at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.DeserializeAsync(Stream utf8Json, CancellationToken cancellationToken)
+   at System.Net.Http.Json.HttpContentJsonExtensions.ReadFromJsonAsyncCore[T](HttpContent content, Encoding sourceEncoding, JsonSerializerOptions options, CancellationToken cancellationToken)
+   at System.Net.Http.Json.HttpClientJsonExtensions.GetFromJsonAsyncCore[T](Task`1 taskResponse, JsonSerializerOptions options, CancellationToken cancellationToken)
+   at CryptoArbitrage.Infrastructure.Exchanges.CoinbaseExchangeClient.FetchOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Infrastructure/Exchanges/CoinbaseExchangeClient.cs:line 724
+2025-05-16 17:46:13.176 +02:00 [ERR] Received error from Coinbase WebSocket: Failed to subscribe
+2025-05-16 17:46:13.182 +02:00 [INF] Received subscriptions confirmation from Coinbase: {"type":"subscriptions","channels":[{"name":"heartbeat","product_ids":["BTC-USDT","ETH-USDT"],"account_ids":null}]}
+2025-05-16 17:46:13.264 +02:00 [INF] Received HTTP response headers after 192.4642ms - 400
+2025-05-16 17:46:13.264 +02:00 [INF] End processing HTTP request after 197.0812ms - 400
+2025-05-16 17:46:13.266 +02:00 [ERR] Error fetching order book for ETH/USDT on Coinbase
+System.Net.Http.HttpRequestException: Response status code does not indicate success: 400 (Bad Request).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at System.Net.Http.Json.HttpClientJsonExtensions.GetFromJsonAsyncCore[T](Task`1 taskResponse, JsonSerializerOptions options, CancellationToken cancellationToken)
+   at CryptoArbitrage.Infrastructure.Exchanges.CoinbaseExchangeClient.FetchOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Infrastructure/Exchanges/CoinbaseExchangeClient.cs:line 724
+2025-05-16 17:47:12.055 +02:00 [INF] Performance: CPU Time: 60.103ms, Memory: 54MB, Threads: 19
+2025-05-16 17:48:12.068 +02:00 [INF] Performance: CPU Time: 72.0401ms, Memory: 47MB, Threads: 20
+2025-05-16 17:49:12.071 +02:00 [INF] Performance: CPU Time: 82.3838ms, Memory: 53MB, Threads: 19
+2025-05-16 17:50:12.075 +02:00 [INF] Performance: CPU Time: 92.5065ms, Memory: 40MB, Threads: 19
+2025-05-16 17:51:12.078 +02:00 [INF] Performance: CPU Time: 102.5427ms, Memory: 42MB, Threads: 20
+2025-05-16 17:51:13.092 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 17:52:12.082 +02:00 [INF] Performance: CPU Time: 111.9951ms, Memory: 49MB, Threads: 20
+2025-05-16 17:53:12.084 +02:00 [INF] Performance: CPU Time: 122.9837ms, Memory: 51MB, Threads: 20
+2025-05-16 17:54:12.087 +02:00 [INF] Performance: CPU Time: 132.7582ms, Memory: 38MB, Threads: 19
+2025-05-16 17:55:12.093 +02:00 [INF] Performance: CPU Time: 142.0002ms, Memory: 40MB, Threads: 20
+2025-05-16 17:56:12.233 +02:00 [INF] Performance: CPU Time: 151.6145ms, Memory: 40MB, Threads: 19
+2025-05-16 17:56:13.096 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 17:57:12.237 +02:00 [INF] Performance: CPU Time: 161.1819ms, Memory: 42MB, Threads: 19
+2025-05-16 17:58:12.239 +02:00 [INF] Performance: CPU Time: 170.762ms, Memory: 41MB, Threads: 19
+2025-05-16 17:59:12.242 +02:00 [INF] Performance: CPU Time: 179.504ms, Memory: 43MB, Threads: 19
+2025-05-16 18:00:12.244 +02:00 [INF] Performance: CPU Time: 189.2574ms, Memory: 42MB, Threads: 19
+2025-05-16 18:01:12.246 +02:00 [INF] Performance: CPU Time: 198.0796ms, Memory: 40MB, Threads: 19
+2025-05-16 18:01:13.099 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 18:02:12.250 +02:00 [INF] Performance: CPU Time: 207.4377ms, Memory: 42MB, Threads: 20
+2025-05-16 18:03:12.253 +02:00 [INF] Performance: CPU Time: 217.2622ms, Memory: 39MB, Threads: 19
+2025-05-16 18:04:12.256 +02:00 [INF] Performance: CPU Time: 225.8916ms, Memory: 38MB, Threads: 19
+2025-05-16 18:05:12.257 +02:00 [INF] Performance: CPU Time: 235.4249ms, Memory: 39MB, Threads: 19
+2025-05-16 18:06:12.267 +02:00 [INF] Performance: CPU Time: 244.2686ms, Memory: 43MB, Threads: 19
+2025-05-16 18:06:13.103 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 18:07:12.275 +02:00 [INF] Performance: CPU Time: 252.656ms, Memory: 44MB, Threads: 19
+2025-05-16 18:08:12.277 +02:00 [INF] Performance: CPU Time: 261.8375ms, Memory: 44MB, Threads: 18
+2025-05-16 18:09:12.280 +02:00 [INF] Performance: CPU Time: 271.3137ms, Memory: 51MB, Threads: 19
+2025-05-16 18:10:12.282 +02:00 [INF] Performance: CPU Time: 282.0824ms, Memory: 50MB, Threads: 18
+2025-05-16 18:11:12.285 +02:00 [INF] Performance: CPU Time: 294.917ms, Memory: 45MB, Threads: 19
+2025-05-16 18:11:13.110 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 18:12:12.288 +02:00 [INF] Performance: CPU Time: 309.8481ms, Memory: 46MB, Threads: 19
+2025-05-16 18:13:12.292 +02:00 [INF] Performance: CPU Time: 325.5658ms, Memory: 48MB, Threads: 18
+2025-05-16 18:14:12.294 +02:00 [INF] Performance: CPU Time: 340.4877ms, Memory: 46MB, Threads: 20
+2025-05-16 18:15:12.298 +02:00 [INF] Performance: CPU Time: 354.9688ms, Memory: 44MB, Threads: 19
+2025-05-16 18:16:12.307 +02:00 [INF] Performance: CPU Time: 368.5933ms, Memory: 48MB, Threads: 19
+2025-05-16 18:16:13.119 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 18:17:12.311 +02:00 [INF] Performance: CPU Time: 381.3443ms, Memory: 49MB, Threads: 20
+2025-05-16 18:18:12.317 +02:00 [INF] Performance: CPU Time: 397.4521ms, Memory: 51MB, Threads: 18
+2025-05-16 18:19:12.323 +02:00 [INF] Performance: CPU Time: 413.543ms, Memory: 51MB, Threads: 19
+2025-05-16 18:19:31.683 +02:00 [ERR] Error processing WebSocket messages for coinbase
+System.Net.WebSockets.WebSocketException (0x80004005): The remote party closed the WebSocket connection without completing the close handshake.
+   at System.Net.WebSockets.ManagedWebSocket.ThrowEOFUnexpected()
+   at System.Net.WebSockets.ManagedWebSocket.EnsureBufferContainsAsync(Int32 minimumRequiredBytes, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource.GetResult(Int16 token)
+   at System.Net.WebSockets.ManagedWebSocket.ReceiveAsyncPrivate[TResult](Memory`1 payloadBuffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Threading.Tasks.ValueTask`1.ValueTaskSourceAsTask.<>c.<.cctor>b__4_0(Object state)
+--- End of stack trace from previous location ---
+   at CryptoArbitrage.Infrastructure.Exchanges.BaseExchangeClient.ProcessWebSocketMessagesAsync(CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Infrastructure/Exchanges/BaseExchangeClient.cs:line 441
+2025-05-16 18:19:31.698 +02:00 [INF] Attempting to reconnect WebSocket for coinbase
+2025-05-16 18:19:32.299 +02:00 [INF] WebSocket reconnected to coinbase at wss://ws-feed.exchange.coinbase.com
+2025-05-16 18:19:32.304 +02:00 [INF] Subscribing to order book for BTC/USDT (BTC-USDT) on Coinbase
+2025-05-16 18:19:32.305 +02:00 [INF] Subscribing to order book for ETH/USDT (ETH-USDT) on Coinbase
+2025-05-16 18:20:12.327 +02:00 [INF] Performance: CPU Time: 430.5252ms, Memory: 67MB, Threads: 20
+2025-05-16 18:36:12.115 +02:00 [INF] Performance: CPU Time: 442.9761ms, Memory: 64MB, Threads: 19
+2025-05-16 18:36:12.910 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 18:49:31.665 +02:00 [INF] Performance: CPU Time: 454.5401ms, Memory: 59MB, Threads: 20
+2025-05-16 18:50:31.754 +02:00 [INF] Performance: CPU Time: 465.8745ms, Memory: 55MB, Threads: 19
+2025-05-16 18:52:18.777 +02:00 [INF] Performance: CPU Time: 478.5772ms, Memory: 56MB, Threads: 19
+2025-05-16 18:58:41.248 +02:00 [INF] Performance: CPU Time: 491.7525ms, Memory: 56MB, Threads: 20
+2025-05-16 18:59:44.430 +02:00 [INF] Performance: CPU Time: 504.2621ms, Memory: 53MB, Threads: 18
+2025-05-16 18:59:45.210 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 19:15:44.242 +02:00 [INF] Performance: CPU Time: 516.565ms, Memory: 35MB, Threads: 19
+2025-05-16 19:16:44.249 +02:00 [INF] Performance: CPU Time: 523.905ms, Memory: 44MB, Threads: 19
+2025-05-16 19:17:44.252 +02:00 [INF] Performance: CPU Time: 531.294ms, Memory: 42MB, Threads: 18
+2025-05-16 19:18:44.254 +02:00 [INF] Performance: CPU Time: 539.0064ms, Memory: 40MB, Threads: 18
+2025-05-16 19:19:44.256 +02:00 [INF] Performance: CPU Time: 546.7905ms, Memory: 40MB, Threads: 19
+2025-05-16 19:19:45.016 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 19:20:44.257 +02:00 [INF] Performance: CPU Time: 555.5125ms, Memory: 36MB, Threads: 19
+2025-05-16 19:21:44.260 +02:00 [INF] Performance: CPU Time: 562.2725ms, Memory: 36MB, Threads: 19
+2025-05-16 19:22:44.263 +02:00 [INF] Performance: CPU Time: 568.761ms, Memory: 35MB, Threads: 19
+2025-05-16 19:23:44.266 +02:00 [INF] Performance: CPU Time: 575.7115ms, Memory: 41MB, Threads: 19
+2025-05-16 19:24:44.268 +02:00 [INF] Performance: CPU Time: 587.352ms, Memory: 43MB, Threads: 19
+2025-05-16 19:24:45.016 +02:00 [INF] CryptoArbitrage bot is running. Status: OK
+2025-05-16 19:25:44.272 +02:00 [INF] Performance: CPU Time: 600.2251ms, Memory: 30MB, Threads: 19
+2025-05-16 19:26:28.665 +02:00 [INF] Application is shutting down...
+2025-05-16 19:26:28.672 +02:00 [ERR] Error stopping arbitrage service during shutdown
+2025-05-16 19:26:28.683 +02:00 [INF] Application is shutting down...
+2025-05-16 19:26:28.688 +02:00 [INF] Performance diagnostics service stopped
+2025-05-16 19:26:28.690 +02:00 [INF] CryptoArbitrage Worker is stopping
+2025-05-16 19:26:28.690 +02:00 [INF] Stopping arbitrage service...
+2025-05-16 19:26:28.691 +02:00 [ERR] Error stopping arbitrage service
+System.BadImageFormatException: An attempt was made to load a program with an incorrect format.
+ (0x8007000B)
+   at CryptoArbitrage.Application.Services.ArbitrageService.StopAsync(CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at CryptoArbitrage.Application.Services.ArbitrageService.StopAsync(CancellationToken cancellationToken)
+   at CryptoArbitrage.Worker.Worker.StopAsync(CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Worker/Worker.cs:line 121
+2025-05-16 19:26:28.693 +02:00 [INF] CryptoArbitrage Worker is shutting down
+2025-05-16 19:26:28.699 +02:00 [ERR] Error processing order book updates for BTC/USDT on coinbase
+System.BadImageFormatException: Bad IL range.
+   at ageDetectionService.Aa�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��Jgp�BA�BA!�BAA�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��BA��BA�BA�J\\p!�J\\pA�Jgp�BA�J\\p!�BAA�BAa�BA��BA��J\\p��BA�BA�BA!�BAa�BA��J\\p�BAa�BA��BA��BA��BA�J\\pA�BAa�BA��BAa�BA��J\\p��J\\p��BA�BAa�BA��BA��BA��BA�BA�BA!�BAA�BA��BA!�BAA�BAa�BA��BA��BA�BA��BA�BA!�BA�BA�BA!�BAA�BAa�BA��BA�BA�BA!�BA�.RA�AJ�p�ARA�ARABBA BRA!BJ\pABJ\p`BRAaBJrp�BRA�BJ�p�BRA CRA!CBAACBA`CRA�CJ�p�C{
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 418
+2025-05-16 19:26:28.699 +02:00 [ERR] Error processing order book updates for ETH/USDT on coinbase
+System.BadImageFormatException: Bad IL range.
+   at ageDetectionService.Aa�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��Jgp�BA�BA!�BAA�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��BA��BA�BA�J\\p!�J\\pA�Jgp�BA�J\\p!�BAA�BAa�BA��BA��J\\p��BA�BA�BA!�BAa�BA��J\\p�BAa�BA��BA��BA��BA�J\\pA�BAa�BA��BAa�BA��J\\p��J\\p��BA�BAa�BA��BA��BA��BA�BA�BA!�BAA�BA��BA!�BAA�BAa�BA��BA��BA�BA��BA�BA!�BA�BA�BA!�BAA�BAa�BA��BA�BA�BA!�BA�.RA�AJ�p�ARA�ARABBA BRA!BJ\pABJ\p`BRAaBJrp�BRA�BJ�p�BRA CRA!CBAACBA`CRA�CJ�p�C{
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 418
+2025-05-16 19:26:28.699 +02:00 [ERR] Error processing order book updates for ETH/USDT on binance
+System.BadImageFormatException: Bad IL range.
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 418
+2025-05-16 19:26:28.699 +02:00 [ERR] Error processing order book updates for BTC/USDT on binance
+System.BadImageFormatException: Bad IL range.
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 418
+2025-05-16 19:26:28.704 +02:00 [ERR] Error forwarding order book updates for ETH/USDT on binance
+System.BadImageFormatException: Bad IL range.
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 166
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+System.Threading.Tasks.Sources.IValueTaskSource<System.Boolean>.GetResult()
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+--- End of stack trace from previous location ---
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+2025-05-16 19:26:28.715 +02:00 [ERR] Error unsubscribing from order book updates for ETH/USDT on binance
+System.BadImageFormatException: Illegal or unimplemented ELEM_TYPE in signature. The format of the file '/Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Worker/bin/Debug/net7.0/CryptoArbitrage.Infrastructure.dll' is invalid.
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 441
+2025-05-16 19:26:28.706 +02:00 [ERR] Error forwarding order book updates for BTC/USDT on coinbase
+System.BadImageFormatException: Bad IL range.
+   at ageDetectionService.Aa�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��Jgp�BA�BA!�BAA�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��BA��BA�BA�J\\p!�J\\pA�Jgp�BA�J\\p!�BAA�BAa�BA��BA��J\\p��BA�BA�BA!�BAa�BA��J\\p�BAa�BA��BA��BA��BA�J\\pA�BAa�BA��BAa�BA��J\\p��J\\p��BA�BAa�BA��BA��BA��BA�BA�BA!�BAA�BA��BA!�BAA�BAa�BA��BA��BA�BA��BA�BA!�BA�BA�BA!�BAA�BAa�BA��BA�BA�BA!�BA�.RA�AJ�p�ARA�ARABBA BRA!BJ\pABJ\p`BRAaBJrp�BRA�BJ�p�BRA CRA!CBAACBA`CRA�CJ�p�C{
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 166
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+System.Threading.Tasks.Sources.IValueTaskSource<System.Boolean>.GetResult()
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+--- End of stack trace from previous location ---
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+2025-05-16 19:26:28.706 +02:00 [ERR] Error forwarding order book updates for ETH/USDT on coinbase
+System.BadImageFormatException: Bad IL range.
+   at ageDetectionService.Aa�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��Jgp�BA�BA!�BAA�Jrp��BA��BA��BA�BA�BA!�BAA�BAa�BA��BA��BA��BA�BA�J\\p!�J\\pA�Jgp�BA�J\\p!�BAA�BAa�BA��BA��J\\p��BA�BA�BA!�BAa�BA��J\\p�BAa�BA��BA��BA��BA�J\\pA�BAa�BA��BAa�BA��J\\p��J\\p��BA�BAa�BA��BA��BA��BA�BA�BA!�BAA�BA��BA!�BAA�BAa�BA��BA��BA�BA��BA�BA!�BA�BA�BA!�BAA�BAa�BA��BA�BA�BA!�BA�.RA�AJ�p�ARA�ARABBA BRA!BJ\pABJ\p`BRAaBJrp�BRA�BJ�p�BRA CRA!CBAACBA`CRA�CJ�p�C{
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 166
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+System.Threading.Tasks.Sources.IValueTaskSource<System.Boolean>.GetResult()
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+--- End of stack trace from previous location ---
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+2025-05-16 19:26:28.708 +02:00 [ERR] Error forwarding order book updates for BTC/USDT on binance
+System.BadImageFormatException: Bad IL range.
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 166
+   at CryptoArbitrage.Application.Services.MarketDataService.GetPriceQuotesAsync(� exchangeId,  tradingPair, CancellationToken cancellationToken)+System.Threading.Tasks.Sources.IValueTaskSource<System.Boolean>.GetResult()
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+--- End of stack trace from previous location ---
+   at CryptoArbitrage.Application.Services.ArbitrageDetectionService.<>c__DisplayClass29_2.<<ProcessTradingPairStreamAsync>b__0>d.MoveNext() in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/ArbitrageDetectionService.cs:line 342
+2025-05-16 19:26:28.713 +02:00 [ERR] Error unsubscribing from order book updates for BTC/USDT on coinbase
+System.BadImageFormatException: Bad IL range.
+   at CryptoArbitrage.Infrastructure.Exchanges.CoinbaseExchangeClient._1
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 441
+2025-05-16 19:26:28.714 +02:00 [ERR] Error unsubscribing from order book updates for ETH/USDT on coinbase
+System.BadImageFormatException: Bad IL range.
+   at CryptoArbitrage.Infrastructure.Exchanges.CoinbaseExchangeClient._1
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 441
+2025-05-16 19:26:28.717 +02:00 [INF] Stopped processing order book updates for ETH/USDT on binance
+2025-05-16 19:26:28.715 +02:00 [ERR] Error unsubscribing from order book updates for BTC/USDT on binance
+System.BadImageFormatException: Illegal or unimplemented ELEM_TYPE in signature. The format of the file '/Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Worker/bin/Debug/net7.0/CryptoArbitrage.Infrastructure.dll' is invalid.
+   at CryptoArbitrage.Application.Services.MarketDataService.ProcessOrderBookUpdatesAsync(IExchangeClient client,  tradingPair, CancellationToken cancellationToken) in /Users/ygeurts/Projects/Private/crypto-arbitrage/backend/CryptoArbitrage.Application/Services/MarketDataService.cs:line 441
+2025-05-16 19:26:28.705 +02:00 [INF] Arbitrage opportunities processing was canceled
+2025-05-16 19:26:28.720 +02:00 [INF] Stopped processing order book updates for BTC/USDT on coinbase
+2025-05-16 19:26:28.720 +02:00 [INF] Real-time arbitrage detection for BTC/USDT stopped
+2025-05-16 19:26:28.721 +02:00 [INF] Stopped processing order book updates for ETH/USDT on coinbase
+2025-05-16 19:26:28.721 +02:00 [INF] Stopped processing order book updates for BTC/USDT on binance
+2025-05-16 19:26:28.721 +02:00 [INF] Arbitrage opportunities processing stopped
+2025-05-16 19:26:28.718 +02:00 [INF] Real-time arbitrage detection for ETH/USDT stopped

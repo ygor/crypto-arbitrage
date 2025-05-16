@@ -99,3 +99,4 @@ pytest.ini
 timevault-api.yml
 publich
 publish
+*/node_modules/*

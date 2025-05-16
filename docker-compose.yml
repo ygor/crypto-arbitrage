@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # MongoDB for storing arbitrage data and configurations
+  mongodb:
+    image: mongo:latest
+    container_name: crypto-arbitrage-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - crypto-arbitrage-network
+
+  # Redis for caching and messaging
+  redis:
+    image: redis:latest
+    container_name: crypto-arbitrage-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - crypto-arbitrage-network
+    command: redis-server --appendonly yes
+
+  # API service
+  api:
+    build: 
+      context: ./backend
+      target: api
+    container_name: crypto-arbitrage-api
+    ports:
+      - "5001:80"
+    depends_on:
+      - mongodb
+      - redis
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__MongoDb=mongodb://admin:password@mongodb:27017
+      - ConnectionStrings__Redis=redis:6379
+      - CryptoArbitrage__PaperTradingEnabled=true
+      - CryptoArbitrage__IsEnabled=true
+      - CryptoArbitrage__MinimumProfitPercentage=0.5
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    volumes:
+      - ./appsettings.json:/app/appsettings.json:ro
+    networks:
+      - crypto-arbitrage-network
+
+  # Worker service
+  worker:
+    build:
+      context: ./backend
+      target: worker
+    container_name: crypto-arbitrage-worker
+    depends_on:
+      - mongodb
+      - redis
+      - api
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__MongoDb=mongodb://admin:password@mongodb:27017
+      - ConnectionStrings__Redis=redis:6379
+      - CryptoArbitrage__PaperTradingEnabled=true
+      - CryptoArbitrage__IsEnabled=true
+      - CryptoArbitrage__MinimumProfitPercentage=0.5
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    volumes:
+      - ./appsettings.json:/app/appsettings.json:ro
+    networks:
+      - crypto-arbitrage-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  crypto-arbitrage-network:
+    driver: bridge 
