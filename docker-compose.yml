@@ -75,6 +75,21 @@ services:
     networks:
       - crypto-arbitrage-network
 
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+    container_name: crypto-arbitrage-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    environment:
+      - REACT_APP_API_URL=http://localhost:5001/api
+      - REACT_APP_SIGNALR_URL=http://localhost:5001/hubs
+    networks:
+      - crypto-arbitrage-network
+
 volumes:
   mongodb_data:
   redis_data:

@@ -26,10 +26,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CryptoArbitrage.Application\CryptoArbitrage.Application.csproj" />
-    <ProjectReference Include="..\CryptoArbitrage.Domain\CryptoArbitrage.Domain.csproj" />
-    <ProjectReference Include="..\CryptoArbitrage.Infrastructure\CryptoArbitrage.Infrastructure.csproj" />
-    <ProjectReference Include="..\CryptoArbitrage.Worker\CryptoArbitrage.Worker.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Application\CryptoArbitrage.Application.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Domain\CryptoArbitrage.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Infrastructure\CryptoArbitrage.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Worker\CryptoArbitrage.Worker.csproj" />
   </ItemGroup>
 
 </Project>

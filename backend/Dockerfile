@@ -2,11 +2,11 @@ FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 
 # Copy csproj files and restore dependencies
-COPY CryptoArbitrage.Domain/*.csproj ./CryptoArbitrage.Domain/
-COPY CryptoArbitrage.Application/*.csproj ./CryptoArbitrage.Application/
-COPY CryptoArbitrage.Infrastructure/*.csproj ./CryptoArbitrage.Infrastructure/
-COPY CryptoArbitrage.Worker/*.csproj ./CryptoArbitrage.Worker/
-COPY CryptoArbitrage.Api/*.csproj ./CryptoArbitrage.Api/
+COPY src/CryptoArbitrage.Domain/*.csproj ./CryptoArbitrage.Domain/
+COPY src/CryptoArbitrage.Application/*.csproj ./CryptoArbitrage.Application/
+COPY src/CryptoArbitrage.Infrastructure/*.csproj ./CryptoArbitrage.Infrastructure/
+COPY src/CryptoArbitrage.Worker/*.csproj ./CryptoArbitrage.Worker/
+COPY src/CryptoArbitrage.Api/*.csproj ./CryptoArbitrage.Api/
 
 # Restore packages
 RUN dotnet restore ./CryptoArbitrage.Domain/
@@ -16,11 +16,11 @@ RUN dotnet restore ./CryptoArbitrage.Worker/
 RUN dotnet restore ./CryptoArbitrage.Api/
 
 # Copy all files and build the project
-COPY CryptoArbitrage.Domain/. ./CryptoArbitrage.Domain/
-COPY CryptoArbitrage.Application/. ./CryptoArbitrage.Application/
-COPY CryptoArbitrage.Infrastructure/. ./CryptoArbitrage.Infrastructure/
-COPY CryptoArbitrage.Worker/. ./CryptoArbitrage.Worker/
-COPY CryptoArbitrage.Api/. ./CryptoArbitrage.Api/
+COPY src/CryptoArbitrage.Domain/. ./CryptoArbitrage.Domain/
+COPY src/CryptoArbitrage.Application/. ./CryptoArbitrage.Application/
+COPY src/CryptoArbitrage.Infrastructure/. ./CryptoArbitrage.Infrastructure/
+COPY src/CryptoArbitrage.Worker/. ./CryptoArbitrage.Worker/
+COPY src/CryptoArbitrage.Api/. ./CryptoArbitrage.Api/
 
 # Build Api project
 RUN dotnet publish -c Release -o /app/api ./CryptoArbitrage.Api/

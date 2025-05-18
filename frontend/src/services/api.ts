@@ -12,9 +12,19 @@ import {
   TradeResult
 } from '../models/types';
 
+// Get environment variables (at runtime from window.ENV or fallback to process.env)
+declare global {
+  interface Window {
+    ENV: {
+      apiUrl?: string;
+      signalrUrl?: string;
+    };
+  }
+}
+
 // API base URL
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
-const SIGNALR_URL = process.env.REACT_APP_SIGNALR_URL || 'http://localhost:5001/hubs';
+const BASE_URL = window.ENV?.apiUrl || process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const SIGNALR_URL = window.ENV?.signalrUrl || process.env.REACT_APP_SIGNALR_URL || 'http://localhost:5001/hubs';
 
 // Configure axios instance
 const api = axios.create({

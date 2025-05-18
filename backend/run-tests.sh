@@ -42,7 +42,7 @@ show_help() {
     echo "  -h, --help                  Show this help message"
     echo "  -v, --verbose               Show verbose output"
     echo "  -f, --filter FILTER         Run tests matching the filter expression"
-    echo "  -p, --project PROJECT       Run tests from a specific project (defaults to CryptoArbitrage.Tests)"
+    echo "  -p, --project PROJECT       Run tests from a specific project (defaults to tests/CryptoArbitrage.Tests)"
     echo "  --no-restore                Skip the restore step"
     echo "  --no-build                  Skip the build step"
     echo "  --coverage                  Generate code coverage report"
@@ -57,7 +57,7 @@ show_help() {
 # Default values
 VERBOSE=""
 FILTER=""
-PROJECT="CryptoArbitrage.Tests"
+PROJECT="tests/CryptoArbitrage.Tests"
 RESTORE="true"
 BUILD="true"
 COVERAGE=""

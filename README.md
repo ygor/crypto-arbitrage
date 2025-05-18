@@ -26,18 +26,21 @@ This project consists of two main components:
 - `src/CryptoArbitrage.Infrastructure` - Implementation of interfaces, repositories, exchange clients
 - `src/CryptoArbitrage.Api` - REST API and SignalR hubs for frontend communication
 - `src/CryptoArbitrage.Worker` - Background worker for running the bot
-- `src/CryptoArbitrage.Tests` - Unit and integration tests
+- `tests/CryptoArbitrage.Tests` - Unit and integration tests
 - `frontend/arbitrage-dashboard` - React web dashboard
 
 ## Getting Started
 
 ### Prerequisites
 
-- .NET 7 SDK
-- Node.js (v16+) and npm
+- .NET 7 SDK (for development)
+- Node.js (v16+) and npm (for frontend development)
+- Docker and Docker Compose (for containerized setup)
 - Git
 
-### Backend Setup
+### Option 1: Local Development Setup
+
+#### Backend Setup
 
 1. Clone the repository:
    ```bash
@@ -58,7 +61,7 @@ This project consists of two main components:
 
 The API will be available at `https://localhost:7000` with Swagger documentation at `https://localhost:7000/swagger`.
 
-### Frontend Setup
+#### Frontend Setup
 
 1. Navigate to the frontend directory:
    ```bash
@@ -77,11 +80,100 @@ The API will be available at `https://localhost:7000` with Swagger documentation
 
 The dashboard will be available at `http://localhost:3000`.
 
+### Option 2: Docker Containerized Setup
+
+This project includes Docker support for running the entire stack in containers, which is recommended for production or testing environments.
+
+#### Services Included
+
+1. **API Service**: The REST API that provides endpoints for managing the arbitrage system.
+2. **Worker Service**: The background worker that monitors exchanges and executes arbitrage opportunities.
+3. **MongoDB**: Database for storing arbitrage opportunities, trade results, and configurations.
+4. **Redis**: Used for caching and real-time messaging between services.
+5. **Frontend**: The React web dashboard.
+
+#### Running with Docker Compose
+
+We've provided a convenient shell script to manage the services. Make it executable first:
+
+```bash
+chmod +x start.sh
+```
+
+Start all services:
+```bash
+./start.sh
+```
+
+This will build and start all services in the background. You can also use direct Docker Compose commands:
+
+```bash
+# Start in the background
+docker-compose up -d
+
+# Start in the foreground with logs
+docker-compose up
+
+# Stop services
+docker-compose down
+
+# Rebuild services
+docker-compose build
+
+# View logs
+docker-compose logs -f
+```
+
+#### Accessing the Containerized Services
+
+- **Frontend**: http://localhost:3000
+- **API**: http://localhost:5001/api
+- **MongoDB**: mongodb://localhost:27017 (username: admin, password: password)
+- **Redis**: localhost:6379
+
 ## Configuration
+
+The system configuration is managed through `appsettings.json` files:
+
+- A root-level `appsettings.json` contains global configuration shared between services
+- Service-specific configurations exist in their respective project directories
+
+### Key Configuration Options
+
+- Trading pairs to monitor
+- Risk profile parameters (profit thresholds, position sizes, etc.)
+- Exchange API credentials
+- Paper trading settings
+- Notification preferences
 
 To use the bot with real exchanges, you need to configure API keys for each exchange in the settings section of the dashboard or in the `appsettings.json` file.
 
-Default configuration is set to paper trading mode for safety.
+### Paper Trading Mode
+
+By default, the system is configured to run in paper trading mode, which means no real trades will be executed. This is ideal for testing and development.
+
+To enable live trading (use with caution):
+
+1. Edit the `appsettings.json` file:
+   ```json
+   "CryptoArbitrage": {
+     "PaperTradingEnabled": false,
+     ...
+   }
+   ```
+
+2. Add your exchange API keys:
+   ```json
+   "Exchanges": {
+     "binance": {
+       "ApiKey": "YOUR_API_KEY",
+       "ApiSecret": "YOUR_API_SECRET",
+       ...
+     }
+   }
+   ```
+
+**Note**: For security reasons, never commit your actual API keys to version control. Use environment variables or secrets management for production environments.
 
 ## Architecture
 
@@ -93,6 +185,16 @@ The project follows a clean architecture approach with:
 - Dependency injection for loose coupling
 - SignalR for real-time communication
 - React with Material-UI for the frontend
+
+## Troubleshooting
+
+### Common Issues
+
+- **Services fail to start**: Ensure ports 3000, 5001, 27017, and 6379 are not already in use on your system.
+- **Connection issues between services**: Make sure all services are running with `docker-compose ps`.
+- **API unreachable**: Check if the service is running and view logs with `docker-compose logs api`.
+- **No arbitrage opportunities detected**: Verify that the worker service is running (`docker-compose logs worker`) and that the configuration is correct.
+- **Frontend connectivity issues**: Ensure the API service is running and check browser console for CORS or other connection errors.
 
 ## Contributing
 
