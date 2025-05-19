@@ -1,0 +1,56 @@
+name: Frontend Tests
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+  push:
+    branches: 
+      - main
+      - develop
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  test-frontend:
+    name: Run Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Run component tests
+        working-directory: ./frontend
+        run: npm run test:components -- --watchAll=false
+      
+      - name: Run e2e tests
+        working-directory: ./frontend
+        run: npm run test:e2e -- --watchAll=false
+      
+      - name: Run API contract tests
+        working-directory: ./frontend
+        run: npm run test:api-contracts
+      
+      - name: Generate test coverage
+        working-directory: ./frontend
+        run: npm run test:coverage
+      
+      - name: Upload test coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: frontend/coverage
+          retention-days: 7 

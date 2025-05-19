@@ -6,7 +6,8 @@ import {
   Box, 
   Stack,
   Button,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import StatisticsDashboard from './StatisticsDashboard';
 import OpportunityView from './OpportunityView';
@@ -20,10 +21,29 @@ import {
 } from '../services/api';
 import { ArbitrageStatistics, TradeResult } from '../models/types';
 
+// Default empty statistics object
+const emptyStatistics: ArbitrageStatistics = {
+  startTime: new Date().toISOString(),
+  endTime: new Date().toISOString(),
+  totalProfit: 0,
+  totalVolume: 0,
+  totalFees: 0,
+  averageProfit: 0,
+  highestProfit: 0,
+  lowestProfit: 0,
+  totalOpportunitiesDetected: 0,
+  totalTradesExecuted: 0,
+  successfulTrades: 0,
+  failedTrades: 0,
+  averageExecutionTimeMs: 0,
+  profitFactor: 0
+};
+
 const Dashboard: React.FC = () => {
-  const [statistics, setStatistics] = useState<ArbitrageStatistics | null>(null);
+  const [statistics, setStatistics] = useState<ArbitrageStatistics>(emptyStatistics);
   const [recentTrades, setRecentTrades] = useState<TradeResult[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [serviceStatus, setServiceStatus] = useState<{ isRunning: boolean, paperTradingEnabled: boolean }>({ 
     isRunning: false, 
     paperTradingEnabled: false 
@@ -39,11 +59,21 @@ const Dashboard: React.FC = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [stats, trades, status] = await Promise.all([
-        getArbitrageStatistics(),
-        getRecentTradeResults(5),
-        getServiceStatus()
+        getArbitrageStatistics().catch(err => {
+          console.error('Error fetching statistics:', err);
+          return emptyStatistics;
+        }),
+        getRecentTradeResults(5).catch(err => {
+          console.error('Error fetching trades:', err);
+          return [];
+        }),
+        getServiceStatus().catch(err => {
+          console.error('Error fetching service status:', err);
+          return { isRunning: false, paperTradingEnabled: false };
+        })
       ]);
       
       setStatistics(stats);
@@ -52,6 +82,7 @@ const Dashboard: React.FC = () => {
       setServiceStatus(status);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setError('Failed to load some dashboard data. Showing available information.');
     } finally {
       setIsLoading(false);
     }
@@ -60,10 +91,14 @@ const Dashboard: React.FC = () => {
   const handleStartService = async () => {
     setActionLoading(true);
     try {
-      await startArbitrageService();
-      await fetchData();
+      const response = await startArbitrageService();
+      if (response.success) {
+        // Service started, update status
+        setServiceStatus(prev => ({ ...prev, isRunning: true }));
+      }
     } catch (error) {
       console.error('Error starting service:', error);
+      setError('Failed to start the arbitrage service.');
     } finally {
       setActionLoading(false);
     }
@@ -72,129 +107,107 @@ const Dashboard: React.FC = () => {
   const handleStopService = async () => {
     setActionLoading(true);
     try {
-      await stopArbitrageService();
-      await fetchData();
+      const response = await stopArbitrageService();
+      if (response.success) {
+        // Service stopped, update status
+        setServiceStatus(prev => ({ ...prev, isRunning: false }));
+      }
     } catch (error) {
       console.error('Error stopping service:', error);
+      setError('Failed to stop the arbitrage service.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  if (isLoading && !statistics) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Arbitrage Dashboard
-        </Typography>
-        <Box>
+    <Container maxWidth="xl">
+      <Box sx={{ mt: 4, mb: 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h4" component="h1" gutterBottom>
+            Crypto Arbitrage Dashboard
+          </Typography>
           <Stack direction="row" spacing={2}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-              <Typography variant="body2" sx={{ mr: 1 }}>
-                Status:
-              </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ 
-                  fontWeight: 'bold',
-                  color: serviceStatus.isRunning ? 'success.main' : 'error.main'
-                }}
+            {serviceStatus.isRunning ? (
+              <Button 
+                variant="contained" 
+                color="error"
+                onClick={handleStopService}
+                disabled={actionLoading}
               >
-                {serviceStatus.isRunning ? 'RUNNING' : 'STOPPED'}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-              <Typography variant="body2" sx={{ mr: 1 }}>
-                Mode:
-              </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ 
-                  fontWeight: 'bold',
-                  color: serviceStatus.paperTradingEnabled ? 'info.main' : 'warning.main'
-                }}
+                {actionLoading ? <CircularProgress size={24} /> : 'Stop Bot'}
+              </Button>
+            ) : (
+              <Button 
+                variant="contained" 
+                color="success"
+                onClick={handleStartService}
+                disabled={actionLoading}
               >
-                {serviceStatus.paperTradingEnabled ? 'PAPER TRADING' : 'LIVE TRADING'}
-              </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              color={serviceStatus.isRunning ? "error" : "success"}
-              onClick={serviceStatus.isRunning ? handleStopService : handleStartService}
-              disabled={actionLoading}
-            >
-              {actionLoading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                serviceStatus.isRunning ? "Stop Service" : "Start Service"
-              )}
-            </Button>
+                {actionLoading ? <CircularProgress size={24} /> : 'Start Bot'}
+              </Button>
+            )}
           </Stack>
-        </Box>
-      </Box>
-
-      {statistics && (
-        <Paper
-          sx={{
-            p: 2,
-            mb: 4,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <StatisticsDashboard statistics={statistics} />
-        </Paper>
-      )}
-
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-        <Box sx={{ flex: 7, minWidth: 0 }}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              height: 500,
-              overflow: 'auto',
-              width: '100%'
-            }}
-          >
-            <OpportunityView maxOpportunities={5} />
-          </Paper>
-        </Box>
+        </Stack>
         
-        <Box sx={{ flex: 5, minWidth: 0 }}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              height: 500,
-              overflow: 'auto',
-              width: '100%'
-            }}
-          >
+        {serviceStatus.paperTradingEnabled && (
+          <Paper elevation={0} sx={{ p: 1, background: '#fff9c4', mb: 2 }}>
+            <Typography variant="body2">
+              🔔 Paper Trading Mode Enabled: No real trades will be executed.
+            </Typography>
+          </Paper>
+        )}
+        
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
+        <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Statistics Overview
+          </Typography>
+          {isLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+              <CircularProgress />
+            </Box>
+          ) : (
+            <StatisticsDashboard statistics={statistics} />
+          )}
+        </Paper>
+        
+        <Stack 
+          direction={{ xs: 'column', md: 'row' }} 
+          spacing={4}
+          sx={{ mb: 4 }}
+        >
+          <Paper elevation={1} sx={{ p: 3, flex: 1 }}>
+            <Typography variant="h6" gutterBottom>
+              Recent Opportunities
+            </Typography>
+            {isLoading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                <CircularProgress />
+              </Box>
+            ) : (
+              <OpportunityView maxOpportunities={5} />
+            )}
+          </Paper>
+          
+          <Paper elevation={1} sx={{ p: 3, flex: 1 }}>
             <Typography variant="h6" gutterBottom>
               Recent Trades
             </Typography>
-            {recentTrades.length > 0 ? (
-              <TradesList trades={recentTrades} />
-            ) : (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80%' }}>
-                <Typography variant="body1" color="textSecondary">
-                  No recent trades found
-                </Typography>
+            {isLoading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                <CircularProgress />
               </Box>
+            ) : (
+              <TradesList trades={recentTrades} />
             )}
           </Paper>
-        </Box>
+        </Stack>
       </Box>
     </Container>
   );

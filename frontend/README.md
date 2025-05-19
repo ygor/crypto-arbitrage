@@ -19,6 +19,18 @@ You will also see any lint errors in the console.
 Launches the test runner in the interactive watch mode.\
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
+### `npm run test:components`
+
+Runs only the component tests located in `src/components/__tests__/`.
+
+### `npm run test:e2e`
+
+Runs only the end-to-end tests located in `src/__tests__/`.
+
+### `npm run test:coverage`
+
+Generates a test coverage report to identify areas that need more testing.
+
 ### `npm run build`
 
 Builds the app for production to the `build` folder.\
@@ -38,6 +50,24 @@ It will:
 
 This is useful for catching API contract mismatches early in the development process.
 
+## Comprehensive Testing Strategy
+
+We've implemented a multi-layered testing approach to ensure the application's reliability:
+
+1. **Component Tests**: Unit tests for individual React components to verify they render correctly with different prop scenarios.
+2. **Integration Tests**: Tests that verify multiple components work together correctly.
+3. **End-to-End Tests**: Tests that simulate real user flows across the application.
+4. **API Contract Tests**: Tests that verify our frontend API calls align with the backend API endpoints.
+
+Our tests focus on:
+- Data handling and error states
+- Component rendering with various data scenarios
+- User interactions
+- API integration
+- Edge cases like null/undefined values
+
+For detailed information on our testing approach, see the [Testing Guide](docs/TESTING.md).
+
 ## API Contract Testing
 
 We've implemented comprehensive API contract testing to ensure alignment between the frontend and backend:
@@ -54,6 +84,9 @@ For more details, see the [API Contract Testing README](src/services/README.md).
 - `src/services/` - API and data-fetching logic
 - `src/models/` - TypeScript interfaces and type definitions
 - `scripts/` - Utility scripts for development and testing
+- `docs/` - Project documentation
+- `src/components/__tests__/` - Component tests
+- `src/__tests__/` - End-to-end and integration tests
 
 ## Environment Variables
 

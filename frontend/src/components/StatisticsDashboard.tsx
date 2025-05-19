@@ -15,33 +15,66 @@ interface StatisticsDashboardProps {
 
 const COLORS = ['#4caf50', '#f44336', '#2196f3', '#ff9800', '#9c27b0'];
 
+// Default statistics to use if any property is undefined
+const defaultStats: ArbitrageStatistics = {
+  totalProfit: 0,
+  totalVolume: 0,
+  totalFees: 0,
+  averageProfit: 0,
+  highestProfit: 0,
+  lowestProfit: 0,
+  totalOpportunitiesDetected: 0,
+  totalTradesExecuted: 0,
+  successfulTrades: 0,
+  failedTrades: 0,
+  averageExecutionTimeMs: 0,
+  profitFactor: 0,
+  startTime: new Date().toISOString(),
+  endTime: new Date().toISOString()
+};
+
+// Helper function to safely format numbers with toFixed
+const safeToFixed = (value: any, decimals: number = 2): string => {
+  if (value === undefined || value === null || isNaN(Number(value))) {
+    return (0).toFixed(decimals);
+  }
+  return Number(value).toFixed(decimals);
+};
+
 const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics }) => {
+  // Create a safe version of statistics with defaults for missing properties
+  const safeStats = {
+    ...defaultStats,
+    ...Object.fromEntries(
+      // Filter out any undefined or null values from statistics
+      Object.entries(statistics || {}).filter(([_, v]) => v !== undefined && v !== null)
+    )
+  };
+
   const successRateData = [
-    { name: 'Success', value: statistics.successfulTrades },
-    { name: 'Failed', value: statistics.failedTrades }
+    { name: 'Success', value: safeStats.successfulTrades },
+    { name: 'Failed', value: safeStats.failedTrades }
   ];
 
   // Generate data for profit over time chart
-  // This would normally come from actual time-series data
-  // Here we'll just create some placeholder data
   const profitChartData = [
-    { name: 'Day 1', profit: statistics.totalProfit * 0.2 },
-    { name: 'Day 2', profit: statistics.totalProfit * 0.35 },
-    { name: 'Day 3', profit: statistics.totalProfit * 0.5 },
-    { name: 'Day 4', profit: statistics.totalProfit * 0.75 },
-    { name: 'Day 5', profit: statistics.totalProfit }
+    { name: 'Day 1', profit: safeStats.totalProfit * 0.2 },
+    { name: 'Day 2', profit: safeStats.totalProfit * 0.35 },
+    { name: 'Day 3', profit: safeStats.totalProfit * 0.5 },
+    { name: 'Day 4', profit: safeStats.totalProfit * 0.75 },
+    { name: 'Day 5', profit: safeStats.totalProfit }
   ];
 
   // Calculate some derived metrics
-  const totalTrades = statistics.successfulTrades + statistics.failedTrades;
-  const successRate = totalTrades > 0 ? (statistics.successfulTrades / totalTrades) * 100 : 0;
-  const avgProfitPerTrade = statistics.successfulTrades > 0 ? statistics.totalProfit / statistics.successfulTrades : 0;
+  const totalTrades = safeStats.successfulTrades + safeStats.failedTrades;
+  const successRate = totalTrades > 0 ? (safeStats.successfulTrades / totalTrades) * 100 : 0;
+  const avgProfitPerTrade = safeStats.successfulTrades > 0 ? safeStats.totalProfit / safeStats.successfulTrades : 0;
   
   return (
     <Box sx={{ flexGrow: 1, mt: 3 }}>
       <Typography variant="h5" gutterBottom>Arbitrage Statistics Dashboard</Typography>
       <Typography variant="subtitle1" gutterBottom color="text.secondary">
-        {new Date(statistics.startTime).toLocaleDateString()} - {new Date(statistics.endTime).toLocaleDateString()}
+        {new Date(safeStats.startTime).toLocaleDateString()} - {new Date(safeStats.endTime).toLocaleDateString()}
       </Typography>
       
       {/* Key Metrics */}
@@ -53,26 +86,26 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
       >
         <MetricCard 
           title="Total Profit" 
-          value={`$${statistics.totalProfit.toFixed(2)}`}
-          subtitle={`Avg: $${avgProfitPerTrade.toFixed(2)} per trade`}
+          value={`$${safeToFixed(safeStats.totalProfit)}`}
+          subtitle={`Avg: $${safeToFixed(avgProfitPerTrade)} per trade`}
           color="#4caf50"
         />
         <MetricCard 
           title="Opportunities" 
-          value={statistics.totalOpportunitiesDetected.toString()}
-          subtitle={`${statistics.totalTradesExecuted} executed`}
+          value={safeStats.totalOpportunitiesDetected.toString()}
+          subtitle={`${safeStats.totalTradesExecuted} executed`}
           color="#2196f3"
         />
         <MetricCard 
           title="Success Rate" 
-          value={`${successRate.toFixed(1)}%`}
-          subtitle={`${statistics.successfulTrades}/${totalTrades} trades`}
+          value={`${safeToFixed(successRate, 1)}%`}
+          subtitle={`${safeStats.successfulTrades}/${totalTrades} trades`}
           color={successRate > 75 ? '#4caf50' : successRate > 50 ? '#ff9800' : '#f44336'}
         />
         <MetricCard 
           title="Trading Volume" 
-          value={`$${statistics.totalVolume.toFixed(2)}`}
-          subtitle={`Fees: $${statistics.totalFees.toFixed(2)}`}
+          value={`$${safeToFixed(safeStats.totalVolume)}`}
+          subtitle={`Fees: $${safeToFixed(safeStats.totalFees)}`}
           color="#9c27b0"
         />
       </Stack>
@@ -96,7 +129,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => `${name}: ${safeToFixed(percent * 100, 0)}%`}
                   >
                     {successRateData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={index === 0 ? '#4caf50' : '#f44336'} />
@@ -121,7 +154,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis label={{ value: 'Profit ($)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Profit']} />
+                  <Tooltip formatter={(value) => [`$${safeToFixed(Number(value))}`, 'Profit']} />
                   <Legend />
                   <Line type="monotone" dataKey="profit" stroke="#4caf50" activeDot={{ r: 8 }} />
                 </LineChart>
@@ -137,22 +170,22 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={[
-                  { name: 'Average Profit', value: statistics.averageProfit },
-                  { name: 'Highest Profit', value: statistics.highestProfit },
-                  { name: 'Lowest Profit', value: statistics.lowestProfit }
+                  { name: 'Average Profit', value: safeStats.averageProfit },
+                  { name: 'Highest Profit', value: safeStats.highestProfit },
+                  { name: 'Lowest Profit', value: safeStats.lowestProfit }
                 ]}
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis label={{ value: 'Amount ($)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, '']} />
+                <Tooltip formatter={(value) => [`$${safeToFixed(Number(value))}`, '']} />
                 <Legend />
                 <Bar dataKey="value" fill="#2196f3">
                   {[
                     <Cell key="cell-0" fill="#2196f3" />,
                     <Cell key="cell-1" fill="#4caf50" />,
-                    <Cell key="cell-2" fill={statistics.lowestProfit < 0 ? '#f44336' : '#ff9800'} />
+                    <Cell key="cell-2" fill={safeStats.lowestProfit < 0 ? '#f44336' : '#ff9800'} />
                   ]}
                 </Bar>
               </BarChart>
@@ -173,36 +206,36 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
           <Box sx={{ flex: 1 }}>
             <Box sx={{ py: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">Average Execution Time</Typography>
-              <Typography variant="h6">{statistics.averageExecutionTimeMs.toFixed(2)} ms</Typography>
+              <Typography variant="h6">{safeToFixed(safeStats.averageExecutionTimeMs)} ms</Typography>
             </Box>
             <Divider />
             <Box sx={{ py: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">Profit Factor</Typography>
-              <Typography variant="h6">{statistics.profitFactor.toFixed(2)}</Typography>
+              <Typography variant="h6">{safeToFixed(safeStats.profitFactor)}</Typography>
             </Box>
           </Box>
           
           <Box sx={{ flex: 1 }}>
             <Box sx={{ py: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">Total Opportunities</Typography>
-              <Typography variant="h6">{statistics.totalOpportunitiesDetected}</Typography>
+              <Typography variant="h6">{safeStats.totalOpportunitiesDetected}</Typography>
             </Box>
             <Divider />
             <Box sx={{ py: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">Total Trades</Typography>
-              <Typography variant="h6">{statistics.totalTradesExecuted}</Typography>
+              <Typography variant="h6">{safeStats.totalTradesExecuted}</Typography>
             </Box>
           </Box>
           
           <Box sx={{ flex: 1 }}>
             <Box sx={{ py: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">Successful Trades</Typography>
-              <Typography variant="h6">{statistics.successfulTrades}</Typography>
+              <Typography variant="h6">{safeStats.successfulTrades}</Typography>
             </Box>
             <Divider />
             <Box sx={{ py: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">Failed Trades</Typography>
-              <Typography variant="h6">{statistics.failedTrades}</Typography>
+              <Typography variant="h6">{safeStats.failedTrades}</Typography>
             </Box>
           </Box>
         </Stack>
@@ -225,7 +258,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, color =
         <Typography variant="subtitle1" color="text.secondary" gutterBottom>
           {title}
         </Typography>
-        <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: color }}>
+        <Typography variant="h4" sx={{ color }}>
           {value}
         </Typography>
         {subtitle && (

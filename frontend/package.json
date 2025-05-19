@@ -26,7 +26,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "test:components": "react-scripts test --testPathPattern=src/components/__tests__",
+    "test:e2e": "react-scripts test --testPathPattern=src/__tests__/*.e2e.test.tsx",
     "test:api-contracts": "jest --config=jest.config.js src/services/api.contract.test.ts",
+    "test:ci": "react-scripts test --watchAll=false",
     "verify-api": "node scripts/verify-api-contracts.js",
     "eject": "react-scripts eject"
   },
@@ -47,6 +51,28 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx,ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/index.tsx",
+      "!src/reportWebVitals.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 80,
+        "branches": 70,
+        "functions": 80,
+        "lines": 80
+      },
+      "src/components/StatisticsDashboard.tsx": {
+        "statements": 95,
+        "branches": 90,
+        "functions": 95,
+        "lines": 95
+      }
+    }
   },
   "devDependencies": {
     "@babel/plugin-transform-runtime": "^7.27.1",

@@ -85,16 +85,42 @@ if [ "$RUN_TESTS" = true ]; then
       else
         echo "Verifying API contract alignment..."
         if [ -f "package.json" ] && grep -q "verify-api" package.json; then
-          npm run verify-api
+          # Run the verification and capture its output
+          VERIFY_OUTPUT=$(npm run verify-api 2>&1)
           VERIFY_EXIT_CODE=$?
           
-          # In development mode, we only show warnings for misalignments
+          # Check the exit code and output appropriate messages
           if [ $VERIFY_EXIT_CODE -eq 0 ]; then
             echo -e "${GREEN}✓ API contract verification passed${NC}"
+          elif [ $VERIFY_EXIT_CODE -eq 2 ]; then
+            # Special case for Swagger unavailable
+            echo -e "${RED}✗ API contract verification failed: Swagger documentation unavailable${NC}"
+            echo -e "${YELLOW}Starting containers might resolve this issue by making the API and Swagger available.${NC}"
+            
+            if [ "$BUILD_AND_START" = true ]; then
+              echo -e "Continuing with container startup to make API and Swagger available..."
+            else
+              echo -e "${RED}Cannot perform API contract verification without Swagger.${NC}"
+              echo -e "To fix this:"
+              echo -e "1. Ensure the API has Swagger properly configured"
+              echo -e "2. Start the containers with: ./start.sh"
+              echo -e "3. Then run verification: cd frontend && npm run verify-api"
+              exit 2
+            fi
           elif [ "$DEV_MODE" = true ]; then
             echo -e "${YELLOW}⚠️ API contract verification found misalignments (development mode - continuing)${NC}"
+            # Extract and show the misalignments
+            if [ -f "frontend/api-misalignments.log" ]; then
+              echo "Misalignments:"
+              cat frontend/api-misalignments.log
+            fi
           else
             echo -e "${RED}✗ API contract verification failed${NC}"
+            if [ -f "frontend/api-misalignments.log" ]; then
+              echo "Misalignments:"
+              cat frontend/api-misalignments.log
+            fi
+            
             if [ "$BUILD_AND_START" = true ]; then
               echo -e "${YELLOW}Continuing with container startup despite verification failures...${NC}"
             else
@@ -122,12 +148,19 @@ if [ "$BUILD_AND_START" = true ]; then
     echo -e "\nServices will be available at:"
     echo -e "${BLUE}- Frontend:${NC} http://localhost:3000"
     echo -e "${BLUE}- API:${NC} http://localhost:5001/api"
+    echo -e "${BLUE}- Swagger:${NC} http://localhost:5001/swagger"
     echo -e "${BLUE}- MongoDB:${NC} localhost:27017"
     echo -e "${BLUE}- Redis:${NC} localhost:6379"
     
     echo -e "\nUseful commands:"
     echo -e "${BLUE}- View logs:${NC} docker-compose logs -f"
     echo -e "${BLUE}- Stop all services:${NC} docker-compose down"
+    
+    if [ "$RUN_TESTS" = true ]; then
+      echo -e "\n${YELLOW}NOTE:${NC} If API contract verification failed due to Swagger being unavailable,"
+      echo "      you can run it again now that the containers are running:"
+      echo -e "      ${BLUE}cd frontend && npm run verify-api${NC}"
+    fi
   else
     echo -e "${RED}Failed to start containers${NC}"
     exit 1

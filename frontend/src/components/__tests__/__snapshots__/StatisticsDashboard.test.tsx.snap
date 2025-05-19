@@ -1,0 +1,350 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`StatisticsDashboard Component matches snapshot 1`] = `
+<DocumentFragment>
+  <div
+    class="MuiBox-root css-12d4nr8"
+  >
+    <h5
+      class="MuiTypography-root MuiTypography-h5 MuiTypography-gutterBottom css-h93ljk-MuiTypography-root"
+    >
+      Arbitrage Statistics Dashboard
+    </h5>
+    <h6
+      class="MuiTypography-root MuiTypography-subtitle1 MuiTypography-gutterBottom css-c268p-MuiTypography-root"
+    >
+      1/1/2023 - 2/1/2023
+    </h6>
+    <div
+      class="MuiStack-root css-m6b06v-MuiStack-root"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 MuiCard-root css-fsggjc-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-subtitle1 MuiTypography-gutterBottom css-c268p-MuiTypography-root"
+          >
+            Total Profit
+          </h6>
+          <h4
+            class="MuiTypography-root MuiTypography-h4 css-5ksgce-MuiTypography-root"
+          >
+            $1000.50
+          </h4>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
+          >
+            Avg: $50.02 per trade
+          </p>
+        </div>
+      </div>
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 MuiCard-root css-fsggjc-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-subtitle1 MuiTypography-gutterBottom css-c268p-MuiTypography-root"
+          >
+            Opportunities
+          </h6>
+          <h4
+            class="MuiTypography-root MuiTypography-h4 css-nyjai7-MuiTypography-root"
+          >
+            150
+          </h4>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
+          >
+            25 executed
+          </p>
+        </div>
+      </div>
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 MuiCard-root css-fsggjc-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-subtitle1 MuiTypography-gutterBottom css-c268p-MuiTypography-root"
+          >
+            Success Rate
+          </h6>
+          <h4
+            class="MuiTypography-root MuiTypography-h4 css-5ksgce-MuiTypography-root"
+          >
+            80.0%
+          </h4>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
+          >
+            20/25 trades
+          </p>
+        </div>
+      </div>
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 MuiCard-root css-fsggjc-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiCardContent-root css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-subtitle1 MuiTypography-gutterBottom css-c268p-MuiTypography-root"
+          >
+            Trading Volume
+          </h6>
+          <h4
+            class="MuiTypography-root MuiTypography-h4 css-i0231a-MuiTypography-root"
+          >
+            $50000.00
+          </h4>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-r40f8v-MuiTypography-root"
+          >
+            Fees: $75.25
+          </p>
+        </div>
+      </div>
+    </div>
+    <div
+      class="MuiStack-root css-v2woy3-MuiStack-root"
+    >
+      <div
+        class="MuiStack-root css-1n7gex2-MuiStack-root"
+      >
+        <div
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 css-1oxpyaw-MuiPaper-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 MuiTypography-gutterBottom css-18k87ye-MuiTypography-root"
+          >
+            Trade Results
+          </h6>
+          <div
+            class="MuiBox-root css-vycneo"
+          >
+            <div>
+              <div
+                data-testid="pie-chart"
+              >
+                <div
+                  data-testid="pie"
+                />
+                <div
+                  data-testid="tooltip"
+                />
+                <div
+                  data-testid="legend"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 css-8xn5kl-MuiPaper-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 MuiTypography-gutterBottom css-18k87ye-MuiTypography-root"
+          >
+            Profit Over Time
+          </h6>
+          <div
+            class="MuiBox-root css-vycneo"
+          >
+            <div>
+              <div
+                data-testid="line-chart"
+              >
+                <div
+                  data-testid="cartesian-grid"
+                />
+                <div
+                  data-testid="x-axis"
+                />
+                <div
+                  data-testid="y-axis"
+                />
+                <div
+                  data-testid="tooltip"
+                />
+                <div
+                  data-testid="legend"
+                />
+                <div
+                  data-testid="line"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 css-ad7o3g-MuiPaper-root"
+      >
+        <h6
+          class="MuiTypography-root MuiTypography-h6 MuiTypography-gutterBottom css-18k87ye-MuiTypography-root"
+        >
+          Profit Metrics
+        </h6>
+        <div
+          class="MuiBox-root css-vycneo"
+        >
+          <div>
+            <div
+              data-testid="bar-chart"
+            >
+              <div
+                data-testid="cartesian-grid"
+              />
+              <div
+                data-testid="x-axis"
+              />
+              <div
+                data-testid="y-axis"
+              />
+              <div
+                data-testid="tooltip"
+              />
+              <div
+                data-testid="legend"
+              />
+              <div
+                data-testid="bar"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation2 css-a89azy-MuiPaper-root"
+    >
+      <h6
+        class="MuiTypography-root MuiTypography-h6 MuiTypography-gutterBottom css-18k87ye-MuiTypography-root"
+      >
+        Performance Metrics
+      </h6>
+      <div
+        class="MuiStack-root css-ccgw5h-MuiStack-root"
+      >
+        <div
+          class="MuiBox-root css-1rr4qq7"
+        >
+          <div
+            class="MuiBox-root css-1jpm9pd"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-subtitle2 css-hav9kw-MuiTypography-root"
+            >
+              Average Execution Time
+            </h6>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              125.50 ms
+            </h6>
+          </div>
+          <hr
+            class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root css-1jpm9pd"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-subtitle2 css-hav9kw-MuiTypography-root"
+            >
+              Profit Factor
+            </h6>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              3.75
+            </h6>
+          </div>
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth MuiDivider-vertical MuiDivider-flexItem css-1tk1bks-MuiDivider-root"
+        />
+        <div
+          class="MuiBox-root css-1rr4qq7"
+        >
+          <div
+            class="MuiBox-root css-1jpm9pd"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-subtitle2 css-hav9kw-MuiTypography-root"
+            >
+              Total Opportunities
+            </h6>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              150
+            </h6>
+          </div>
+          <hr
+            class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root css-1jpm9pd"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-subtitle2 css-hav9kw-MuiTypography-root"
+            >
+              Total Trades
+            </h6>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              25
+            </h6>
+          </div>
+        </div>
+        <hr
+          class="MuiDivider-root MuiDivider-fullWidth MuiDivider-vertical MuiDivider-flexItem css-1tk1bks-MuiDivider-root"
+        />
+        <div
+          class="MuiBox-root css-1rr4qq7"
+        >
+          <div
+            class="MuiBox-root css-1jpm9pd"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-subtitle2 css-hav9kw-MuiTypography-root"
+            >
+              Successful Trades
+            </h6>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              20
+            </h6>
+          </div>
+          <hr
+            class="MuiDivider-root MuiDivider-fullWidth css-9mgopn-MuiDivider-root"
+          />
+          <div
+            class="MuiBox-root css-1jpm9pd"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-subtitle2 css-hav9kw-MuiTypography-root"
+            >
+              Failed Trades
+            </h6>
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              5
+            </h6>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;

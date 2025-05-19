@@ -1,19 +1,6 @@
 {
-  "timestamp": "2025-05-19T07:39:17.463Z",
-  "totalEndpoints": 14,
-  "misalignedEndpoints": 11,
-  "aligned": false,
-  "misalignments": [
-    "/api/arbitrage/opportunities",
-    "/api/arbitrage/trades",
-    "/api/arbitrage/statistics",
-    "/api/opportunities/recent",
-    "/api/trades/recent",
-    "/api/settings/risk-profile",
-    "/api/settings/arbitrage",
-    "/api/settings/exchanges",
-    "/api/settings/bot/start",
-    "/api/settings/bot/stop",
-    "/api/settings/bot/status"
-  ]
+  "timestamp": "2025-05-19T10:44:23.375Z",
+  "error": "Swagger documentation is required for API contract verification",
+  "success": false,
+  "reason": "SWAGGER_UNAVAILABLE"
 }
