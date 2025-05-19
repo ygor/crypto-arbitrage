@@ -1,6 +1,6 @@
-# Getting Started with Create React App
+# Crypto Arbitrage Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the frontend dashboard for the Crypto Arbitrage detection and trading system. It's built with React, TypeScript, and Material-UI.
 
 ## Available Scripts
 
@@ -27,20 +27,37 @@ It correctly bundles React in production mode and optimizes the build for the be
 The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### `npm run verify-api`
 
-### `npm run eject`
+Runs the API contract verification script. This script verifies that the frontend API calls align with the backend API endpoints.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+It will:
+1. Compare expected backend endpoints with frontend endpoint constants
+2. Highlight any misalignments between frontend and backend
+3. Exit with a non-zero status code if mismatches are found
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+This is useful for catching API contract mismatches early in the development process.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## API Contract Testing
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+We've implemented comprehensive API contract testing to ensure alignment between the frontend and backend:
 
-## Learn More
+1. **Centralized Endpoint Definitions**: All API endpoints are defined in `src/services/apiEndpoints.ts`
+2. **Unit Tests**: Automated tests in `src/services/api.contract.test.ts` verify correct endpoint usage
+3. **Contract Verification**: The `verify-api` script checks alignment with backend controllers
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+For more details, see the [API Contract Testing README](src/services/README.md).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Project Structure
+
+- `src/components/` - React components for the UI
+- `src/services/` - API and data-fetching logic
+- `src/models/` - TypeScript interfaces and type definitions
+- `scripts/` - Utility scripts for development and testing
+
+## Environment Variables
+
+The application uses the following environment variables:
+
+- `REACT_APP_API_URL` - URL for the backend API
+- `REACT_APP_SIGNALR_URL` - URL for SignalR hubs

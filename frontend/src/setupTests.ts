@@ -3,3 +3,9 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+
+// Mock window.ENV for tests
+window.ENV = {
+  apiUrl: 'http://localhost:5001/api',
+  signalrUrl: 'http://localhost:5001/hubs'
+};

@@ -1,0 +1,60 @@
+name: API Contract Tests
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/services/**'
+      - 'backend/src/CryptoArbitrage.Api/Controllers/**'
+  push:
+    branches: 
+      - main
+      - develop
+    paths:
+      - 'frontend/src/services/**'
+      - 'backend/src/CryptoArbitrage.Api/Controllers/**'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  test-api-contracts:
+    name: Run API Contract Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Run API endpoint unit tests
+        working-directory: ./frontend
+        run: npm test -- src/services/api.contract.test.ts
+      
+      - name: Verify API contracts
+        working-directory: ./frontend
+        run: |
+          # Check if verify-api script exists in package.json, if not add it
+          if ! grep -q "verify-api" package.json; then
+            echo "Adding verify-api script to package.json"
+            sed -i 's/"scripts": {/"scripts": {\n    "verify-api": "ts-node scripts\/verify-api-contracts.ts",/g' package.json
+          fi
+          
+          npm run verify-api
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-contract-test-results
+          path: |
+            frontend/api-contract-test-results.json
+            frontend/api-misalignments.log
+          retention-days: 7 
