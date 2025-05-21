@@ -30,16 +30,10 @@ jobs:
         run: dotnet restore backend/CryptoArbitrage.sln
       
       - name: Build
-        run: dotnet build backend/CryptoArbitrage.sln --configuration Release --no-restore
+        run: dotnet build backend/CryptoArbitrage.sln --configuration Release
       
-      - name: Test Domain
-        run: dotnet test backend/tests/CryptoArbitrage.Tests/CryptoArbitrage.Tests.csproj --no-build --verbosity normal --filter "Category=Domain"
-      
-      - name: Test Application
-        run: dotnet test backend/tests/CryptoArbitrage.Application.Tests/CryptoArbitrage.Application.Tests.csproj --no-build --verbosity normal
-      
-      - name: Test Infrastructure
-        run: dotnet test backend/tests/CryptoArbitrage.Tests/CryptoArbitrage.Tests.csproj --no-build --verbosity normal --filter "Category=Infrastructure"
+      - name: Run all tests
+        run: dotnet test backend/CryptoArbitrage.sln --configuration Release --verbosity normal --no-restore
       
       - name: Generate test coverage
         run: |
