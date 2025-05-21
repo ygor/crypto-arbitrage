@@ -7,11 +7,16 @@ import {
   Stack,
   Button,
   CircularProgress,
-  Alert
+  Alert,
+  Tab,
+  Tabs,
+  Grid
 } from '@mui/material';
 import StatisticsDashboard from './StatisticsDashboard';
 import OpportunityView from './OpportunityView';
 import TradesList from './TradesList';
+import ActivityLog from './ActivityLog';
+import ExchangeStatus from './ExchangeStatus';
 import { 
   getArbitrageStatistics, 
   getRecentTradeResults, 
@@ -49,6 +54,7 @@ const Dashboard: React.FC = () => {
     paperTradingEnabled: false 
   });
   const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [tabValue, setTabValue] = useState<number>(0);
 
   useEffect(() => {
     fetchData();
@@ -120,6 +126,10 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
   return (
     <Container maxWidth="xl">
       <Box sx={{ mt: 4, mb: 2 }}>
@@ -164,50 +174,75 @@ const Dashboard: React.FC = () => {
           </Alert>
         )}
         
-        <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Statistics Overview
-          </Typography>
-          {isLoading ? (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-              <CircularProgress />
-            </Box>
-          ) : (
-            <StatisticsDashboard statistics={statistics} />
-          )}
-        </Paper>
+        <Box sx={{ mb: 4 }}>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
+            <Tab label="Overview" id="tab-0" />
+            <Tab label="Monitoring" id="tab-1" />
+          </Tabs>
+        </Box>
         
-        <Stack 
-          direction={{ xs: 'column', md: 'row' }} 
-          spacing={4}
-          sx={{ mb: 4 }}
-        >
-          <Paper elevation={1} sx={{ p: 3, flex: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              Recent Opportunities
-            </Typography>
-            {isLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-                <CircularProgress />
+        {tabValue === 0 && (
+          <>
+            <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
+              <Typography variant="h6" gutterBottom>
+                Statistics Overview
+              </Typography>
+              {isLoading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <StatisticsDashboard data-testid="statistics-dashboard" statistics={statistics} />
+              )}
+            </Paper>
+            
+            <Stack 
+              direction={{ xs: 'column', md: 'row' }} 
+              spacing={4}
+              sx={{ mb: 4 }}
+            >
+              <Paper elevation={1} sx={{ p: 3, flex: 1 }}>
+                <Typography variant="h6" gutterBottom>
+                  Recent Opportunities
+                </Typography>
+                {isLoading ? (
+                  <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <OpportunityView data-testid="opportunity-view" maxOpportunities={5} />
+                )}
+              </Paper>
+              
+              <Paper elevation={1} sx={{ p: 3, flex: 1 }}>
+                <Typography variant="h6" gutterBottom>
+                  Recent Trades
+                </Typography>
+                {isLoading ? (
+                  <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <TradesList data-testid="trades-list" trades={recentTrades} />
+                )}
+              </Paper>
+            </Stack>
+          </>
+        )}
+        
+        {tabValue === 1 && (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <ExchangeStatus data-testid="exchange-status" />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Box sx={{ height: 600 }}>
+                <ActivityLog data-testid="activity-log" maxItems={100} height={550} />
               </Box>
-            ) : (
-              <OpportunityView maxOpportunities={5} />
-            )}
-          </Paper>
-          
-          <Paper elevation={1} sx={{ p: 3, flex: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              Recent Trades
-            </Typography>
-            {isLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-                <CircularProgress />
-              </Box>
-            ) : (
-              <TradesList trades={recentTrades} />
-            )}
-          </Paper>
-        </Stack>
+            </Grid>
+          </Grid>
+        )}
       </Box>
     </Container>
   );

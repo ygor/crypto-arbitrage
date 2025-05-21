@@ -422,7 +422,7 @@ public class StubExchangeClient : IExchangeClient
                 quantity,
                 price * quantity * 0.001m, // 0.1% fee
                 side == OrderSide.Buy ? tradingPair.QuoteCurrency : tradingPair.BaseCurrency,
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow.DateTime);
             
             // Return a success trade result
             return TradeResult.Success(tradeExecution, 100);
@@ -474,7 +474,7 @@ public class StubExchangeClient : IExchangeClient
             TotalValue = price * quantity,
             Fee = price * quantity * GetExchangeFee(ExchangeId),
             FeeCurrency = tradingPair.QuoteCurrency,
-            Timestamp = DateTimeOffset.UtcNow,
+            Timestamp = DateTimeOffset.UtcNow.DateTime,
             ExecutionTimeMs = 500 // Simulate 500ms execution time
         };
         
@@ -493,6 +493,23 @@ public class StubExchangeClient : IExchangeClient
             0.002m, // 0.2% taker fee
             0.0m    // No withdrawal fee
         ));
+    }
+    
+    /// <inheritdoc />
+    public async Task<decimal> GetTradingFeeRateAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
+    {
+        ValidateConnected();
+        
+        _logger.LogInformation("Getting trading fee rate for {TradingPair} on {ExchangeId}", tradingPair, ExchangeId);
+        
+        // Simulate network delay
+        await Task.Delay(50, cancellationToken);
+        
+        // Retrieve fee schedule
+        var feeSchedule = await GetFeeScheduleAsync(cancellationToken);
+        
+        // Return taker fee rate (more conservative)
+        return feeSchedule.TakerFeeRate;
     }
     
     private OrderBook GenerateDummyOrderBook(TradingPair tradingPair)
@@ -548,7 +565,7 @@ public class StubExchangeClient : IExchangeClient
                     quoteBalance.Total - cost,
                     quoteBalance.Available - cost,
                     quoteBalance.Reserved,
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow.DateTime
                 );
             }
             
@@ -561,7 +578,7 @@ public class StubExchangeClient : IExchangeClient
                     baseBalance.Total + quantity,
                     baseBalance.Available + quantity,
                     baseBalance.Reserved,
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow.DateTime
                 );
             }
             else
@@ -572,7 +589,7 @@ public class StubExchangeClient : IExchangeClient
                     quantity,
                     quantity,
                     0m,
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow.DateTime
                 );
             }
         }
@@ -592,7 +609,7 @@ public class StubExchangeClient : IExchangeClient
                     baseBalance.Total - quantity,
                     baseBalance.Available - quantity,
                     baseBalance.Reserved,
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow.DateTime
                 );
             }
             
@@ -605,7 +622,7 @@ public class StubExchangeClient : IExchangeClient
                     quoteBalance.Total + proceeds,
                     quoteBalance.Available + proceeds,
                     quoteBalance.Reserved,
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow.DateTime
                 );
             }
             else
@@ -616,7 +633,7 @@ public class StubExchangeClient : IExchangeClient
                     proceeds,
                     proceeds,
                     0m,
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow.DateTime
                 );
             }
         }

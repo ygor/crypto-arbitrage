@@ -41,7 +41,7 @@ public class SettingsRepository : ISettingsRepository
         LoadSettingsFromFile();
     }
 
-    public async Task<List<ExchangeConfig>> GetExchangeConfigurationsAsync()
+    public async Task<List<ExchangeConfig>> GetExchangeConfigurationsAsync(CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue("exchangeConfigs", out var cached))
         {
@@ -53,21 +53,21 @@ public class SettingsRepository : ISettingsRepository
         return result;
     }
 
-    public async Task<ExchangeConfig?> GetExchangeConfigurationAsync(string exchangeId)
+    public async Task<ExchangeConfig?> GetExchangeConfigurationAsync(string exchangeId, CancellationToken cancellationToken = default)
     {
-        var configs = await GetExchangeConfigurationsAsync();
+        var configs = await GetExchangeConfigurationsAsync(cancellationToken);
         return configs.FirstOrDefault(c => c.ExchangeId.Equals(exchangeId, StringComparison.OrdinalIgnoreCase));
     }
 
-    public async Task SaveExchangeConfigurationsAsync(List<ExchangeConfig> configurations)
+    public async Task SaveExchangeConfigurationsAsync(List<ExchangeConfig> configurations, CancellationToken cancellationToken = default)
     {
         _cache["exchangeConfigs"] = configurations;
-        await SaveSettingsToFileAsync();
+        await SaveSettingsToFileAsync(cancellationToken);
     }
 
-    public async Task SaveExchangeConfigurationAsync(ExchangeConfig configuration)
+    public async Task SaveExchangeConfigurationAsync(ExchangeConfig configuration, CancellationToken cancellationToken = default)
     {
-        var configs = await GetExchangeConfigurationsAsync();
+        var configs = await GetExchangeConfigurationsAsync(cancellationToken);
         var existingIndex = configs.FindIndex(c => c.ExchangeId.Equals(configuration.ExchangeId, StringComparison.OrdinalIgnoreCase));
         
         if (existingIndex >= 0)
@@ -79,10 +79,10 @@ public class SettingsRepository : ISettingsRepository
             configs.Add(configuration);
         }
         
-        await SaveExchangeConfigurationsAsync(configs);
+        await SaveExchangeConfigurationsAsync(configs, cancellationToken);
     }
 
-    public async Task<ArbitrageConfig> GetArbitrageConfigurationAsync()
+    public async Task<ArbitrageConfig> GetArbitrageConfigurationAsync(CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue("arbitrageConfig", out var cached))
         {
@@ -94,13 +94,13 @@ public class SettingsRepository : ISettingsRepository
         return result;
     }
 
-    public async Task SaveArbitrageConfigurationAsync(ArbitrageConfig configuration)
+    public async Task SaveArbitrageConfigurationAsync(ArbitrageConfig configuration, CancellationToken cancellationToken = default)
     {
         _cache["arbitrageConfig"] = configuration;
-        await SaveSettingsToFileAsync();
+        await SaveSettingsToFileAsync(cancellationToken);
     }
 
-    public async Task<RiskProfile> GetRiskProfileAsync()
+    public async Task<RiskProfile> GetRiskProfileAsync(CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue("riskProfile", out var cached))
         {
@@ -112,13 +112,13 @@ public class SettingsRepository : ISettingsRepository
         return result;
     }
 
-    public async Task SaveRiskProfileAsync(RiskProfile riskProfile)
+    public async Task SaveRiskProfileAsync(RiskProfile riskProfile, CancellationToken cancellationToken = default)
     {
         _cache["riskProfile"] = riskProfile;
-        await SaveSettingsToFileAsync();
+        await SaveSettingsToFileAsync(cancellationToken);
     }
 
-    public async Task<T> GetSettingAsync<T>(string key, T defaultValue)
+    public async Task<T> GetSettingAsync<T>(string key, T defaultValue, CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue(key, out var cached))
         {
@@ -131,10 +131,10 @@ public class SettingsRepository : ISettingsRepository
         return defaultValue;
     }
 
-    public async Task SaveSettingAsync<T>(string key, T value)
+    public async Task SaveSettingAsync<T>(string key, T value, CancellationToken cancellationToken = default)
     {
         _cache[key] = value!;
-        await SaveSettingsToFileAsync();
+        await SaveSettingsToFileAsync(cancellationToken);
     }
     
     private void LoadSettingsFromFile()
@@ -203,7 +203,7 @@ public class SettingsRepository : ISettingsRepository
         }
     }
     
-    private async Task SaveSettingsToFileAsync()
+    private async Task SaveSettingsToFileAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -219,7 +219,7 @@ public class SettingsRepository : ISettingsRepository
                 WriteIndented = true
             });
             
-            await File.WriteAllTextAsync(_settingsFilePath, json);
+            await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
             _logger.LogInformation("Settings saved to {FilePath}", _settingsFilePath);
         }
         catch (Exception ex)

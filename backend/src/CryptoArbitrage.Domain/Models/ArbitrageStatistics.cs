@@ -1,10 +1,28 @@
+using System;
+using System.Collections.Generic;
+
 namespace CryptoArbitrage.Domain.Models;
 
 /// <summary>
-/// Represents the statistics for arbitrage operations.
+/// Statistical information about arbitrage operations.
 /// </summary>
 public class ArbitrageStatistics
 {
+    /// <summary>
+    /// Gets or sets the unique identifier of these statistics.
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets the trading pair these statistics are for.
+    /// </summary>
+    public string TradingPair { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Gets or sets when these statistics were created.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+    
     /// <summary>
     /// Gets or sets the start time for the statistics period.
     /// </summary>
@@ -17,41 +35,15 @@ public class ArbitrageStatistics
     
     // Opportunity-related statistics
     /// <summary>
-    /// Gets or sets the total number of arbitrage opportunities detected.
+    /// Gets or sets the total number of opportunities detected.
     /// </summary>
     public int TotalOpportunitiesCount { get; set; }
     
     /// <summary>
-    /// Gets or sets the number of qualified opportunities.
+    /// Gets or sets the total number of qualified opportunities.
     /// </summary>
     public int QualifiedOpportunitiesCount { get; set; }
     
-    /// <summary>
-    /// Gets or sets the average profit percentage.
-    /// </summary>
-    public decimal AverageProfitPercentage { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the highest profit percentage.
-    /// </summary>
-    public decimal HighestProfitPercentage { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the most frequent trading pairs.
-    /// </summary>
-    public List<string> MostFrequentTradingPairs { get; set; } = new();
-    
-    /// <summary>
-    /// Gets or sets the opportunities by exchange pair.
-    /// </summary>
-    public Dictionary<string, int> OpportunitiesByExchangePair { get; set; } = new();
-    
-    /// <summary>
-    /// Gets or sets the opportunities by trading pair.
-    /// </summary>
-    public Dictionary<string, int> OpportunitiesByTradingPair { get; set; } = new();
-    
-    // Trade-related statistics
     /// <summary>
     /// Gets or sets the total number of trades executed.
     /// </summary>
@@ -68,19 +60,24 @@ public class ArbitrageStatistics
     public int FailedTradesCount { get; set; }
     
     /// <summary>
-    /// Gets or sets the total profit in quote currency.
+    /// Gets or sets the total profit made from all successful trades.
     /// </summary>
     public decimal TotalProfitAmount { get; set; }
     
     /// <summary>
-    /// Gets or sets the total fees paid in quote currency.
+    /// Gets or sets the average profit per trade.
     /// </summary>
-    public decimal TotalFeesAmount { get; set; }
+    public decimal AverageProfitAmount { get; set; }
     
     /// <summary>
-    /// Gets or sets the net profit amount.
+    /// Gets or sets the highest profit from a single trade.
     /// </summary>
-    public decimal NetProfitAmount => TotalProfitAmount - TotalFeesAmount;
+    public decimal HighestProfitAmount { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the lowest profit from a single trade.
+    /// </summary>
+    public decimal LowestProfit { get; set; }
     
     /// <summary>
     /// Gets or sets the average execution time in milliseconds.
@@ -88,27 +85,31 @@ public class ArbitrageStatistics
     public decimal AverageExecutionTimeMs { get; set; }
     
     /// <summary>
+    /// Gets or sets the total fees paid across all trades.
+    /// </summary>
+    public decimal TotalFeesAmount { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the total volume traded.
+    /// </summary>
+    public decimal TotalVolume { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the average profit percentage.
+    /// </summary>
+    public decimal AverageProfitPercentage { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the highest profit percentage from a single trade.
+    /// </summary>
+    public decimal HighestProfitPercentage { get; set; }
+    
+    /// <summary>
     /// Gets or sets the success rate as a percentage.
     /// </summary>
-    public decimal SuccessRate => TotalTradesCount > 0 ? (decimal)SuccessfulTradesCount / TotalTradesCount * 100 : 0;
+    public decimal SuccessRate { get; set; }
     
     // Time-based metrics
-    /// <summary>
-    /// Gets or sets the opportunities by hour.
-    /// </summary>
-    public Dictionary<string, int> OpportunitiesByHour { get; set; } = new();
-    
-    /// <summary>
-    /// Gets or sets the trades by hour.
-    /// </summary>
-    public Dictionary<string, int> TradesByHour { get; set; } = new();
-    
-    /// <summary>
-    /// Gets or sets the profit by hour.
-    /// </summary>
-    public Dictionary<string, decimal> ProfitByHour { get; set; } = new();
-    
-    // Performance metrics
     /// <summary>
     /// Gets or sets the opportunities per hour.
     /// </summary>
@@ -122,79 +123,112 @@ public class ArbitrageStatistics
     /// <summary>
     /// Gets or sets the profit per hour.
     /// </summary>
-    public decimal ProfitPerHour => CalculatePerHour(NetProfitAmount);
+    public decimal ProfitPerHour => CalculatePerHour(TotalProfitAmount);
     
-    // Aliases for backward compatibility
     /// <summary>
-    /// Gets or sets the total number of opportunities detected.
+    /// Gets or sets the duration in hours.
+    /// </summary>
+    public double DurationInHours => (EndTime - StartTime).TotalHours;
+    
+    // Dictionary collections for statistics
+    /// <summary>
+    /// Gets or sets the opportunities by exchange pair.
+    /// </summary>
+    public Dictionary<string, int> OpportunitiesByExchangePair { get; set; } = new();
+    
+    /// <summary>
+    /// Gets or sets the opportunities by trading pair.
+    /// </summary>
+    public Dictionary<string, int> OpportunitiesByTradingPair { get; set; } = new Dictionary<string, int>();
+    
+    /// <summary>
+    /// Gets or sets the opportunities by hour.
+    /// </summary>
+    public Dictionary<string, int> OpportunitiesByHour { get; set; } = new Dictionary<string, int>();
+    
+    /// <summary>
+    /// Gets or sets the trades by hour.
+    /// </summary>
+    public Dictionary<string, int> TradesByHour { get; set; } = new Dictionary<string, int>();
+    
+    /// <summary>
+    /// Gets or sets the profit by hour.
+    /// </summary>
+    public Dictionary<string, decimal> ProfitByHour { get; set; } = new Dictionary<string, decimal>();
+    
+    // Properties for backward compatibility
+    /// <summary>
+    /// Gets or sets the total number of opportunities detected (backward compatibility).
     /// </summary>
     public int TotalOpportunitiesDetected { get; set; }
     
     /// <summary>
-    /// Gets or sets the total number of trades executed.
+    /// Gets or sets the total number of trades executed (backward compatibility).
     /// </summary>
     public int TotalTradesExecuted { get; set; }
     
     /// <summary>
-    /// Gets or sets the number of successful trades.
+    /// Gets or sets the number of successful trades (backward compatibility).
     /// </summary>
     public int SuccessfulTrades { get; set; }
     
     /// <summary>
-    /// Gets or sets the number of failed trades.
+    /// Gets or sets the number of failed trades (backward compatibility).
     /// </summary>
     public int FailedTrades { get; set; }
     
     /// <summary>
-    /// Gets or sets the total profit amount.
+    /// Gets or sets the total profit (backward compatibility).
     /// </summary>
     public decimal TotalProfit { get; set; }
     
     /// <summary>
-    /// Gets or sets the highest profit achieved in a single trade.
+    /// Gets or sets the total fees (backward compatibility).
+    /// </summary>
+    public decimal TotalFees { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the average profit (backward compatibility).
+    /// </summary>
+    public decimal AverageProfit { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the highest profit (backward compatibility).
     /// </summary>
     public decimal HighestProfit { get; set; }
     
-    /// <summary>
-    /// Gets the lowest profit observed.
-    /// </summary>
-    public decimal LowestProfit { get; set; }
-    
-    /// <summary>
-    /// Gets the average profit (alias for AverageProfitPercentage).
-    /// </summary>
-    public decimal AverageProfit => AverageProfitPercentage;
-    
-    /// <summary>
-    /// Gets the total trading volume across all trades.
-    /// </summary>
-    public decimal TotalVolume { get; set; }
-    
-    /// <summary>
-    /// Gets the total fees (alias for TotalFeesAmount).
-    /// </summary>
-    public decimal TotalFees => TotalFeesAmount;
-    
+    // Exchange-specific statistics
     /// <summary>
     /// Gets or sets the statistics by exchange.
     /// </summary>
     public Dictionary<string, ExchangeStatistics> StatisticsByExchange { get; set; } = new();
     
+    // Trading pair-specific statistics
     /// <summary>
     /// Gets or sets the statistics by trading pair.
     /// </summary>
     public Dictionary<string, TradingPairStatistics> StatisticsByTradingPair { get; set; } = new();
     
+    /// <summary>
+    /// Gets or sets when these statistics were last updated.
+    /// </summary>
+    public DateTime LastUpdatedAt { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the most frequent trading pairs.
+    /// </summary>
+    public List<string> MostFrequentTradingPairs { get; set; } = new List<string>();
+    
     private int CalculatePerHour(int count)
     {
-        var hours = Math.Max(1, (EndTime - StartTime).TotalHours);
-        return (int)(count / hours);
+        if (DurationInHours <= 0) return 0;
+        return (int)(count / DurationInHours);
     }
     
-    private decimal CalculatePerHour(decimal amount)
+    private decimal CalculatePerHour(decimal value)
     {
-        var hours = Math.Max(1, (EndTime - StartTime).TotalHours);
-        return amount / (decimal)hours;
+        if (DurationInHours <= 0) return 0;
+        return value / (decimal)DurationInHours;
     }
 }
 

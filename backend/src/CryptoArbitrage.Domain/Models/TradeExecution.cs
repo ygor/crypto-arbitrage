@@ -1,87 +1,84 @@
+using System;
+
 namespace CryptoArbitrage.Domain.Models;
 
 /// <summary>
-/// Represents an executed trade.
+/// Represents the execution details of a trade.
 /// </summary>
-public readonly record struct TradeExecution
+public class TradeExecution
 {
     /// <summary>
-    /// Gets the unique identifier for this trade.
+    /// Gets or sets the execution identifier.
     /// </summary>
-    public string TradeId { get; }
+    public string ExecutionId { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets the order ID for this trade (alias for TradeId).
+    /// Gets or sets the order identifier.
     /// </summary>
-    public string OrderId => TradeId;
+    public string OrderId { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets the exchange ID where the trade was executed.
+    /// Gets or sets the price at which the trade was executed.
     /// </summary>
-    public string ExchangeId { get; }
+    public decimal Price { get; set; }
     
     /// <summary>
-    /// Gets the trading pair for this trade.
+    /// Gets or sets the quantity of the trade.
     /// </summary>
-    public TradingPair TradingPair { get; }
+    public decimal Quantity { get; set; }
     
     /// <summary>
-    /// Gets the side of the trade (buy or sell).
+    /// Gets or sets the timestamp when the trade was executed.
     /// </summary>
-    public OrderSide Side { get; }
+    public DateTime Timestamp { get; set; }
     
     /// <summary>
-    /// Gets the type of the order.
+    /// Gets or sets the side of the trade (buy or sell).
     /// </summary>
-    public OrderType OrderType { get; }
+    public OrderSide Side { get; set; }
     
     /// <summary>
-    /// Gets the price at which the trade was executed.
+    /// Gets or sets the fee amount for the trade.
     /// </summary>
-    public decimal Price { get; }
+    public decimal Fee { get; set; }
     
     /// <summary>
-    /// Gets the quantity of the base currency that was traded.
+    /// Gets or sets the currency in which the fee was charged.
     /// </summary>
-    public decimal Quantity { get; }
+    public string FeeCurrency { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets the fee amount paid for this trade.
+    /// Gets or sets whether this is a maker trade.
     /// </summary>
-    public decimal Fee { get; }
+    public bool IsMaker { get; set; }
     
     /// <summary>
-    /// Gets the currency in which the fee was paid.
+    /// Gets or sets the total value of the trade (Price * Quantity).
     /// </summary>
-    public string FeeCurrency { get; }
+    public decimal TotalValue => Price * Quantity;
     
     /// <summary>
-    /// Gets the timestamp when the trade was executed (in UTC).
+    /// Initializes a new instance of the <see cref="TradeExecution"/> class.
     /// </summary>
-    public DateTimeOffset Timestamp { get; }
+    public TradeExecution()
+    {
+    }
     
     /// <summary>
-    /// Gets the ID of the arbitrage opportunity that led to this trade, if any.
+    /// Initializes a new instance of the <see cref="TradeExecution"/> class with the specified parameters.
     /// </summary>
-    public string? ArbitrageOpportunityId { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TradeExecution"/> struct.
-    /// </summary>
-    /// <param name="tradeId">The unique identifier for this trade.</param>
-    /// <param name="exchangeId">The exchange ID where the trade was executed.</param>
-    /// <param name="tradingPair">The trading pair for this trade.</param>
-    /// <param name="side">The side of the trade (buy or sell).</param>
-    /// <param name="orderType">The type of the order.</param>
-    /// <param name="price">The price at which the trade was executed.</param>
-    /// <param name="quantity">The quantity of the base currency that was traded.</param>
-    /// <param name="fee">The fee amount paid for this trade.</param>
-    /// <param name="feeCurrency">The currency in which the fee was paid.</param>
-    /// <param name="timestamp">The timestamp when the trade was executed (defaults to UTC now).</param>
-    /// <param name="arbitrageOpportunityId">The ID of the arbitrage opportunity that led to this trade, if any.</param>
-    /// <exception cref="ArgumentException">Thrown when the parameters are invalid.</exception>
+    /// <param name="orderId">The order identifier.</param>
+    /// <param name="exchangeId">The exchange identifier.</param>
+    /// <param name="tradingPair">The trading pair.</param>
+    /// <param name="side">The order side.</param>
+    /// <param name="orderType">The order type.</param>
+    /// <param name="price">The execution price.</param>
+    /// <param name="quantity">The execution quantity.</param>
+    /// <param name="fee">The fee amount.</param>
+    /// <param name="feeCurrency">The fee currency.</param>
+    /// <param name="timestamp">The execution timestamp.</param>
     public TradeExecution(
-        string tradeId,
+        string orderId,
         string exchangeId,
         TradingPair tradingPair,
         OrderSide side,
@@ -90,59 +87,16 @@ public readonly record struct TradeExecution
         decimal quantity,
         decimal fee,
         string feeCurrency,
-        DateTimeOffset? timestamp = null,
-        string? arbitrageOpportunityId = null)
+        DateTimeOffset timestamp)
     {
-        if (string.IsNullOrWhiteSpace(tradeId))
-        {
-            throw new ArgumentException("Trade ID cannot be null or empty.", nameof(tradeId));
-        }
-
-        if (price <= 0)
-        {
-            throw new ArgumentException("Price must be greater than zero.", nameof(price));
-        }
-
-        if (quantity <= 0)
-        {
-            throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
-        }
-
-        if (fee < 0)
-        {
-            throw new ArgumentException("Fee cannot be negative.", nameof(fee));
-        }
-
-        if (string.IsNullOrWhiteSpace(feeCurrency))
-        {
-            throw new ArgumentException("Fee currency cannot be null or empty.", nameof(feeCurrency));
-        }
-
-        TradeId = tradeId;
-        ExchangeId = exchangeId;
-        TradingPair = tradingPair;
-        Side = side;
-        OrderType = orderType;
+        ExecutionId = Guid.NewGuid().ToString();
+        OrderId = orderId;
         Price = price;
         Quantity = quantity;
+        Side = side;
         Fee = fee;
-        FeeCurrency = feeCurrency.ToUpperInvariant();
-        Timestamp = timestamp ?? DateTimeOffset.UtcNow;
-        ArbitrageOpportunityId = arbitrageOpportunityId;
+        FeeCurrency = feeCurrency;
+        Timestamp = timestamp.DateTime;
+        IsMaker = orderType == OrderType.Limit;
     }
-    
-    /// <summary>
-    /// Gets the total value of the trade in the quote currency.
-    /// </summary>
-    public decimal TotalValue => Price * Quantity;
-    
-    /// <summary>
-    /// Gets the fee rate as a percentage of the total value.
-    /// </summary>
-    public decimal FeeRate => Fee / TotalValue * 100m;
-    
-    /// <summary>
-    /// Gets a description of the trade for logging purposes.
-    /// </summary>
-    public string Description => $"{Side} {Quantity} {TradingPair.BaseCurrency} at {Price} {TradingPair.QuoteCurrency} on {ExchangeId}";
 } 

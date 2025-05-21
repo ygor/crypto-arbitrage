@@ -6,7 +6,7 @@ A real-time cryptocurrency arbitrage detection and trading system that monitors 
 
 This project consists of two main components:
 
-1. **Backend (C# / .NET 7)**: A high-performance arbitrage detection and trading engine with a REST API and real-time SignalR hubs.
+1. **Backend (C# / .NET 9)**: A high-performance arbitrage detection and trading engine with a REST API and real-time SignalR hubs.
 2. **Frontend (React/TypeScript)**: A web dashboard for monitoring arbitrage opportunities, trade results, and controlling the bot.
 
 ## Features
@@ -33,12 +33,35 @@ This project consists of two main components:
 
 ### Prerequisites
 
-- .NET 7 SDK (for development)
+- .NET 9 SDK
 - Node.js (v16+) and npm (for frontend development)
 - Docker and Docker Compose (for containerized setup)
 - Git
 
-### Option 1: Local Development Setup
+### Option 1: Running with .NET
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/crypto-arbitrage.git
+   cd crypto-arbitrage
+   ```
+
+2. Make the run script executable:
+   ```bash
+   chmod +x run.sh
+   ```
+
+3. Run the application:
+   ```bash
+   ./run.sh
+   ```
+
+This will:
+- Build and start the API project
+- Start the Worker service
+- Configure required services
+
+### Option 2: Local Development Setup
 
 #### Backend Setup
 
@@ -80,7 +103,7 @@ The API will be available at `https://localhost:7000` with Swagger documentation
 
 The dashboard will be available at `http://localhost:3000`.
 
-### Option 2: Docker Containerized Setup
+### Option 3: Docker Containerized Setup
 
 This project includes Docker support for running the entire stack in containers, which is recommended for production or testing environments.
 
@@ -193,7 +216,7 @@ The project follows a clean architecture approach with:
 - **Services fail to start**: Ensure ports 3000, 5001, 27017, and 6379 are not already in use on your system.
 - **Connection issues between services**: Make sure all services are running with `docker-compose ps`.
 - **API unreachable**: Check if the service is running and view logs with `docker-compose logs api`.
-- **No arbitrage opportunities detected**: Verify that the worker service is running (`docker-compose logs worker`) and that the configuration is correct.
+- **No arbitrage opportunities detected**: Verify that the worker service is running and that the configuration is correct.
 - **Frontend connectivity issues**: Ensure the API service is running and check browser console for CORS or other connection errors.
 
 ## Contributing

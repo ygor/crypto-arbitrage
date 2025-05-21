@@ -1,6 +1,399 @@
 {
-  "timestamp": "2025-05-19T10:44:23.375Z",
-  "error": "Swagger documentation is required for API contract verification",
-  "success": false,
-  "reason": "SWAGGER_UNAVAILABLE"
+  "success": true,
+  "frontendEndpointCount": 46,
+  "backendEndpointCount": 19,
+  "missingEndpointCount": 0,
+  "frontendEndpoints": [
+    {
+      "methodName": "getArbitrageOpportunities",
+      "source": "services/api.ts",
+      "line": 97
+    },
+    {
+      "methodName": "getArbitrageTrades",
+      "source": "services/api.ts",
+      "line": 106
+    },
+    {
+      "methodName": "getArbitrageStatistics",
+      "source": "services/api.ts",
+      "line": 141
+    },
+    {
+      "methodName": "getRecentOpportunities",
+      "source": "services/api.ts",
+      "line": 146
+    },
+    {
+      "methodName": "getOpportunitiesByTimeRange",
+      "source": "services/api.ts",
+      "line": 157
+    },
+    {
+      "methodName": "getRecentTrades",
+      "source": "services/api.ts",
+      "line": 166
+    },
+    {
+      "methodName": "getTradesByTimeRange",
+      "source": "services/api.ts",
+      "line": 180
+    },
+    {
+      "methodName": "getStatistics",
+      "source": "services/api.ts",
+      "line": 192
+    },
+    {
+      "methodName": "getRiskProfile",
+      "source": "services/api.ts",
+      "line": 208
+    },
+    {
+      "methodName": "updateRiskProfile",
+      "source": "services/api.ts",
+      "line": 212
+    },
+    {
+      "methodName": "getRiskProfile",
+      "source": "services/api.ts",
+      "line": 213
+    },
+    {
+      "methodName": "getArbitrageConfig",
+      "source": "services/api.ts",
+      "line": 217
+    },
+    {
+      "methodName": "updateArbitrageConfig",
+      "source": "services/api.ts",
+      "line": 232
+    },
+    {
+      "methodName": "getArbitrageConfig",
+      "source": "services/api.ts",
+      "line": 234
+    },
+    {
+      "methodName": "getExchangeConfigurations",
+      "source": "services/api.ts",
+      "line": 243
+    },
+    {
+      "methodName": "updateExchangeConfigurations",
+      "source": "services/api.ts",
+      "line": 247
+    },
+    {
+      "methodName": "getExchangeConfigurations",
+      "source": "services/api.ts",
+      "line": 248
+    },
+    {
+      "methodName": "startArbitrageBot",
+      "source": "services/api.ts",
+      "line": 254
+    },
+    {
+      "methodName": "stopArbitrageBot",
+      "source": "services/api.ts",
+      "line": 259
+    },
+    {
+      "methodName": "getBotStatus",
+      "source": "services/api.ts",
+      "line": 264
+    },
+    {
+      "methodName": "getActivityLogs",
+      "source": "services/api.ts",
+      "line": 273
+    },
+    {
+      "methodName": "getExchangeStatus",
+      "source": "services/api.ts",
+      "line": 293
+    },
+    {
+      "methodName": "getArbitrageStatistics",
+      "source": "services/api.ts",
+      "line": 96,
+      "functionName": "getArbitrageOpportunities"
+    },
+    {
+      "methodName": "getStatistics",
+      "source": "services/api.ts",
+      "line": 145,
+      "functionName": "getRecentOpportunities"
+    },
+    {
+      "methodName": "getRiskProfile",
+      "source": "services/api.ts",
+      "line": 196,
+      "functionName": "getBalances"
+    },
+    {
+      "methodName": "getRiskProfile",
+      "source": "services/api.ts",
+      "line": 211,
+      "functionName": "updateRiskProfile"
+    },
+    {
+      "methodName": "getExchangeConfigurations",
+      "source": "services/api.ts",
+      "line": 216,
+      "functionName": "getArbitrageConfig"
+    },
+    {
+      "methodName": "getExchangeStatus",
+      "source": "services/api.ts",
+      "line": 246,
+      "functionName": "updateExchangeConfig"
+    },
+    {
+      "methodName": "getArbitrageOpportunities",
+      "source": "services/api.ts",
+      "line": 96,
+      "functionName": "getArbitrageOpportunities"
+    },
+    {
+      "methodName": "getArbitrageTrades",
+      "source": "services/api.ts",
+      "line": 105,
+      "functionName": "getTradeResults"
+    },
+    {
+      "methodName": "getArbitrageStatistics",
+      "source": "services/api.ts",
+      "line": 140,
+      "functionName": "getArbitrageStatistics"
+    },
+    {
+      "methodName": "getRecentOpportunities",
+      "source": "services/api.ts",
+      "line": 145,
+      "functionName": "getRecentOpportunities"
+    },
+    {
+      "methodName": "getOpportunitiesByTimeRange",
+      "source": "services/api.ts",
+      "line": 153,
+      "functionName": "getOpportunitiesByTimeRange"
+    },
+    {
+      "methodName": "getRecentTrades",
+      "source": "services/api.ts",
+      "line": 165,
+      "functionName": "getRecentTradeResults"
+    },
+    {
+      "methodName": "getTradesByTimeRange",
+      "source": "services/api.ts",
+      "line": 176,
+      "functionName": "getTradeResultsByTimeRange"
+    },
+    {
+      "methodName": "getStatistics",
+      "source": "services/api.ts",
+      "line": 191,
+      "functionName": "getStatistics"
+    },
+    {
+      "methodName": "updateRiskProfile",
+      "source": "services/api.ts",
+      "line": 211,
+      "functionName": "updateRiskProfile"
+    },
+    {
+      "methodName": "getArbitrageConfig",
+      "source": "services/api.ts",
+      "line": 216,
+      "functionName": "getArbitrageConfig"
+    },
+    {
+      "methodName": "updateArbitrageConfig",
+      "source": "services/api.ts",
+      "line": 225,
+      "functionName": "updateArbitrageConfig"
+    },
+    {
+      "methodName": "getExchangeConfigurations",
+      "source": "services/api.ts",
+      "line": 242,
+      "functionName": "getExchangeConfigs"
+    },
+    {
+      "methodName": "updateExchangeConfigurations",
+      "source": "services/api.ts",
+      "line": 246,
+      "functionName": "updateExchangeConfig"
+    },
+    {
+      "methodName": "startArbitrageBot",
+      "source": "services/api.ts",
+      "line": 253,
+      "functionName": "startArbitrageService"
+    },
+    {
+      "methodName": "stopArbitrageBot",
+      "source": "services/api.ts",
+      "line": 258,
+      "functionName": "stopArbitrageService"
+    },
+    {
+      "methodName": "getBotStatus",
+      "source": "services/api.ts",
+      "line": 263,
+      "functionName": "getServiceStatus"
+    },
+    {
+      "methodName": "getActivityLogs",
+      "source": "services/api.ts",
+      "line": 272,
+      "functionName": "getActivityLogs"
+    },
+    {
+      "methodName": "getExchangeStatus",
+      "source": "services/api.ts",
+      "line": 292,
+      "functionName": "getExchangeStatus"
+    }
+  ],
+  "backendEndpoints": [
+    {
+      "path": "/api/arbitrage/opportunities?",
+      "httpMethod": "GET",
+      "methodName": "getArbitrageOpportunities",
+      "returnType": "ArbitrageOpportunity[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/arbitrage/trades?",
+      "httpMethod": "GET",
+      "methodName": "getArbitrageTrades",
+      "returnType": "TradeResult[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/arbitrage/statistics",
+      "httpMethod": "GET",
+      "methodName": "getArbitrageStatistics",
+      "returnType": "ArbitrageStatistics",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/opportunities/recent?",
+      "httpMethod": "GET",
+      "methodName": "getRecentOpportunities",
+      "returnType": "ArbitrageOpportunity[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/opportunities?",
+      "httpMethod": "GET",
+      "methodName": "getOpportunitiesByTimeRange",
+      "returnType": "ArbitrageOpportunity[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/trades/recent?",
+      "httpMethod": "GET",
+      "methodName": "getRecentTrades",
+      "returnType": "TradeResult[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/trades?",
+      "httpMethod": "GET",
+      "methodName": "getTradesByTimeRange",
+      "returnType": "TradeResult[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/risk-profile",
+      "httpMethod": "GET",
+      "methodName": "getRiskProfile",
+      "returnType": "RiskProfile",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/risk-profile",
+      "httpMethod": "PUT",
+      "methodName": "updateRiskProfile",
+      "returnType": "Anonymous",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/arbitrage",
+      "httpMethod": "GET",
+      "methodName": "getArbitrageConfig",
+      "returnType": "ArbitrageConfig",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/arbitrage",
+      "httpMethod": "PUT",
+      "methodName": "updateArbitrageConfig",
+      "returnType": "Anonymous2",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/exchanges",
+      "httpMethod": "GET",
+      "methodName": "getExchangeConfigurations",
+      "returnType": "ExchangeConfig[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/exchanges",
+      "httpMethod": "POST",
+      "methodName": "updateExchangeConfigurations",
+      "returnType": "Anonymous3",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/bot/start",
+      "httpMethod": "POST",
+      "methodName": "startArbitrageBot",
+      "returnType": "Anonymous4",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/bot/stop",
+      "httpMethod": "POST",
+      "methodName": "stopArbitrageBot",
+      "returnType": "Anonymous5",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/bot/status",
+      "httpMethod": "GET",
+      "methodName": "getBotStatus",
+      "returnType": "Anonymous6",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/statistics",
+      "httpMethod": "GET",
+      "methodName": "getStatistics",
+      "returnType": "ArbitrageStatistics",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/bot/activity-logs?",
+      "httpMethod": "GET",
+      "methodName": "getActivityLogs",
+      "returnType": "ActivityLogEntry[]",
+      "source": "OpenAPI"
+    },
+    {
+      "path": "/api/settings/bot/exchange-status",
+      "httpMethod": "GET",
+      "methodName": "getExchangeStatus",
+      "returnType": "ExchangeStatus[]",
+      "source": "OpenAPI"
+    }
+  ],
+  "missingEndpoints": [],
+  "timestamp": "2025-05-21T12:56:42.889Z"
 }

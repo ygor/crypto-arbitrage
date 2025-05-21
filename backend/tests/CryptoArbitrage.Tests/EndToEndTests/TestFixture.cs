@@ -349,7 +349,7 @@ public class TestFixture : IDisposable
                     TotalValue = 50000m * quantity,
                     Fee = 50000m * quantity * 0.001m,
                     FeeCurrency = tradingPair.QuoteCurrency,
-                    Timestamp = DateTimeOffset.UtcNow,
+                    Timestamp = DateTime.UtcNow,
                     ExecutionTimeMs = 50
                 };
             });
@@ -376,7 +376,7 @@ public class TestFixture : IDisposable
                     TotalValue = 50000m * quantity,
                     Fee = 50000m * quantity * 0.001m,
                     FeeCurrency = tradingPair.QuoteCurrency,
-                    Timestamp = DateTimeOffset.UtcNow,
+                    Timestamp = DateTime.UtcNow,
                     ExecutionTimeMs = 50
                 };
             });

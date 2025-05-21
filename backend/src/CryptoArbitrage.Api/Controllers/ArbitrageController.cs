@@ -1,12 +1,20 @@
 using CryptoArbitrage.Application.Interfaces;
-using CryptoArbitrage.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
+using CryptoArbitrage.Api.Controllers.Interfaces;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System;
+using System.Linq;
+using Microsoft.Extensions.Logging;
+using ApiModels = CryptoArbitrage.Api.Models;
+using DomainModels = CryptoArbitrage.Domain.Models;
 
 namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public class ArbitrageController : ControllerBase
+[Route("api/arbitrage")]
+public class ArbitrageController : ControllerBase, IArbitrageController
 {
     private readonly IArbitrageService _arbitrageService;
     private readonly IArbitrageRepository _arbitrageRepository;
@@ -23,91 +31,109 @@ public class ArbitrageController : ControllerBase
     }
 
     [HttpGet("opportunities")]
-    public async Task<IActionResult> GetOpportunities([FromQuery] int limit = 100)
+    public async Task<ICollection<ApiModels.ArbitrageOpportunity>> GetArbitrageOpportunitiesAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var end = DateTimeOffset.UtcNow;
-            var start = end.AddDays(-1); // Last 24 hours by default
-            
-            var opportunities = await _arbitrageRepository.GetOpportunitiesAsync(start, end);
-            
-            return Ok(opportunities.Take(limit).ToList());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving arbitrage opportunities");
-            return StatusCode(500, "An error occurred while retrieving arbitrage opportunities");
-        }
+        _logger.LogInformation("Getting {Limit} arbitrage opportunities", limit);
+        var opportunities = await _arbitrageRepository.GetRecentOpportunitiesAsync(limit);
+        return opportunities.Select(MapToContractModel).ToList();
     }
 
     [HttpGet("trades")]
-    public async Task<IActionResult> GetTrades([FromQuery] int limit = 100)
+    public async Task<ICollection<ApiModels.TradeResult>> GetArbitrageTradesAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var end = DateTimeOffset.UtcNow;
-            var start = end.AddDays(-1); // Last 24 hours by default
-            
-            var trades = await _arbitrageRepository.GetTradeResultsAsync(start, end);
-            
-            // Convert the tuples to a flat structure for the frontend
-            var tradeResults = trades
-                .Take(limit)
-                .Select(t => new
-                {
-                    OpportunityId = t.Opportunity.DetectedAt.ToString("yyyyMMddHHmmssfff"),
-                    TradingPair = t.Opportunity.TradingPair,
-                    BuyExchangeId = t.Opportunity.BuyExchangeId,
-                    SellExchangeId = t.Opportunity.SellExchangeId,
-                    BuyPrice = t.Opportunity.BuyPrice,
-                    SellPrice = t.Opportunity.SellPrice,
-                    Quantity = t.Opportunity.EffectiveQuantity,
-                    Timestamp = t.Timestamp,
-                    Status = t.BuyResult?.IsSuccess == true && t.SellResult?.IsSuccess == true 
-                        ? TradeStatus.Completed 
-                        : TradeStatus.Failed,
-                    ProfitAmount = t.Profit,
-                    ProfitPercentage = t.Opportunity.SpreadPercentage,
-                    Fees = (t.BuyResult?.Fee ?? 0) + (t.SellResult?.Fee ?? 0),
-                    ExecutionTimeMs = t.BuyResult != null && t.SellResult != null 
-                        ? (t.BuyResult.ExecutionTimeMs + t.SellResult.ExecutionTimeMs) / 2 
-                        : 0
-                })
-                .ToList();
-            
-            return Ok(tradeResults);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving trade results");
-            return StatusCode(500, "An error occurred while retrieving trade results");
-        }
+        _logger.LogInformation("Getting {Limit} arbitrage trades", limit);
+        var trades = await _arbitrageRepository.GetRecentTradesAsync(limit);
+        return trades.Select(MapToContractModel).ToList();
     }
 
     [HttpGet("statistics")]
-    public async Task<IActionResult> GetStatistics()
+    public async Task<ApiModels.ArbitrageStatistics> GetArbitrageStatisticsAsync(CancellationToken cancellationToken = default)
     {
-        try
+        _logger.LogInformation("Getting arbitrage statistics");
+        // Get statistics for the last 30 days
+        var now = DateTime.UtcNow;
+        var thirtyDaysAgo = now.AddDays(-30);
+        var stats = await _arbitrageRepository.GetStatisticsAsync(thirtyDaysAgo, now, cancellationToken);
+        return MapToContractModel(stats);
+    }
+    
+    private ApiModels.ArbitrageOpportunity MapToContractModel(DomainModels.ArbitrageOpportunity opportunity)
+    {
+        return new ApiModels.ArbitrageOpportunity
         {
-            var end = DateTimeOffset.UtcNow;
-            var start = end.AddDays(-1); // Last 24 hours by default
-            
-            var statistics = await _arbitrageRepository.GetStatisticsAsync(start, end);
-            
-            return Ok(statistics);
-        }
-        catch (Exception ex)
+            id = opportunity.Id,
+            tradingPair = new ApiModels.TradingPair
+            {
+                baseCurrency = opportunity.BaseCurrency,
+                quoteCurrency = opportunity.QuoteCurrency
+            },
+            buyExchangeId = opportunity.BuyExchangeId,
+            sellExchangeId = opportunity.SellExchangeId,
+            buyPrice = opportunity.BuyPrice,
+            sellPrice = opportunity.SellPrice,
+            quantity = opportunity.EffectiveQuantity,
+            timestamp = opportunity.Timestamp.ToString("o"),
+            status = opportunity.Status.ToString(),
+            potentialProfit = opportunity.EstimatedProfit,
+            spreadPercentage = opportunity.SpreadPercentage,
+            estimatedProfit = opportunity.EstimatedProfit,
+            detectedAt = opportunity.DetectedAt.ToString("o"),
+            spread = opportunity.Spread,
+            effectiveQuantity = opportunity.EffectiveQuantity,
+            isQualified = opportunity.IsQualified
+        };
+    }
+    
+    private ApiModels.TradeResult MapToContractModel(DomainModels.TradeResult trade)
+    {
+        return new ApiModels.TradeResult
         {
-            _logger.LogError(ex, "Error retrieving arbitrage statistics");
-            return StatusCode(500, "An error occurred while retrieving arbitrage statistics");
-        }
+            id = trade.Id.ToString(),
+            opportunityId = trade.OpportunityId.ToString(),
+            tradingPair = new ApiModels.TradingPair
+            {
+                baseCurrency = trade.TradingPair.Split('/')[0],
+                quoteCurrency = trade.TradingPair.Contains('/') ? trade.TradingPair.Split('/')[1] : string.Empty
+            },
+            buyExchangeId = trade.BuyExchangeId,
+            sellExchangeId = trade.SellExchangeId,
+            buyPrice = trade.BuyPrice,
+            sellPrice = trade.SellPrice,
+            quantity = trade.Quantity,
+            timestamp = trade.Timestamp.ToString("o"),
+            status = trade.Status.ToString(),
+            profitAmount = trade.ProfitAmount,
+            profitPercentage = trade.ProfitPercentage,
+            fees = trade.Fees,
+            executionTimeMs = trade.ExecutionTimeMs
+        };
+    }
+    
+    private ApiModels.ArbitrageStatistics MapToContractModel(DomainModels.ArbitrageStatistics stats)
+    {
+        return new ApiModels.ArbitrageStatistics
+        {
+            startDate = stats.StartTime.ToString("o"),
+            endDate = stats.EndTime.ToString("o"),
+            detectedOpportunities = stats.TotalOpportunitiesCount,
+            executedTrades = stats.TotalTradesCount,
+            successfulTrades = stats.SuccessfulTradesCount,
+            failedTrades = stats.FailedTradesCount,
+            totalProfitAmount = stats.TotalProfitAmount,
+            totalProfitPercentage = stats.AverageProfitPercentage,
+            averageProfitPerTrade = stats.AverageProfitAmount,
+            maxProfitAmount = stats.HighestProfitAmount,
+            maxProfitPercentage = stats.HighestProfitPercentage,
+            totalTradeVolume = stats.TotalVolume,
+            totalFees = stats.TotalFeesAmount,
+            averageExecutionTimeMs = (double)stats.AverageExecutionTimeMs
+        };
     }
 }
 
 [ApiController]
 [Route("api/opportunities")]
-public class OpportunitiesController : ControllerBase
+public class OpportunitiesController : ControllerBase, IOpportunitiesController
 {
     private readonly IArbitrageRepository _arbitrageRepository;
     private readonly ILogger<OpportunitiesController> _logger;
@@ -121,52 +147,50 @@ public class OpportunitiesController : ControllerBase
     }
 
     [HttpGet("recent")]
-    public async Task<IActionResult> GetRecentOpportunities([FromQuery] int limit = 20)
+    public async Task<ICollection<ApiModels.ArbitrageOpportunity>> GetRecentOpportunitiesAsync(int limit = 20, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var end = DateTimeOffset.UtcNow;
-            var start = end.AddHours(-1); // Last hour by default for recent opportunities
-            
-            var opportunities = await _arbitrageRepository.GetOpportunitiesAsync(start, end);
-            
-            return Ok(opportunities.Take(limit).ToList());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving recent arbitrage opportunities");
-            return StatusCode(500, "An error occurred while retrieving recent arbitrage opportunities");
-        }
+        _logger.LogInformation("Getting {Limit} recent opportunities", limit);
+        var opportunities = await _arbitrageRepository.GetRecentOpportunitiesAsync(limit);
+        return opportunities.Select(MapToContractModel).ToList();
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetOpportunitiesByTimeRange(
-        [FromQuery] string? start = null,
-        [FromQuery] string? end = null)
+    public async Task<ICollection<ApiModels.ArbitrageOpportunity>> GetOpportunitiesByTimeRangeAsync(DateTimeOffset? start = null, DateTimeOffset? end = null, CancellationToken cancellationToken = default)
     {
-        try
+        _logger.LogInformation("Getting opportunities between {Start} and {End}", start, end);
+        
+        // Use default values if start/end not provided
+        start ??= DateTimeOffset.UtcNow.AddDays(-7);
+        end ??= DateTimeOffset.UtcNow;
+        
+        var opportunities = await _arbitrageRepository.GetOpportunitiesByTimeRangeAsync(start.Value, end.Value);
+        return opportunities.Select(MapToContractModel).ToList();
+    }
+    
+    private ApiModels.ArbitrageOpportunity MapToContractModel(DomainModels.ArbitrageOpportunity opportunity)
+    {
+        return new ApiModels.ArbitrageOpportunity
         {
-            var endTime = string.IsNullOrEmpty(end) 
-                ? DateTimeOffset.UtcNow 
-                : DateTimeOffset.Parse(end);
-            
-            var startTime = string.IsNullOrEmpty(start) 
-                ? endTime.AddDays(-1) 
-                : DateTimeOffset.Parse(start);
-            
-            var opportunities = await _arbitrageRepository.GetOpportunitiesAsync(startTime, endTime);
-            
-            return Ok(opportunities.ToList());
-        }
-        catch (FormatException ex)
-        {
-            _logger.LogError(ex, "Invalid date format in request");
-            return BadRequest("Invalid date format. Use ISO 8601 format (e.g. 2023-09-01T00:00:00Z)");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving arbitrage opportunities by time range");
-            return StatusCode(500, "An error occurred while retrieving arbitrage opportunities");
-        }
+            id = opportunity.Id,
+            tradingPair = new ApiModels.TradingPair
+            {
+                baseCurrency = opportunity.BaseCurrency,
+                quoteCurrency = opportunity.QuoteCurrency
+            },
+            buyExchangeId = opportunity.BuyExchangeId,
+            sellExchangeId = opportunity.SellExchangeId,
+            buyPrice = opportunity.BuyPrice,
+            sellPrice = opportunity.SellPrice,
+            quantity = opportunity.EffectiveQuantity,
+            timestamp = opportunity.Timestamp.ToString("o"),
+            status = opportunity.Status.ToString(),
+            potentialProfit = opportunity.EstimatedProfit,
+            spreadPercentage = opportunity.SpreadPercentage,
+            estimatedProfit = opportunity.EstimatedProfit,
+            detectedAt = opportunity.DetectedAt.ToString("o"),
+            spread = opportunity.Spread,
+            effectiveQuantity = opportunity.EffectiveQuantity,
+            isQualified = opportunity.IsQualified
+        };
     }
 } 

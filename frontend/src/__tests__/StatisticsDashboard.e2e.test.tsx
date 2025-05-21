@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import App from '../App';
 import * as apiService from '../services/api';
 
@@ -69,7 +69,9 @@ describe('StatisticsDashboard End-to-End', () => {
     (apiService.getArbitrageStatistics as jest.Mock).mockResolvedValue(mockCompleteStats);
     
     // Render the app
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     // Verify loading state is shown
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
@@ -98,7 +100,9 @@ describe('StatisticsDashboard End-to-End', () => {
     );
     
     // Render the app
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     // Wait for error message
     await waitFor(() => {
@@ -123,7 +127,9 @@ describe('StatisticsDashboard End-to-End', () => {
     (apiService.getArbitrageStatistics as jest.Mock).mockResolvedValue(mockPartialStats);
     
     // Render the app
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     // Wait for data to load
     await waitFor(() => {
@@ -160,7 +166,9 @@ describe('StatisticsDashboard End-to-End', () => {
     (apiService.getArbitrageStatistics as jest.Mock).mockResolvedValue(mockNullStats);
     
     // Render the app
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     // Wait for data to load
     await waitFor(() => {

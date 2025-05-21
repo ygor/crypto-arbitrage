@@ -263,7 +263,7 @@ public class MockExchangeClient : IExchangeClient
             IsSuccess = true,
             OrderId = orderId,
             ClientOrderId = string.Empty,
-            Timestamp = DateTimeOffset.UtcNow,
+            Timestamp = DateTime.UtcNow,
             TradingPair = tradingPair.ToString(),
             TradeType = orderSide == OrderSide.Buy ? TradeType.Buy : TradeType.Sell,
             RequestedPrice = price,
@@ -457,5 +457,12 @@ public class MockExchangeClient : IExchangeClient
     public Task<Dictionary<string, decimal>> GetRawBalancesAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(new Dictionary<string, decimal>(_balances));
+    }
+    
+    /// <inheritdoc />
+    public Task<decimal> GetTradingFeeRateAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
+    {
+        // Return a fixed fee rate of 0.1% for simplicity
+        return Task.FromResult(0.001m);
     }
 } 

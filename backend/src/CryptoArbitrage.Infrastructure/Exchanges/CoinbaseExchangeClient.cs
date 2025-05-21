@@ -826,7 +826,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 IsSuccess = true,
                 OrderId = orderId,
                 ClientOrderId = clientOrderId,
-                Timestamp = DateTimeOffset.UtcNow,
+                Timestamp = DateTimeOffset.UtcNow.DateTime,
                 TradingPair = tradingPair.ToString(),
                 TradeType = orderSide == OrderSide.Buy ? TradeType.Buy : TradeType.Sell,
                 RequestedPrice = price,

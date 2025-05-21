@@ -57,17 +57,17 @@ public class MockArbitrageRepository : IArbitrageRepository
         // Create a combined trade result
         var tradeResult = new TradeResult
         {
-            Id = Guid.NewGuid().ToString(),
-            OpportunityId = opportunity.Id,
+            Id = Guid.NewGuid(),
+            OpportunityId = Guid.TryParse(opportunity.Id, out var opportunityGuid) ? opportunityGuid : Guid.NewGuid(),
             BuyExchangeId = opportunity.BuyExchangeId,
             SellExchangeId = opportunity.SellExchangeId,
             ProfitAmount = profit,
-            Timestamp = timestamp,
+            Timestamp = timestamp.DateTime,
             IsSuccess = true
             // Additional properties would be set here in a real implementation
         };
 
-        _tradeResults[tradeResult.Id] = tradeResult;
+        _tradeResults[tradeResult.Id.ToString()] = tradeResult;
         return Task.CompletedTask;
     }
 
@@ -106,7 +106,7 @@ public class MockArbitrageRepository : IArbitrageRepository
 
         foreach (var tradeResult in _tradeResults.Values.Where(t => t.Timestamp >= start && t.Timestamp <= end))
         {
-            if (_opportunities.TryGetValue(tradeResult.OpportunityId, out var opportunity))
+            if (_opportunities.TryGetValue(tradeResult.OpportunityId.ToString(), out var opportunity))
             {
                 // In a mock, we're simplifying by using the same trade result for both buy and sell
                 results.Add((opportunity, tradeResult, tradeResult, tradeResult.ProfitAmount, tradeResult.Timestamp));
@@ -211,12 +211,12 @@ public class MockArbitrageRepository : IArbitrageRepository
 
     public Task<TradeResult> SaveTradeResultAsync(TradeResult tradeResult)
     {
-        if (string.IsNullOrEmpty(tradeResult.Id))
+        if (tradeResult.Id == Guid.Empty)
         {
-            tradeResult.Id = Guid.NewGuid().ToString();
+            tradeResult.Id = Guid.NewGuid();
         }
 
-        _tradeResults[tradeResult.Id] = tradeResult;
+        _tradeResults[tradeResult.Id.ToString()] = tradeResult;
         return Task.FromResult(tradeResult);
     }
 
@@ -253,11 +253,16 @@ public class MockArbitrageRepository : IArbitrageRepository
 
     public Task<List<TradeResult>> GetTradesByOpportunityIdAsync(string opportunityId)
     {
-        var result = _tradeResults.Values
-            .Where(t => t.OpportunityId == opportunityId)
-            .ToList();
+        if (Guid.TryParse(opportunityId, out var opportunityGuid))
+        {
+            var result = _tradeResults.Values
+                .Where(t => t.OpportunityId == opportunityGuid)
+                .ToList();
 
-        return Task.FromResult(result);
+            return Task.FromResult(result);
+        }
+        
+        return Task.FromResult(new List<TradeResult>());
     }
 
     public Task<ArbitrageStatistics> GetCurrentDayStatisticsAsync()
@@ -310,9 +315,69 @@ public class MockArbitrageRepository : IArbitrageRepository
 
         foreach (var trade in tradesToRemove)
         {
-            _tradeResults.TryRemove(trade.Id, out _);
+            _tradeResults.TryRemove(trade.Id.ToString(), out _);
         }
 
         return Task.FromResult(tradesToRemove.Count);
+    }
+
+    public Task<ArbitrageStatistics> GetArbitrageStatisticsAsync(string tradingPair, DateTime? startDate = null, DateTime? endDate = null, CancellationToken cancellationToken = default)
+    {
+        // Set default dates if not provided
+        var start = startDate.HasValue ? new DateTimeOffset(startDate.Value) : DateTimeOffset.UtcNow.AddDays(-1);
+        var end = endDate.HasValue ? new DateTimeOffset(endDate.Value) : DateTimeOffset.UtcNow;
+        
+        // Try to find cached statistics for this trading pair
+        var cachedStats = _statisticsCache.Values
+            .FirstOrDefault(s => s.TradingPair == tradingPair && 
+                               s.StartTime >= start && 
+                               s.EndTime <= end);
+        
+        if (cachedStats != null)
+        {
+            return Task.FromResult(cachedStats);
+        }
+        
+        // Get trades for this trading pair
+        var trades = _tradeResults.Values
+            .Where(t => t.TradingPair == tradingPair && 
+                       t.Timestamp >= start && 
+                       t.Timestamp <= end)
+            .ToList();
+        
+        // Create new statistics
+        var stats = new ArbitrageStatistics
+        {
+            TradingPair = tradingPair,
+            CreatedAt = DateTime.UtcNow,
+            StartTime = start,
+            EndTime = end,
+            TotalOpportunitiesCount = trades.Count,
+            TotalTradesCount = trades.Count,
+            SuccessfulTradesCount = trades.Count(t => t.IsSuccess),
+            FailedTradesCount = trades.Count(t => !t.IsSuccess),
+            TotalProfitAmount = trades.Sum(t => t.ProfitAmount),
+            AverageProfitAmount = trades.Any() ? trades.Average(t => t.ProfitAmount) : 0,
+            HighestProfitAmount = trades.Any() ? trades.Max(t => t.ProfitAmount) : 0,
+            TotalFeesAmount = trades.Sum(t => t.Fees),
+            SuccessRate = trades.Count > 0 ? (decimal)trades.Count(t => t.IsSuccess) / trades.Count * 100 : 0,
+            LastUpdatedAt = DateTime.UtcNow
+        };
+        
+        // Cache the statistics
+        _statisticsCache[DateTimeOffset.UtcNow] = stats;
+        
+        return Task.FromResult(stats);
+    }
+    
+    public Task SaveArbitrageStatisticsAsync(ArbitrageStatistics statistics, CancellationToken cancellationToken = default)
+    {
+        // Update LastUpdatedAt timestamp
+        statistics.LastUpdatedAt = DateTime.UtcNow;
+        
+        // Store in the dictionary using the timestamp as key
+        _statisticsCache[DateTimeOffset.UtcNow] = statistics;
+        
+        return Task.CompletedTask;
     }
 } 

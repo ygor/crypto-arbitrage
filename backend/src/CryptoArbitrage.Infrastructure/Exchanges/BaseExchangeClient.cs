@@ -623,4 +623,17 @@ public abstract class BaseExchangeClient : IExchangeClient
         // Authenticate
         await AuthenticateAsync(cancellationToken);
     }
+    
+    /// <inheritdoc />
+    public virtual async Task<decimal> GetTradingFeeRateAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
+    {
+        // Ensure connected and authenticated
+        await EnsureAuthenticatedAsync(cancellationToken);
+        
+        // Get the fee schedule for the exchange
+        var feeSchedule = await GetFeeScheduleAsync(cancellationToken);
+        
+        // Return the taker fee rate as a default
+        return feeSchedule.TakerFeeRate;
+    }
 } 

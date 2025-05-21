@@ -651,30 +651,34 @@ public class MockExchangeClient : IExchangeClient
     /// <returns>The trade result.</returns>
     private TradeResult CreateTradeResult(TradingPair tradingPair, OrderSide side, decimal price, decimal quantity)
     {
-        string orderId = Guid.NewGuid().ToString();
-        decimal fee = price * quantity * 0.001m; // Mock 0.1% fee
-        
-        bool isSuccess = _random.Next(0, 10) < 9; // 90% success rate for mock trades
-        
         var result = new TradeResult
         {
-            Id = Guid.NewGuid().ToString(),
-            OrderId = orderId,
-            ClientOrderId = $"mock-{orderId}",
+            Id = Guid.NewGuid(),
+            OrderId = Guid.NewGuid().ToString(),
+            ClientOrderId = $"mock-{Guid.NewGuid().ToString("N")}",
             TradeType = side == OrderSide.Buy ? TradeType.Buy : TradeType.Sell,
             RequestedPrice = price,
-            ExecutedPrice = isSuccess ? price : 0,
+            ExecutedPrice = price,
             RequestedQuantity = quantity,
-            ExecutedQuantity = isSuccess ? quantity : 0,
-            TotalValue = isSuccess ? price * quantity : 0,
-            Fee = isSuccess ? fee : 0,
+            ExecutedQuantity = quantity,
+            TotalValue = price * quantity,
+            Fee = price * quantity * 0.001m,
             FeeCurrency = side == OrderSide.Buy ? tradingPair.BaseCurrency : tradingPair.QuoteCurrency,
-            Timestamp = DateTimeOffset.UtcNow,
-            IsSuccess = isSuccess,
-            ErrorMessage = isSuccess ? null : "Simulated trade failure"
+            Timestamp = DateTimeOffset.UtcNow.DateTime,
+            IsSuccess = true,
+            ErrorMessage = null
         };
         
         return result;
+    }
+
+    /// <inheritdoc/>
+    public Task<decimal> GetTradingFeeRateAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Getting trading fee rate for {TradingPair} on {ExchangeId} (mock)", tradingPair, _exchangeId);
+        
+        // Return a standard fee rate for mock exchanges
+        return Task.FromResult(0.001m); // 0.1%
     }
 }
 

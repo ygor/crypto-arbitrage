@@ -63,12 +63,15 @@ const TradeRow: React.FC<TradeRowProps> = ({ trade }) => {
   const [open, setOpen] = useState(false);
   
   // Function to format trading pair as string
-  const formatTradingPair = (pair: TradingPair): string => {
+  const formatTradingPair = (pair?: TradingPair): string => {
+    if (!pair) return 'N/A';
     return `${pair.baseCurrency}/${pair.quoteCurrency}`;
   };
 
   // Function to get chip color based on trade status
-  const getStatusChipColor = (status: TradeStatus): "success" | "warning" | "error" | "default" => {
+  const getStatusChipColor = (status?: TradeStatus): "success" | "warning" | "error" | "default" => {
+    if (status === undefined) return 'default';
+    
     switch (status) {
       case TradeStatus.Pending:
         return "default";
@@ -94,24 +97,24 @@ const TradeRow: React.FC<TradeRowProps> = ({ trade }) => {
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell>{trade.id.substring(0, 8)}...</TableCell>
+        <TableCell>{trade.id ? `${trade.id.substring(0, 8)}...` : 'N/A'}</TableCell>
         <TableCell>{formatTradingPair(trade.tradingPair)}</TableCell>
-        <TableCell>{trade.buyExchangeId}</TableCell>
-        <TableCell>{trade.sellExchangeId}</TableCell>
-        <TableCell>{trade.quantity.toFixed(4)}</TableCell>
+        <TableCell>{trade.buyExchangeId || 'N/A'}</TableCell>
+        <TableCell>{trade.sellExchangeId || 'N/A'}</TableCell>
+        <TableCell>{trade.quantity?.toFixed(4) || '0.0000'}</TableCell>
         <TableCell>
-          <Typography color={trade.profitAmount > 0 ? "success.main" : "error.main"} fontWeight="bold">
-            ${trade.profitAmount.toFixed(2)} ({trade.profitPercentage.toFixed(2)}%)
+          <Typography color={trade.profitAmount && trade.profitAmount > 0 ? "success.main" : "error.main"} fontWeight="bold">
+            ${trade.profitAmount?.toFixed(2) || '0.00'} ({trade.profitPercentage?.toFixed(2) || '0.00'}%)
           </Typography>
         </TableCell>
         <TableCell>
           <Chip
-            label={TradeStatus[trade.status]}
+            label={trade.status !== undefined ? TradeStatus[trade.status] : 'Unknown'}
             size="small"
             color={getStatusChipColor(trade.status)}
           />
         </TableCell>
-        <TableCell>{new Date(trade.timestamp).toLocaleString()}</TableCell>
+        <TableCell>{trade.timestamp ? new Date(trade.timestamp).toLocaleString() : 'N/A'}</TableCell>
       </TableRow>
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
@@ -124,21 +127,21 @@ const TradeRow: React.FC<TradeRowProps> = ({ trade }) => {
                 <TableBody>
                   <TableRow>
                     <TableCell component="th" scope="row">Opportunity ID</TableCell>
-                    <TableCell>{trade.opportunityId}</TableCell>
+                    <TableCell>{trade.opportunityId || 'N/A'}</TableCell>
                     <TableCell component="th" scope="row">Execution Time</TableCell>
-                    <TableCell>{trade.executionTimeMs}ms</TableCell>
+                    <TableCell>{trade.executionTimeMs || 0}ms</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell component="th" scope="row">Buy Price</TableCell>
-                    <TableCell>${trade.buyPrice.toFixed(2)}</TableCell>
+                    <TableCell>${trade.buyPrice?.toFixed(2) || '0.00'}</TableCell>
                     <TableCell component="th" scope="row">Sell Price</TableCell>
-                    <TableCell>${trade.sellPrice.toFixed(2)}</TableCell>
+                    <TableCell>${trade.sellPrice?.toFixed(2) || '0.00'}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell component="th" scope="row">Fees</TableCell>
-                    <TableCell>${trade.fees.toFixed(2)}</TableCell>
+                    <TableCell>${trade.fees?.toFixed(2) || '0.00'}</TableCell>
                     <TableCell component="th" scope="row">Net Profit</TableCell>
-                    <TableCell>${(trade.profitAmount - trade.fees).toFixed(2)}</TableCell>
+                    <TableCell>${((trade.profitAmount || 0) - (trade.fees || 0)).toFixed(2)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

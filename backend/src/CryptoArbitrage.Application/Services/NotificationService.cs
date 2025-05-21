@@ -86,25 +86,33 @@ public class NotificationService : INotificationService
         
         // Ensure we have valid trade executions
         if (!buyResult.IsSuccess || !sellResult.IsSuccess || 
-            !buyResult.TradeExecution.HasValue || !sellResult.TradeExecution.HasValue)
+            buyResult.TradeExecution == null || sellResult.TradeExecution == null)
         {
             _logger.LogWarning("Cannot send completion notification: Missing trade execution details");
             return;
         }
         
         // Get the trade values
-        var buyTrade = buyResult.TradeExecution.Value;
-        var sellTrade = sellResult.TradeExecution.Value;
+        var buyTrade = buyResult.TradeExecution;
+        var sellTrade = sellResult.TradeExecution;
         
-        // Build message
+        // Ensure the price and fee fields have safe defaults if null
+        decimal buyPrice = buyTrade.Price;
+        decimal sellPrice = sellTrade.Price;
+        decimal buyFee = buyTrade.Fee;
+        decimal sellFee = sellTrade.Fee;
+        decimal quantity = buyTrade.Quantity;
+        decimal buyTotal = buyTrade.TotalValue;
+        
+        // Build message with safe values
         var message = new StringBuilder()
             .AppendLine($"Arbitrage Trade Completed Successfully")
             .AppendLine($"Trading Pair: {opportunity.TradingPair}")
-            .AppendLine($"Buy from: {opportunity.BuyExchangeId} at {buyTrade.Price} (Fee: {buyTrade.Fee})")
-            .AppendLine($"Sell to: {opportunity.SellExchangeId} at {sellTrade.Price} (Fee: {sellTrade.Fee})")
-            .AppendLine($"Quantity: {buyTrade.Quantity}")
+            .AppendLine($"Buy from: {opportunity.BuyExchangeId} at {buyPrice} (Fee: {buyFee})")
+            .AppendLine($"Sell to: {opportunity.SellExchangeId} at {sellPrice} (Fee: {sellFee})")
+            .AppendLine($"Quantity: {quantity}")
             .AppendLine($"Profit: {profit} {opportunity.TradingPair.QuoteCurrency}")
-            .AppendLine($"ROI: {(profit / (buyTrade.TotalValue)) * 100:F2}%")
+            .AppendLine($"ROI: {(buyTotal > 0 ? (profit / buyTotal) * 100 : 0):F2}%")
             .AppendLine($"Buy Execution Time: {buyResult.ExecutionTimeMs}ms")
             .AppendLine($"Sell Execution Time: {sellResult.ExecutionTimeMs}ms")
             .AppendLine($"Time: {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss.fff}")
@@ -235,17 +243,17 @@ public class NotificationService : INotificationService
         var message = new StringBuilder()
             .AppendLine($"Daily Arbitrage Statistics")
             .AppendLine($"Period: {statistics.StartTime:yyyy-MM-dd HH:mm:ss} - {statistics.EndTime:yyyy-MM-dd HH:mm:ss}")
-            .AppendLine($"Total Opportunities: {statistics.TotalOpportunitiesDetected}")
-            .AppendLine($"Total Trades: {statistics.TotalTradesExecuted}")
-            .AppendLine($"Successful Trades: {statistics.SuccessfulTrades}")
-            .AppendLine($"Failed Trades: {statistics.FailedTrades}")
+            .AppendLine($"Total Opportunities: {statistics.TotalOpportunitiesCount}")
+            .AppendLine($"Total Trades: {statistics.TotalTradesCount}")
+            .AppendLine($"Successful Trades: {statistics.SuccessfulTradesCount}")
+            .AppendLine($"Failed Trades: {statistics.FailedTradesCount}")
             .AppendLine($"Success Rate: {statistics.SuccessRate:F2}%")
-            .AppendLine($"Total Profit: {statistics.TotalProfit:F8}")
-            .AppendLine($"Highest Profit: {statistics.HighestProfit:F8}")
+            .AppendLine($"Total Profit: {statistics.TotalProfitAmount:F8}")
+            .AppendLine($"Highest Profit: {statistics.HighestProfitAmount:F8}")
             .AppendLine($"Lowest Profit: {statistics.LowestProfit:F8}")
-            .AppendLine($"Average Profit: {statistics.AverageProfit:F8}")
+            .AppendLine($"Average Profit: {statistics.AverageProfitAmount:F8}")
             .AppendLine($"Total Volume: {statistics.TotalVolume:F8}")
-            .AppendLine($"Total Fees: {statistics.TotalFees:F8}")
+            .AppendLine($"Total Fees: {statistics.TotalFeesAmount:F8}")
             .AppendLine($"Avg Execution Time: {statistics.AverageExecutionTimeMs:F2}ms")
             .ToString();
         

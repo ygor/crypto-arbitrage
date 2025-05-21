@@ -1,4 +1,8 @@
 using CryptoArbitrage.Domain.Models;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace CryptoArbitrage.Application.Interfaces;
 
@@ -102,4 +106,26 @@ public interface IArbitrageRepository
     // Cleanup methods
     Task<int> DeleteOldOpportunitiesAsync(DateTimeOffset olderThan);
     Task<int> DeleteOldTradesAsync(DateTimeOffset olderThan);
+
+    /// <summary>
+    /// Gets the arbitrage statistics for a specific trading pair.
+    /// </summary>
+    /// <param name="tradingPair">The trading pair to get statistics for.</param>
+    /// <param name="fromDate">Optional start date for filtering.</param>
+    /// <param name="toDate">Optional end date for filtering.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The arbitrage statistics.</returns>
+    Task<ArbitrageStatistics> GetArbitrageStatisticsAsync(
+        string tradingPair,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Saves or updates arbitrage statistics.
+    /// </summary>
+    /// <param name="statistics">The statistics to save.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task SaveArbitrageStatisticsAsync(ArbitrageStatistics statistics, CancellationToken cancellationToken = default);
 } 

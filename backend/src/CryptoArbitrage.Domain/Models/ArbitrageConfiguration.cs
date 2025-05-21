@@ -3,68 +3,107 @@ using System.Collections.Generic;
 namespace CryptoArbitrage.Domain.Models;
 
 /// <summary>
-/// Represents the configuration for the arbitrage system.
+/// Configuration settings for arbitrage trading.
 /// </summary>
 public class ArbitrageConfiguration
 {
     /// <summary>
-    /// Gets or sets a value indicating whether the arbitrage system is enabled.
+    /// Gets or sets whether the arbitrage system is enabled.
     /// </summary>
-    public bool IsEnabled { get; set; }
-    
+    public bool IsEnabled { get; set; } = true;
+
     /// <summary>
-    /// Gets or sets the polling interval in milliseconds.
+    /// Gets or sets whether paper trading is enabled.
     /// </summary>
-    public int PollingIntervalMs { get; set; } = 100;
-    
+    public bool PaperTradingEnabled { get; set; }
+
     /// <summary>
-    /// Gets or sets the maximum number of concurrent executions.
+    /// Gets or sets whether automated trade execution is enabled.
     /// </summary>
-    public int MaxConcurrentExecutions { get; set; } = 1;
+    public bool AutoExecuteTrades { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether automated trade execution is enabled (alternative property).
+    /// </summary>
+    public bool AutoTradeEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum profit percentage required to execute a trade.
+    /// </summary>
+    public decimal MinProfitPercentage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum profit percentage required to execute a trade.
+    /// </summary>
+    public decimal MinimumProfitPercentage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum trade amount in base currency.
+    /// </summary>
+    public decimal MaxTradeAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of concurrent trades.
+    /// </summary>
+    public int MaxConcurrentTrades { get; set; }
 
     /// <summary>
     /// Gets or sets the maximum number of concurrent arbitrage operations.
     /// </summary>
-    public int MaxConcurrentArbitrageOperations { get; set; } = 3;
-    
-    /// <summary>
-    /// Gets or sets the maximum trade amount per execution in quote currency.
-    /// </summary>
-    public decimal MaxTradeAmount { get; set; } = 100m;
-    
-    /// <summary>
-    /// Gets or sets a value indicating whether to automatically execute trades.
-    /// </summary>
-    public bool AutoExecuteTrades { get; set; } = false;
+    public int MaxConcurrentArbitrageOperations { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether auto-trading is enabled.
+    /// Gets or sets the maximum number of concurrent executions.
     /// </summary>
-    public bool AutoTradeEnabled { get; set; } = false;
+    public int MaxConcurrentExecutions { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether paper trading mode is enabled.
-    /// When enabled, trades are simulated without actually executing them on exchanges.
+    /// Gets or sets the maximum number of retries for failed trades.
     /// </summary>
-    public bool PaperTradingEnabled { get; set; } = false;
+    public int MaxRetries { get; set; }
 
     /// <summary>
-    /// Gets or sets the minimum profit percentage required for an arbitrage opportunity.
+    /// Gets or sets the delay between retries in milliseconds.
     /// </summary>
-    public decimal MinimumProfitPercentage { get; set; } = 0.5m;
+    public int RetryDelayMs { get; set; }
 
     /// <summary>
-    /// Gets or sets the maximum execution time in milliseconds.
+    /// Gets or sets the polling interval in milliseconds.
     /// </summary>
-    public int MaxExecutionTimeMs { get; set; } = 3000;
+    public int PollingIntervalMs { get; set; } = 1000;
+
+    /// <summary>
+    /// Gets or sets whether to use market orders instead of limit orders.
+    /// </summary>
+    public bool UseMarketOrders { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum slippage percentage allowed.
+    /// </summary>
+    public decimal MaxSlippagePercentage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum order book depth required.
+    /// </summary>
+    public int MinOrderBookDepth { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum time to wait for order execution in milliseconds.
+    /// </summary>
+    public int MaxOrderExecutionTimeMs { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum time to wait for execution in milliseconds.
+    /// </summary>
+    public int MaxExecutionTimeMs { get; set; } = 5000;
 
     /// <summary>
     /// Gets or sets the risk profile for the arbitrage system.
     /// </summary>
     public RiskProfile RiskProfile { get; set; } = new RiskProfile();
-    
+
     /// <summary>
-    /// Gets or sets the trading pairs to monitor.
+    /// Gets or sets the list of trading pairs to monitor.
     /// </summary>
-    public IList<TradingPair> TradingPairs { get; set; } = new List<TradingPair>();
+    public List<TradingPair> TradingPairs { get; set; } = new List<TradingPair>();
 } 

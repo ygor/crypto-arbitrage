@@ -9,9 +9,48 @@ import {
   RiskProfile,
   ArbitrageConfig,
   ExchangeConfig,
-  TradeResult
+  TradeResult,
+  ActivityLogEntry,
+  ExchangeStatus,
+  ArbitrageOpportunityStatus,
+  TradeStatus,
+  ActivityType,
+  ArbitrageConfigEvaluationStrategy,
+  ArbitrageConfigExecutionStrategy
 } from '../models/types';
-import { ApiEndpoints } from './apiEndpoints';
+import { 
+  Client, 
+  ArbitrageOpportunityStatus as ClientArbitrageOpportunityStatus,
+  TradeResultStatus as ClientTradeStatus,
+  ActivityLogEntryType as ClientActivityType,
+  ArbitrageConfigEvaluationStrategy as ClientEvaluationStrategy,
+  ArbitrageConfigExecutionStrategy as ClientExecutionStrategy
+} from './generated/api-client';
+
+// Type converters for enum mappings
+const convertClientArbitrageOpportunityStatus = (clientStatus?: ClientArbitrageOpportunityStatus): ArbitrageOpportunityStatus | undefined => {
+  if (clientStatus === undefined) return undefined;
+  return clientStatus as unknown as ArbitrageOpportunityStatus;
+};
+
+const convertClientTradeStatus = (clientStatus?: ClientTradeStatus): TradeStatus | undefined => {
+  if (clientStatus === undefined) return undefined;
+  return clientStatus as unknown as TradeStatus;
+};
+
+const convertClientActivityType = (clientType: ClientActivityType): ActivityType => {
+  return clientType as unknown as ActivityType;
+};
+
+const convertClientEvaluationStrategy = (clientStrategy?: ClientEvaluationStrategy): ArbitrageConfigEvaluationStrategy | undefined => {
+  if (clientStrategy === undefined) return undefined;
+  return clientStrategy as unknown as ArbitrageConfigEvaluationStrategy;
+};
+
+const convertClientExecutionStrategy = (clientStrategy?: ClientExecutionStrategy): ArbitrageConfigExecutionStrategy | undefined => {
+  if (clientStrategy === undefined) return undefined;
+  return clientStrategy as unknown as ArbitrageConfigExecutionStrategy;
+};
 
 // Get environment variables (at runtime from window.ENV or fallback to process.env)
 declare global {
@@ -27,23 +66,8 @@ declare global {
 const BASE_URL = window.ENV?.apiUrl || process.env.REACT_APP_API_URL || 'http://localhost:5001';
 const SIGNALR_URL = window.ENV?.signalrUrl || process.env.REACT_APP_SIGNALR_URL || 'http://localhost:5001/hubs';
 
-// Configure axios instance
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 10000, // 10 seconds
-});
-
-// Add a request interceptor for authentication
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Create client from OpenAPI spec
+const client = new Client(BASE_URL);
 
 // Setup SignalR connection builder
 const buildSignalRConnection = (hubUrl: string): signalR.HubConnection => {
@@ -69,15 +93,21 @@ const startConnection = async (connection: signalR.HubConnection): Promise<signa
 // API functions
 
 // Get historical arbitrage opportunities
-export const getArbitrageOpportunities = async (): Promise<ArbitrageOpportunity[]> => {
-  const response = await api.get(ApiEndpoints.ARBITRAGE_OPPORTUNITIES);
-  return response.data;
+export const getArbitrageOpportunities = async (limit = 100): Promise<ArbitrageOpportunity[]> => {
+  const opportunities = await client.getArbitrageOpportunities(limit);
+  return opportunities.map(opp => ({
+    ...opp,
+    status: convertClientArbitrageOpportunityStatus(opp.status)
+  })) as ArbitrageOpportunity[];
 };
 
 // Get trade results
 export const getTradeResults = async (): Promise<TradeResult[]> => {
-  const response = await api.get(ApiEndpoints.ARBITRAGE_TRADES);
-  return response.data;
+  const trades = await client.getArbitrageTrades();
+  return trades.map(trade => ({
+    ...trade,
+    status: convertClientTradeStatus(trade.status)
+  })) as TradeResult[];
 };
 
 // Subscribe to arbitrage opportunities via SignalR
@@ -108,50 +138,58 @@ export const subscribeToTradeResults = (
 
 // Get arbitrage statistics
 export const getArbitrageStatistics = async (): Promise<ArbitrageStatistics> => {
-  const response = await api.get(ApiEndpoints.ARBITRAGE_STATISTICS);
-  return response.data;
+  return client.getArbitrageStatistics() as unknown as ArbitrageStatistics;
 };
 
 // API Functions for Opportunities
 export const getRecentOpportunities = async (limit: number = 20): Promise<ArbitrageOpportunity[]> => {
-  const response = await api.get(`${ApiEndpoints.OPPORTUNITIES_RECENT}?limit=${limit}`);
-  return response.data;
+  const opportunities = await client.getRecentOpportunities(limit);
+  return opportunities.map(opp => ({
+    ...opp,
+    status: convertClientArbitrageOpportunityStatus(opp.status)
+  })) as ArbitrageOpportunity[];
 };
 
 export const getOpportunitiesByTimeRange = async (
   start: string,
   end: string
 ): Promise<ArbitrageOpportunity[]> => {
-  const response = await api.get(`${ApiEndpoints.OPPORTUNITIES}?start=${start}&end=${end}`);
-  return response.data;
+  const opportunities = await client.getOpportunitiesByTimeRange(new Date(start), new Date(end));
+  return opportunities.map(opp => ({
+    ...opp,
+    status: convertClientArbitrageOpportunityStatus(opp.status)
+  })) as ArbitrageOpportunity[];
 };
 
 // API Functions for Trade Results
 export const getRecentTradeResults = async (limit: number = 20): Promise<ArbitrageTradeResult[]> => {
-  const response = await api.get(`${ApiEndpoints.TRADES_RECENT}?limit=${limit}`);
-  return response.data;
+  const trades = await client.getRecentTrades(limit);
+  return trades.map(trade => ({
+    opportunity: { id: trade.opportunityId } as ArbitrageOpportunity,
+    timestamp: trade.timestamp || new Date(),
+    isSuccess: trade.status === ClientTradeStatus._2, // Completed
+    profitAmount: trade.profitAmount || 0,
+    profitPercentage: trade.profitPercentage || 0
+  })) as ArbitrageTradeResult[];
 };
 
 export const getTradeResultsByTimeRange = async (
   start: string,
   end: string
 ): Promise<ArbitrageTradeResult[]> => {
-  const response = await api.get(`${ApiEndpoints.TRADES}?start=${start}&end=${end}`);
-  return response.data;
+  const trades = await client.getTradesByTimeRange(new Date(start), new Date(end));
+  return trades.map(trade => ({
+    opportunity: { id: trade.opportunityId } as ArbitrageOpportunity,
+    timestamp: trade.timestamp || new Date(),
+    isSuccess: trade.status === ClientTradeStatus._2, // Completed
+    profitAmount: trade.profitAmount || 0,
+    profitPercentage: trade.profitPercentage || 0
+  })) as ArbitrageTradeResult[];
 };
 
 // API Functions for Statistics
 export const getStatistics = async (): Promise<ArbitrageStatistics> => {
-  const response = await api.get(ApiEndpoints.STATISTICS);
-  return response.data;
-};
-
-export const getStatisticsByTimeRange = async (
-  start: string,
-  end: string
-): Promise<ArbitrageStatistics> => {
-  const response = await api.get(`${ApiEndpoints.STATISTICS}?start=${start}&end=${end}`);
-  return response.data;
+  return client.getStatistics() as unknown as ArbitrageStatistics;
 };
 
 // API Functions for Balances
@@ -163,65 +201,106 @@ export const getBalances = async (): Promise<Record<string, Balance[]>> => {
   // For now, return empty object to prevent errors
   console.warn('getBalances API endpoint not implemented in backend');
   return {};
-  
-  // When implemented, uncomment this:
-  // const response = await api.get('/balances');
-  // return response.data;
 };
 
 // API Functions for Configuration
 export const getRiskProfile = async (): Promise<RiskProfile> => {
-  const response = await api.get(ApiEndpoints.SETTINGS_RISK_PROFILE);
-  return response.data;
+  return client.getRiskProfile() as unknown as RiskProfile;
 };
 
 export const updateRiskProfile = async (riskProfile: RiskProfile): Promise<RiskProfile> => {
-  const response = await api.put(ApiEndpoints.SETTINGS_RISK_PROFILE, riskProfile);
-  return response.data;
+  const result = await client.updateRiskProfile(riskProfile as any);
+  return client.getRiskProfile() as unknown as RiskProfile;
 };
 
 export const getArbitrageConfig = async (): Promise<ArbitrageConfig> => {
-  const response = await api.get(ApiEndpoints.SETTINGS_ARBITRAGE);
-  return response.data;
+  const config = await client.getArbitrageConfig();
+  return {
+    ...config,
+    evaluationStrategy: convertClientEvaluationStrategy(config.evaluationStrategy),
+    executionStrategy: convertClientExecutionStrategy(config.executionStrategy)
+  } as ArbitrageConfig;
 };
 
 export const updateArbitrageConfig = async (config: ArbitrageConfig): Promise<ArbitrageConfig> => {
-  const response = await api.put(ApiEndpoints.SETTINGS_ARBITRAGE, config);
-  return response.data;
+  const clientConfig = {
+    ...config,
+    evaluationStrategy: config.evaluationStrategy as unknown as ClientEvaluationStrategy,
+    executionStrategy: config.executionStrategy as unknown as ClientExecutionStrategy
+  };
+  
+  await client.updateArbitrageConfig(clientConfig as any);
+  
+  const updatedConfig = await client.getArbitrageConfig();
+  return {
+    ...updatedConfig,
+    evaluationStrategy: convertClientEvaluationStrategy(updatedConfig.evaluationStrategy),
+    executionStrategy: convertClientExecutionStrategy(updatedConfig.executionStrategy)
+  } as ArbitrageConfig;
 };
 
 export const getExchangeConfigs = async (): Promise<ExchangeConfig[]> => {
-  const response = await api.get(ApiEndpoints.SETTINGS_EXCHANGES);
-  return response.data;
+  return client.getExchangeConfigurations() as unknown as ExchangeConfig[];
 };
 
 export const updateExchangeConfig = async (config: ExchangeConfig): Promise<ExchangeConfig> => {
-  const response = await api.post(ApiEndpoints.SETTINGS_EXCHANGES, [config]);
-  return config;
+  await client.updateExchangeConfigurations([config as any]); // The API accepts an array
+  const configs = await client.getExchangeConfigurations();
+  const updatedConfig = configs.find(c => c.exchangeId === config.exchangeId);
+  return updatedConfig as ExchangeConfig || config;
 };
 
-// Control functions
 export const startArbitrageService = async (): Promise<{ success: boolean, message: string }> => {
-  const response = await api.post(ApiEndpoints.BOT_START);
-  return response.data;
+  const result = await client.startArbitrageBot();
+  return { success: true, message: result.message || 'Bot started successfully' };
 };
 
 export const stopArbitrageService = async (): Promise<{ success: boolean, message: string }> => {
-  const response = await api.post(ApiEndpoints.BOT_STOP);
-  return response.data;
+  const result = await client.stopArbitrageBot();
+  return { success: true, message: result.message || 'Bot stopped successfully' };
 };
 
 export const getServiceStatus = async (): Promise<{ isRunning: boolean, paperTradingEnabled: boolean }> => {
-  // Get the bot running status
-  const statusResponse = await api.get(ApiEndpoints.BOT_STATUS);
-  
-  // Get the arbitrage configuration to check if paper trading is enabled
-  const configResponse = await api.get(ApiEndpoints.SETTINGS_ARBITRAGE);
-  
-  return {
-    isRunning: statusResponse.data.isRunning,
-    paperTradingEnabled: configResponse.data.paperTradingEnabled,
+  const status = await client.getBotStatus();
+  // The API doesn't provide paperTrading mode, add a placeholder
+  return { 
+    isRunning: status.isRunning || false, 
+    paperTradingEnabled: false // This will need to be added to the API spec if it's needed
   };
 };
 
-export default api; 
+export const getActivityLogs = async (limit: number = 50): Promise<ActivityLogEntry[]> => {
+  const logs = await client.getActivityLogs(limit);
+  return logs.map(log => ({
+    ...log,
+    type: convertClientActivityType(log.type)
+  })) as ActivityLogEntry[];
+};
+
+export const subscribeToActivityLogs = (
+  callback: (activityLog: ActivityLogEntry) => void
+): Promise<signalR.HubConnection> => {
+  const connection = buildSignalRConnection("/activity");
+  
+  connection.on("ActivityLogReceived", (log: ActivityLogEntry) => {
+    callback(log);
+  });
+  
+  return startConnection(connection);
+};
+
+export const getExchangeStatus = async (): Promise<ExchangeStatus[]> => {
+  return client.getExchangeStatus() as unknown as ExchangeStatus[];
+};
+
+export const subscribeToExchangeStatus = (
+  callback: (exchangeStatus: ExchangeStatus) => void
+): Promise<signalR.HubConnection> => {
+  const connection = buildSignalRConnection("/exchanges");
+  
+  connection.on("ExchangeStatusUpdated", (status: ExchangeStatus) => {
+    callback(status);
+  });
+  
+  return startConnection(connection);
+}; 

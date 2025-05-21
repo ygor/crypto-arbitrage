@@ -58,23 +58,23 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
 
   // Generate data for profit over time chart
   const profitChartData = [
-    { name: 'Day 1', profit: safeStats.totalProfit * 0.2 },
-    { name: 'Day 2', profit: safeStats.totalProfit * 0.35 },
-    { name: 'Day 3', profit: safeStats.totalProfit * 0.5 },
-    { name: 'Day 4', profit: safeStats.totalProfit * 0.75 },
-    { name: 'Day 5', profit: safeStats.totalProfit }
+    { name: 'Day 1', profit: (safeStats.totalProfit || 0) * 0.2 },
+    { name: 'Day 2', profit: (safeStats.totalProfit || 0) * 0.35 },
+    { name: 'Day 3', profit: (safeStats.totalProfit || 0) * 0.5 },
+    { name: 'Day 4', profit: (safeStats.totalProfit || 0) * 0.75 },
+    { name: 'Day 5', profit: (safeStats.totalProfit || 0) }
   ];
 
   // Calculate some derived metrics
-  const totalTrades = safeStats.successfulTrades + safeStats.failedTrades;
-  const successRate = totalTrades > 0 ? (safeStats.successfulTrades / totalTrades) * 100 : 0;
-  const avgProfitPerTrade = safeStats.successfulTrades > 0 ? safeStats.totalProfit / safeStats.successfulTrades : 0;
+  const totalTrades = (safeStats.successfulTrades || 0) + (safeStats.failedTrades || 0);
+  const successRate = totalTrades > 0 ? ((safeStats.successfulTrades || 0) / totalTrades) * 100 : 0;
+  const avgProfitPerTrade = (safeStats.successfulTrades || 0) > 0 ? (safeStats.totalProfit || 0) / (safeStats.successfulTrades || 0) : 0;
   
   return (
     <Box sx={{ flexGrow: 1, mt: 3 }}>
       <Typography variant="h5" gutterBottom>Arbitrage Statistics Dashboard</Typography>
       <Typography variant="subtitle1" gutterBottom color="text.secondary">
-        {new Date(safeStats.startTime).toLocaleDateString()} - {new Date(safeStats.endTime).toLocaleDateString()}
+        {new Date(safeStats.startTime || new Date()).toLocaleDateString()} - {new Date(safeStats.endTime || new Date()).toLocaleDateString()}
       </Typography>
       
       {/* Key Metrics */}
@@ -92,14 +92,14 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
         />
         <MetricCard 
           title="Opportunities" 
-          value={safeStats.totalOpportunitiesDetected.toString()}
-          subtitle={`${safeStats.totalTradesExecuted} executed`}
+          value={(safeStats.totalOpportunitiesDetected || 0).toString()}
+          subtitle={`${safeStats.totalTradesExecuted || 0} executed`}
           color="#2196f3"
         />
         <MetricCard 
           title="Success Rate" 
           value={`${safeToFixed(successRate, 1)}%`}
-          subtitle={`${safeStats.successfulTrades}/${totalTrades} trades`}
+          subtitle={`${safeStats.successfulTrades || 0}/${totalTrades} trades`}
           color={successRate > 75 ? '#4caf50' : successRate > 50 ? '#ff9800' : '#f44336'}
         />
         <MetricCard 
@@ -185,7 +185,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ statistics })
                   {[
                     <Cell key="cell-0" fill="#2196f3" />,
                     <Cell key="cell-1" fill="#4caf50" />,
-                    <Cell key="cell-2" fill={safeStats.lowestProfit < 0 ? '#f44336' : '#ff9800'} />
+                    <Cell key="cell-2" fill={(safeStats.lowestProfit || 0) < 0 ? '#f44336' : '#ff9800'} />
                   ]}
                 </Bar>
               </BarChart>

@@ -2,9 +2,15 @@ using CryptoArbitrage.Api.Hubs;
 using CryptoArbitrage.Api.Services;
 using CryptoArbitrage.Application;
 using CryptoArbitrage.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
+using NJsonSchema;
+using NSwag.AspNetCore;
 using Serilog;
 using Serilog.Events;
+using System.Reflection;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,12 +22,22 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+// Add health checks
+builder.Services.AddHealthChecks();
+
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+
+// Add Swagger/OpenAPI generation
+builder.Services.AddSwaggerGen(options =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "CryptoArbitrage API", Version = "v1" });
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Crypto Arbitrage API",
+        Version = "v1",
+        Description = "API for cryptocurrency arbitrage operations"
+    });
 });
 
 // Configure CORS for the frontend
@@ -54,21 +70,46 @@ builder.Services.AddHostedService<SignalRBroadcastService>();
 
 var app = builder.Build();
 
+// Map health check endpoint
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            Status = report.Status.ToString(),
+            Results = report.Entries.ToDictionary(
+                entry => entry.Key,
+                entry => new
+                {
+                    Status = entry.Value.Status.ToString(),
+                    Description = entry.Value.Description,
+                    Duration = entry.Value.Duration.TotalMilliseconds
+                })
+        };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+    }
+});
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwagger(); // Serve OpenAPI/Swagger documents
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Crypto Arbitrage API v1");
+    });
 }
 
 app.UseSerilogRequestLogging();
 
-// Only use HTTPS redirection if not running in Docker and if configured to use HTTPS
+// Only use HTTPS redirection if not running in Docker, not in development mode, and if configured to use HTTPS
 var isRunningInDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 var aspNetCoreUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "";
 var isHttpsConfigured = aspNetCoreUrls.Contains("https://");
 
-if (!isRunningInDocker && isHttpsConfigured)
+if (!isRunningInDocker && !app.Environment.IsDevelopment() && isHttpsConfigured)
 {
     app.UseHttpsRedirection();
 }

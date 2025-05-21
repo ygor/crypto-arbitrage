@@ -6,12 +6,12 @@ namespace CryptoArbitrage.Domain.Models;
 public enum OrderSide
 {
     /// <summary>
-    /// Buy order.
+    /// A buy order.
     /// </summary>
-    Buy,
-    
+    Buy = 0,
+
     /// <summary>
-    /// Sell order.
+    /// A sell order.
     /// </summary>
-    Sell
+    Sell = 1
 } 

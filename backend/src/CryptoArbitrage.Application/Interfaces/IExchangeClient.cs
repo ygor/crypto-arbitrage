@@ -120,4 +120,12 @@ public interface IExchangeClient
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task AuthenticateAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Gets the trading fee rate for a specific trading pair.
+    /// </summary>
+    /// <param name="tradingPair">The trading pair to get the fee rate for.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The fee rate as a decimal (e.g., 0.001 for 0.1%).</returns>
+    Task<decimal> GetTradingFeeRateAsync(TradingPair tradingPair, CancellationToken cancellationToken = default);
 } 

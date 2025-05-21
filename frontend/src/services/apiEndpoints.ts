@@ -22,23 +22,31 @@ export const API_ENDPOINTS = {
   
   ARBITRAGE: {
     GET_OPPORTUNITIES: '/api/arbitrage/opportunities',
-    GET_BY_ID: '/api/arbitrage/opportunities',
+    GET_TRADES: '/api/arbitrage/trades',
     GET_STATISTICS: '/api/arbitrage/statistics',
   },
   
+  OPPORTUNITIES: {
+    GET_RECENT: '/api/opportunities/recent',
+    GET_BY_TIMERANGE: '/api/opportunities',
+  },
+  
   TRADES: {
-    EXECUTE: '/api/trades/execute',
-    GET_ALL: '/api/trades',
-    GET_BY_ID: '/api/trades',
     GET_RECENT: '/api/trades/recent',
+    GET_BY_TIMERANGE: '/api/trades',
+  },
+  
+  STATISTICS: {
+    GET: '/api/statistics',
   },
   
   SETTINGS: {
     GET: '/api/settings',
     UPDATE: '/api/settings',
-    GET_RISK_PROFILE: '/api/settings/risk-profile',
+    RISK_PROFILE: '/api/settings/risk-profile',
     UPDATE_RISK_PROFILE: '/api/settings/risk-profile',
-    GET_EXCHANGES: '/api/settings/exchanges',
+    ARBITRAGE: '/api/settings/arbitrage',
+    EXCHANGES: '/api/settings/exchanges',
     UPDATE_EXCHANGE: '/api/settings/exchanges',
   },
   
@@ -46,6 +54,8 @@ export const API_ENDPOINTS = {
     START: '/api/bot/start',
     STOP: '/api/bot/stop',
     STATUS: '/api/bot/status',
+    ACTIVITY_LOGS: '/api/bot/activity-logs',
+    EXCHANGE_STATUS: '/api/bot/exchange-status',
   },
 };
 
@@ -67,7 +77,9 @@ export const ApiEndpoints = {
   SETTINGS_ARBITRAGE: '/api/settings/arbitrage',
   SETTINGS_EXCHANGES: '/api/settings/exchanges',
   
-  BOT_START: '/api/settings/bot/start',
-  BOT_STOP: '/api/settings/bot/stop',
-  BOT_STATUS: '/api/settings/bot/status',
+  BOT_START: '/api/bot/start',
+  BOT_STOP: '/api/bot/stop',
+  BOT_STATUS: '/api/bot/status',
+  BOT_ACTIVITY_LOGS: '/api/bot/activity-logs',
+  BOT_EXCHANGE_STATUS: '/api/bot/exchange-status',
 }; 

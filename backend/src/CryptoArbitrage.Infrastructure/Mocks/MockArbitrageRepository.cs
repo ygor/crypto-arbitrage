@@ -33,51 +33,51 @@ public class MockArbitrageRepository : IArbitrageRepository
     {
         var tradeResult = new TradeResult
         {
-            Id = Guid.NewGuid().ToString(),
-            OpportunityId = opportunity.Id,
+            Id = Guid.NewGuid(),
+            OpportunityId = Guid.Parse(opportunity.Id),
             TradingPair = opportunity.TradingPair.ToString(),
             BuyExchangeId = opportunity.BuyExchangeId,
             SellExchangeId = opportunity.SellExchangeId,
             BuyPrice = opportunity.BuyPrice,
             SellPrice = opportunity.SellPrice,
             Quantity = opportunity.EffectiveQuantity,
-            Timestamp = timestamp,
+            Timestamp = timestamp.DateTime,
             Status = TradeStatus.Completed,
             ProfitAmount = profit,
             ProfitPercentage = (profit / (opportunity.BuyPrice * opportunity.EffectiveQuantity)) * 100m,
-            BuyResult = buyResult != null ? new BuyTradeResult
+            BuyResult = buyResult != null ? new TradeSubResult
             {
                 OrderId = buyResult.OrderId,
                 ClientOrderId = buyResult.ClientOrderId,
-                RequestedPrice = buyResult.RequestedPrice,
-                ExecutedPrice = buyResult.ExecutedPrice,
-                RequestedQuantity = buyResult.RequestedQuantity,
-                ExecutedQuantity = buyResult.ExecutedQuantity,
-                TotalValue = buyResult.TotalValue,
-                Fee = buyResult.Fee,
+                Side = OrderSide.Buy,
+                Quantity = buyResult.RequestedQuantity,
+                Price = buyResult.RequestedPrice,
+                FilledQuantity = buyResult.ExecutedQuantity,
+                AverageFillPrice = buyResult.ExecutedPrice,
+                FeeAmount = buyResult.Fee,
                 FeeCurrency = buyResult.FeeCurrency,
+                Status = buyResult.IsSuccess ? OrderStatus.Filled : OrderStatus.Rejected,
                 Timestamp = buyResult.Timestamp,
-                IsSuccess = buyResult.IsSuccess,
                 ErrorMessage = buyResult.ErrorMessage
             } : null,
-            SellResult = sellResult != null ? new SellTradeResult
+            SellResult = sellResult != null ? new TradeSubResult
             {
                 OrderId = sellResult.OrderId,
                 ClientOrderId = sellResult.ClientOrderId,
-                RequestedPrice = sellResult.RequestedPrice,
-                ExecutedPrice = sellResult.ExecutedPrice,
-                RequestedQuantity = sellResult.RequestedQuantity,
-                ExecutedQuantity = sellResult.ExecutedQuantity,
-                TotalValue = sellResult.TotalValue,
-                Fee = sellResult.Fee,
+                Side = OrderSide.Sell,
+                Quantity = sellResult.RequestedQuantity,
+                Price = sellResult.RequestedPrice,
+                FilledQuantity = sellResult.ExecutedQuantity,
+                AverageFillPrice = sellResult.ExecutedPrice,
+                FeeAmount = sellResult.Fee,
                 FeeCurrency = sellResult.FeeCurrency,
+                Status = sellResult.IsSuccess ? OrderStatus.Filled : OrderStatus.Rejected,
                 Timestamp = sellResult.Timestamp,
-                IsSuccess = sellResult.IsSuccess,
                 ErrorMessage = sellResult.ErrorMessage
             } : null
         };
         
-        _trades[tradeResult.Id] = tradeResult;
+        _trades[tradeResult.Id.ToString()] = tradeResult;
         return Task.CompletedTask;
     }
 
@@ -96,7 +96,7 @@ public class MockArbitrageRepository : IArbitrageRepository
         
         foreach (var trade in _trades.Values.Where(t => t.Timestamp >= start && t.Timestamp <= end))
         {
-            if (_opportunities.TryGetValue(trade.OpportunityId, out var opportunity))
+            if (_opportunities.TryGetValue(trade.OpportunityId.ToString(), out var opportunity))
             {
                 if (trade.BuyResult != null && trade.SellResult != null)
                 {
@@ -105,15 +105,15 @@ public class MockArbitrageRepository : IArbitrageRepository
                     {
                         OrderId = trade.BuyResult.OrderId,
                         ClientOrderId = trade.BuyResult.ClientOrderId,
-                        RequestedPrice = trade.BuyResult.RequestedPrice,
-                        ExecutedPrice = trade.BuyResult.ExecutedPrice,
-                        RequestedQuantity = trade.BuyResult.RequestedQuantity,
-                        ExecutedQuantity = trade.BuyResult.ExecutedQuantity,
-                        TotalValue = trade.BuyResult.TotalValue,
-                        Fee = trade.BuyResult.Fee,
+                        RequestedPrice = trade.BuyResult.Price,
+                        ExecutedPrice = trade.BuyResult.AverageFillPrice,
+                        RequestedQuantity = trade.BuyResult.Quantity,
+                        ExecutedQuantity = trade.BuyResult.FilledQuantity,
+                        TotalValue = trade.BuyResult.AverageFillPrice * trade.BuyResult.FilledQuantity,
+                        Fee = trade.BuyResult.FeeAmount,
                         FeeCurrency = trade.BuyResult.FeeCurrency,
                         Timestamp = trade.BuyResult.Timestamp,
-                        IsSuccess = trade.BuyResult.IsSuccess,
+                        IsSuccess = trade.BuyResult.Status == OrderStatus.Filled,
                         ErrorMessage = trade.BuyResult.ErrorMessage,
                         TradeType = TradeType.Buy
                     };
@@ -123,15 +123,15 @@ public class MockArbitrageRepository : IArbitrageRepository
                     {
                         OrderId = trade.SellResult.OrderId,
                         ClientOrderId = trade.SellResult.ClientOrderId,
-                        RequestedPrice = trade.SellResult.RequestedPrice,
-                        ExecutedPrice = trade.SellResult.ExecutedPrice,
-                        RequestedQuantity = trade.SellResult.RequestedQuantity,
-                        ExecutedQuantity = trade.SellResult.ExecutedQuantity,
-                        TotalValue = trade.SellResult.TotalValue,
-                        Fee = trade.SellResult.Fee,
+                        RequestedPrice = trade.SellResult.Price,
+                        ExecutedPrice = trade.SellResult.AverageFillPrice,
+                        RequestedQuantity = trade.SellResult.Quantity,
+                        ExecutedQuantity = trade.SellResult.FilledQuantity,
+                        TotalValue = trade.SellResult.AverageFillPrice * trade.SellResult.FilledQuantity,
+                        Fee = trade.SellResult.FeeAmount,
                         FeeCurrency = trade.SellResult.FeeCurrency,
                         Timestamp = trade.SellResult.Timestamp,
-                        IsSuccess = trade.SellResult.IsSuccess,
+                        IsSuccess = trade.SellResult.Status == OrderStatus.Filled,
                         ErrorMessage = trade.SellResult.ErrorMessage,
                         TradeType = TradeType.Sell
                     };
@@ -205,12 +205,12 @@ public class MockArbitrageRepository : IArbitrageRepository
 
     public Task<TradeResult> SaveTradeResultAsync(TradeResult tradeResult)
     {
-        if (string.IsNullOrWhiteSpace(tradeResult.Id))
+        if (tradeResult.Id == Guid.Empty)
         {
-            tradeResult.Id = Guid.NewGuid().ToString();
+            tradeResult.Id = Guid.NewGuid();
         }
         
-        _trades[tradeResult.Id] = tradeResult;
+        _trades[tradeResult.Id.ToString()] = tradeResult;
         return Task.FromResult(tradeResult);
     }
 
@@ -242,15 +242,17 @@ public class MockArbitrageRepository : IArbitrageRepository
 
     public Task<TradeResult?> GetTradeByIdAsync(string id)
     {
-        return _trades.TryGetValue(id, out var trade) 
-            ? Task.FromResult<TradeResult?>(trade) 
-            : Task.FromResult<TradeResult?>(null);
+        if (Guid.TryParse(id, out var guidId))
+        {
+            return Task.FromResult(_trades.TryGetValue(guidId.ToString(), out var tradeResult) ? tradeResult : null);
+        }
+        return Task.FromResult<TradeResult?>(null);
     }
 
     public Task<List<TradeResult>> GetTradesByOpportunityIdAsync(string opportunityId)
     {
         var result = _trades.Values
-            .Where(t => t.OpportunityId == opportunityId)
+            .Where(t => t.OpportunityId.ToString() == opportunityId)
             .OrderByDescending(t => t.Timestamp)
             .ToList();
             
@@ -316,12 +318,52 @@ public class MockArbitrageRepository : IArbitrageRepository
         int count = 0;
         foreach (var trade in oldTrades)
         {
-            if (_trades.TryRemove(trade.Id, out _))
+            if (_trades.TryRemove(trade.Id.ToString(), out _))
             {
                 count++;
             }
         }
         
         return Task.FromResult(count);
+    }
+
+    /// <inheritdoc />
+    public Task<ArbitrageStatistics> GetArbitrageStatisticsAsync(string tradingPair, DateTime? startDate = null, DateTime? endDate = null, CancellationToken cancellationToken = default)
+    {
+        // Try to find statistics for the specified trading pair
+        var stats = _statistics.Values
+            .Where(s => s.TradingPair == tradingPair)
+            .FirstOrDefault();
+            
+        if (stats == null)
+        {
+            // Create new statistics object if none exists
+            stats = new ArbitrageStatistics
+            {
+                TradingPair = tradingPair,
+                CreatedAt = DateTime.UtcNow,
+                StartTime = startDate.HasValue ? new DateTimeOffset(startDate.Value) : DateTimeOffset.UtcNow.AddDays(-1),
+                EndTime = endDate.HasValue ? new DateTimeOffset(endDate.Value) : DateTimeOffset.UtcNow
+            };
+        }
+        
+        return Task.FromResult(stats);
+    }
+    
+    /// <inheritdoc />
+    public Task SaveArbitrageStatisticsAsync(ArbitrageStatistics statistics, CancellationToken cancellationToken = default)
+    {
+        // Update LastUpdatedAt timestamp
+        statistics.LastUpdatedAt = DateTime.UtcNow;
+        
+        // Store in the dictionary using the timestamp as key
+        _statistics[DateTimeOffset.UtcNow] = statistics;
+        
+        return Task.CompletedTask;
+    }
+
+    private string GenerateId()
+    {
+        return Guid.NewGuid().ToString();
     }
 } 

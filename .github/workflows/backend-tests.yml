@@ -1,0 +1,55 @@
+name: Backend Tests
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+  push:
+    branches: 
+      - main
+      - develop
+    paths:
+      - 'backend/**'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  test-backend:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+      
+      - name: Install dependencies
+        run: dotnet restore backend/CryptoArbitrage.sln
+      
+      - name: Build
+        run: dotnet build backend/CryptoArbitrage.sln --configuration Release --no-restore
+      
+      - name: Test Domain
+        run: dotnet test backend/tests/CryptoArbitrage.Tests/CryptoArbitrage.Tests.csproj --no-build --verbosity normal --filter "Category=Domain"
+      
+      - name: Test Application
+        run: dotnet test backend/tests/CryptoArbitrage.Application.Tests/CryptoArbitrage.Application.Tests.csproj --no-build --verbosity normal
+      
+      - name: Test Infrastructure
+        run: dotnet test backend/tests/CryptoArbitrage.Tests/CryptoArbitrage.Tests.csproj --no-build --verbosity normal --filter "Category=Infrastructure"
+      
+      - name: Generate test coverage
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          dotnet test backend/CryptoArbitrage.sln --collect:"XPlat Code Coverage" --results-directory ./coverage
+          reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:HtmlInline_AzurePipelines
+      
+      - name: Upload test coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-coverage-report
+          path: ./coverage/report
+          retention-days: 7 

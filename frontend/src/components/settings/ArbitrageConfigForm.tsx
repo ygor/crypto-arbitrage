@@ -18,9 +18,15 @@ interface ArbitrageConfigFormProps {
 }
 
 const ArbitrageConfigForm: React.FC<ArbitrageConfigFormProps> = ({ config, onSave }) => {
-  const [formValues, setFormValues] = useState<ArbitrageConfig>({ ...config });
+  const [formValues, setFormValues] = useState<ArbitrageConfig>({ 
+    ...config,
+    tradingPairs: config.tradingPairs || []
+  });
   const [newBaseCurrency, setNewBaseCurrency] = useState('');
   const [newQuoteCurrency, setNewQuoteCurrency] = useState('');
+  
+  // Ensure tradingPairs is always an array
+  const tradingPairs = formValues.tradingPairs || [];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, checked, type } = e.target;
@@ -41,20 +47,20 @@ const ArbitrageConfigForm: React.FC<ArbitrageConfigFormProps> = ({ config, onSav
 
   const handleAddTradingPair = () => {
     if (newBaseCurrency && newQuoteCurrency) {
-      const newPair: TradingPair = {
+      const newPair = {
         baseCurrency: newBaseCurrency.toUpperCase(),
         quoteCurrency: newQuoteCurrency.toUpperCase()
       };
       
       // Check if pair already exists
-      const pairExists = formValues.tradingPairs.some(
+      const pairExists = tradingPairs.some(
         pair => pair.baseCurrency === newPair.baseCurrency && pair.quoteCurrency === newPair.quoteCurrency
       );
       
       if (!pairExists) {
         setFormValues(prev => ({
           ...prev,
-          tradingPairs: [...prev.tradingPairs, newPair]
+          tradingPairs: [...tradingPairs, newPair]
         }));
         setNewBaseCurrency('');
         setNewQuoteCurrency('');
@@ -65,7 +71,7 @@ const ArbitrageConfigForm: React.FC<ArbitrageConfigFormProps> = ({ config, onSav
   const handleRemoveTradingPair = (index: number) => {
     setFormValues(prev => ({
       ...prev,
-      tradingPairs: prev.tradingPairs.filter((_, i) => i !== index)
+      tradingPairs: tradingPairs.filter((_, i) => i !== index)
     }));
   };
 
@@ -217,10 +223,10 @@ const ArbitrageConfigForm: React.FC<ArbitrageConfigFormProps> = ({ config, onSav
         </Stack>
         
         <Box sx={{ mt: 2, mb: 3 }}>
-          {formValues.tradingPairs.length > 0 ? (
+          {tradingPairs.length > 0 ? (
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {formValues.tradingPairs.map((pair, index) => (
+                {tradingPairs.map((pair, index) => (
                   <Box 
                     key={index}
                     sx={{ 

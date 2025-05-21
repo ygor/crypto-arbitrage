@@ -13,17 +13,24 @@ interface OpportunitiesListProps {
   title?: string;
 }
 
-const getStatusColor = (status: ArbitrageOpportunityStatus) => {
+const getStatusColor = (status?: ArbitrageOpportunityStatus | string) => {
+  if (status === undefined) return 'default';
+  
   switch (status) {
     case ArbitrageOpportunityStatus.Detected:
+    case 'Detected':
       return 'info';
     case ArbitrageOpportunityStatus.Executing:
+    case 'Executing':
       return 'warning';
     case ArbitrageOpportunityStatus.Executed:
+    case 'Executed':
       return 'success';
     case ArbitrageOpportunityStatus.Failed:
+    case 'Failed':
       return 'error';
     case ArbitrageOpportunityStatus.Missed:
+    case 'Missed':
       return 'default';
     default:
       return 'default';
@@ -31,12 +38,14 @@ const getStatusColor = (status: ArbitrageOpportunityStatus) => {
 };
 
 // Calculate spread percentage as a fallback
-const calculateSpreadPercentage = (buyPrice: number, sellPrice: number): number => {
+const calculateSpreadPercentage = (buyPrice?: number, sellPrice?: number): number => {
+  if (!buyPrice || !sellPrice) return 0;
   return ((sellPrice - buyPrice) / buyPrice) * 100;
 };
 
 // Calculate estimated profit as a fallback
-const calculateEstimatedProfit = (buyPrice: number, sellPrice: number, quantity: number): number => {
+const calculateEstimatedProfit = (buyPrice?: number, sellPrice?: number, quantity?: number): number => {
+  if (!buyPrice || !sellPrice || !quantity) return 0;
   return (sellPrice - buyPrice) * quantity;
 };
 
@@ -75,33 +84,35 @@ const OpportunitiesList: React.FC<OpportunitiesListProps> = ({
               opportunities.map((opportunity, index) => (
                 <TableRow key={opportunity.id || index} hover>
                   <TableCell>
-                    {opportunity.tradingPair.baseCurrency}/{opportunity.tradingPair.quoteCurrency}
+                    {opportunity.tradingPair?.baseCurrency}/{opportunity.tradingPair?.quoteCurrency}
                   </TableCell>
                   <TableCell>{opportunity.buyExchangeId}</TableCell>
-                  <TableCell>${opportunity.buyPrice.toFixed(2)}</TableCell>
+                  <TableCell>${opportunity.buyPrice?.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>{opportunity.sellExchangeId}</TableCell>
-                  <TableCell>${opportunity.sellPrice.toFixed(2)}</TableCell>
+                  <TableCell>${opportunity.sellPrice?.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>
-                    {opportunity.spreadPercentage !== undefined 
-                      ? opportunity.spreadPercentage.toFixed(2) 
-                      : calculateSpreadPercentage(opportunity.buyPrice, opportunity.sellPrice).toFixed(2)}%
+                    {(opportunity.spreadPercentage !== undefined 
+                      ? opportunity.spreadPercentage 
+                      : calculateSpreadPercentage(opportunity.buyPrice, opportunity.sellPrice)).toFixed(2)}%
                   </TableCell>
                   <TableCell>
-                    ${opportunity.estimatedProfit !== undefined 
-                      ? opportunity.estimatedProfit.toFixed(2) 
+                    ${(opportunity.estimatedProfit !== undefined 
+                      ? opportunity.estimatedProfit 
                       : (opportunity.potentialProfit !== undefined 
-                          ? opportunity.potentialProfit.toFixed(2)
-                          : calculateEstimatedProfit(opportunity.buyPrice, opportunity.sellPrice, opportunity.quantity).toFixed(2))}
+                          ? opportunity.potentialProfit
+                          : calculateEstimatedProfit(opportunity.buyPrice, opportunity.sellPrice, opportunity.quantity))).toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <Chip 
-                      label={opportunity.status} 
+                      label={opportunity.status || 'Unknown'} 
                       color={getStatusColor(opportunity.status) as any}
                       size="small"
                     />
                   </TableCell>
                   <TableCell>
-                    {new Date(opportunity.detectedAt || opportunity.timestamp).toLocaleString()}
+                    {opportunity.detectedAt || opportunity.timestamp 
+                      ? new Date(opportunity.detectedAt || opportunity.timestamp || '').toLocaleString()
+                      : 'N/A'}
                   </TableCell>
                 </TableRow>
               ))

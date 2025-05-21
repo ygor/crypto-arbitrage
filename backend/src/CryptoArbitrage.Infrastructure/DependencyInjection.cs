@@ -40,7 +40,7 @@ public static class DependencyInjection
         services.AddSingleton<IArbitrageDetectionService, ArbitrageDetectionService>();
         services.AddSingleton<IArbitrageService, ArbitrageService>();
         services.AddSingleton<INotificationService, NotificationService>();
-        services.AddSingleton<IPaperTradingService, PaperTradingService>();
+        services.AddSingleton<IPaperTradingService, CryptoArbitrage.Infrastructure.Services.PaperTradingService>();
         
         // Register HTTP clients for exchanges
         services.AddHttpClient<CoinbaseExchangeClient>()

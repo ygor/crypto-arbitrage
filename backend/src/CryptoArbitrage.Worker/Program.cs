@@ -26,43 +26,40 @@ try
 {
     Log.Information("Starting CryptoArbitrage Worker");
 
-    IHost host = Host.CreateDefaultBuilder(args)
-        .ConfigureAppConfiguration((hostContext, config) =>
-        {
-            // Add additional configuration sources if needed
-            config.AddEnvironmentVariables(prefix: "CryptoArbitrage_");
-        })
-        .UseSerilog((hostContext, loggerConfiguration) => 
-        {
-            loggerConfiguration
-                .ReadFrom.Configuration(hostContext.Configuration)
-                .Enrich.FromLogContext();
-        })
-        .ConfigureServices((hostContext, services) =>
-        {
-            // Configure settings from appsettings.json
-            var configuration = hostContext.Configuration;
+    var builder = Host.CreateApplicationBuilder(args);
+    
+    // Add additional configuration sources if needed
+    builder.Configuration.AddEnvironmentVariables(prefix: "CryptoArbitrage_");
+    
+    // Configure Serilog
+    builder.Services.AddSerilog(Log.Logger);
+    
+    // Configure services
+    var configuration = builder.Configuration;
 
-            // Add application services
-            services.AddApplicationServices();
+    // Add health checks
+    builder.Services.AddHealthChecks();
 
-            // Add infrastructure services
-            services.AddInfrastructureServices();
+    // Add application services
+    builder.Services.AddApplicationServices();
 
-            // Register the Worker service as a hosted service
-            services.AddHostedService<Worker>();
+    // Add infrastructure services
+    builder.Services.AddInfrastructureServices();
 
-            // Add services to the container.
-            services.AddHostedService<PerformanceDiagnosticsService>();
+    // Register the Worker service as a hosted service
+    builder.Services.AddHostedService<Worker>();
 
-            // Add configuration services - changed from Scoped to Singleton to match Infrastructure registration
-            services.AddSingleton<IConfigurationService, ConfigurationService>();
-            services.AddSingleton<ConfigurationLoader>();
+    // Add services to the container.
+    builder.Services.AddHostedService<PerformanceDiagnosticsService>();
 
-            // Make sure IArbitrageRepository is registered
-            services.AddSingleton<IArbitrageRepository, ArbitrageRepository>();
-        })
-        .Build();
+    // Add configuration services - changed from Scoped to Singleton to match Infrastructure registration
+    builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+    builder.Services.AddSingleton<ConfigurationLoader>();
+
+    // Make sure IArbitrageRepository is registered
+    builder.Services.AddSingleton<IArbitrageRepository, ArbitrageRepository>();
+    
+    var host = builder.Build();
 
     // Run the host
     await host.RunAsync();

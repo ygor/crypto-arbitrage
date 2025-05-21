@@ -2,12 +2,18 @@ using CryptoArbitrage.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Reflection;
+using CryptoArbitrage.Api.Controllers.Interfaces;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
+using Microsoft.Extensions.Logging;
+using ApiModels = CryptoArbitrage.Api.Models;
 
 namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
 [Route("api/health")]
-public class HealthController : ControllerBase
+public class HealthController : ControllerBase, IHealthController
 {
     private readonly IArbitrageService _arbitrageService;
     private readonly ILogger<HealthController> _logger;
@@ -22,7 +28,7 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetHealth()
+    public async Task<ApiModels.HealthStatus> GetHealthAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -30,63 +36,59 @@ public class HealthController : ControllerBase
             var memoryMB = process.WorkingSet64 / 1024 / 1024;
             var cpuUsage = process.TotalProcessorTime.TotalMilliseconds / 
                            (Environment.ProcessorCount * (DateTime.UtcNow - process.StartTime).TotalMilliseconds) * 100;
-            var isRunning = await _arbitrageService.IsRunningAsync();
+            var isRunning = _arbitrageService.IsRunning;
             
-            var health = new
+            return new ApiModels.HealthStatus
             {
-                Status = "Healthy",
-                Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0",
-                Uptime = (DateTime.UtcNow - _startTime).ToString(),
-                MemoryUsageMB = memoryMB,
-                CpuUsagePercent = Math.Round(cpuUsage, 2),
-                CryptoArbitrageBotRunning = isRunning,
-                Timestamp = DateTime.UtcNow
+                status = "Healthy",
+                version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0",
+                uptime = (DateTime.UtcNow - _startTime).ToString(),
+                memoryUsageMB = (int)memoryMB,
+                cpuUsagePercent = Math.Round(cpuUsage, 2),
+                cryptoArbitrageBotRunning = isRunning,
+                timestamp = DateTime.UtcNow.ToString("o")
             };
-
-            return Ok(health);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking health");
-            return StatusCode(500, new { Status = "Unhealthy", Error = ex.Message });
+            throw;
         }
     }
 
     [HttpGet("metrics")]
-    public async Task<IActionResult> GetMetrics()
+    public async Task<ApiModels.SystemMetrics> GetMetricsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             var process = Process.GetCurrentProcess();
-            var isRunning = await _arbitrageService.IsRunningAsync();
+            var isRunning = _arbitrageService.IsRunning;
             
-            var metrics = new
+            return new ApiModels.SystemMetrics
             {
-                Process = new
+                process = new ApiModels.ProcessMetrics
                 {
-                    MemoryUsageMB = process.WorkingSet64 / 1024 / 1024,
-                    TotalCpuTime = process.TotalProcessorTime.TotalSeconds,
-                    UserProcessorTime = process.UserProcessorTime.TotalSeconds,
-                    ThreadCount = process.Threads.Count,
-                    HandleCount = process.HandleCount,
-                    StartTime = process.StartTime.ToUniversalTime(),
-                    UptimeSeconds = (DateTime.UtcNow - process.StartTime).TotalSeconds
+                    memoryUsageMB = (int)(process.WorkingSet64 / 1024 / 1024),
+                    totalCpuTime = process.TotalProcessorTime.TotalSeconds,
+                    userProcessorTime = process.UserProcessorTime.TotalSeconds,
+                    threadCount = process.Threads.Count,
+                    handleCount = process.HandleCount,
+                    startTime = process.StartTime.ToUniversalTime().ToString("o"),
+                    uptimeSeconds = (DateTime.UtcNow - process.StartTime).TotalSeconds
                 },
-                Application = new
+                application = new ApiModels.ApplicationMetrics
                 {
-                    CryptoArbitrageBotRunning = isRunning,
-                    ApiRequestsPerMinute = 0, // Placeholder for actual metrics
-                    ActiveConnections = 0,    // Placeholder for actual metrics
-                    ErrorRate = 0            // Placeholder for actual metrics
+                    cryptoArbitrageBotRunning = isRunning,
+                    apiRequestsPerMinute = 0, // Placeholder for actual metrics
+                    activeConnections = 0,    // Placeholder for actual metrics
+                    errorRate = 0            // Placeholder for actual metrics
                 }
             };
-
-            return Ok(metrics);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting metrics");
-            return StatusCode(500, new { Error = ex.Message });
+            throw;
         }
     }
 } 

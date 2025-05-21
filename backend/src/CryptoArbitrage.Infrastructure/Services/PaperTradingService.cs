@@ -179,7 +179,7 @@ public class PaperTradingService : IPaperTradingService
             {
                 IsSuccess = true,
                 OrderId = $"paper-{Guid.NewGuid()}",
-                Timestamp = DateTimeOffset.UtcNow,
+                Timestamp = DateTimeOffset.UtcNow.DateTime,
                 TradingPair = tradingPair.ToString(),
                 TradeType = TradeType.Buy,
                 RequestedPrice = 0, // Market order has no requested price
@@ -260,7 +260,7 @@ public class PaperTradingService : IPaperTradingService
             {
                 IsSuccess = true,
                 OrderId = $"paper-{Guid.NewGuid()}",
-                Timestamp = DateTimeOffset.UtcNow,
+                Timestamp = DateTimeOffset.UtcNow.DateTime,
                 TradingPair = tradingPair.ToString(),
                 TradeType = TradeType.Sell,
                 RequestedPrice = 0, // Market order has no requested price
@@ -362,7 +362,7 @@ public class PaperTradingService : IPaperTradingService
         {
             IsSuccess = false,
             OrderId = $"paper-failed-{Guid.NewGuid()}",
-            Timestamp = DateTimeOffset.UtcNow,
+            Timestamp = DateTimeOffset.UtcNow.DateTime,
             TradingPair = tradingPair.ToString(),
             TradeType = tradeType,
             RequestedQuantity = quantity,

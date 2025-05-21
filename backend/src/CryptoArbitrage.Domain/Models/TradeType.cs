@@ -1,17 +1,42 @@
 namespace CryptoArbitrage.Domain.Models;
 
 /// <summary>
-/// Represents the type of a trade (buy or sell).
+/// Enum representing different types of trades.
 /// </summary>
 public enum TradeType
 {
     /// <summary>
-    /// Buy order.
+    /// Unknown trade type.
     /// </summary>
-    Buy,
+    Unknown = 0,
     
     /// <summary>
-    /// Sell order.
+    /// Buy trade.
     /// </summary>
-    Sell
+    Buy = 1,
+    
+    /// <summary>
+    /// Sell trade.
+    /// </summary>
+    Sell = 2,
+    
+    /// <summary>
+    /// Deposit.
+    /// </summary>
+    Deposit = 3,
+    
+    /// <summary>
+    /// Withdrawal.
+    /// </summary>
+    Withdrawal = 4,
+    
+    /// <summary>
+    /// Fee.
+    /// </summary>
+    Fee = 5,
+    
+    /// <summary>
+    /// Transfer between accounts.
+    /// </summary>
+    Transfer = 6
 } 

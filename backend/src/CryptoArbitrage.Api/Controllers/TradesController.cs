@@ -1,12 +1,20 @@
 using CryptoArbitrage.Application.Interfaces;
-using CryptoArbitrage.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
+using CryptoArbitrage.Api.Controllers.Interfaces;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System;
+using System.Linq;
+using Microsoft.Extensions.Logging;
+using ApiModels = CryptoArbitrage.Api.Models;
+using DomainModels = CryptoArbitrage.Domain.Models;
 
 namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
 [Route("api/trades")]
-public class TradesController : ControllerBase
+public class TradesController : ControllerBase, ITradesController
 {
     private readonly IArbitrageRepository _arbitrageRepository;
     private readonly ILogger<TradesController> _logger;
@@ -20,103 +28,51 @@ public class TradesController : ControllerBase
     }
 
     [HttpGet("recent")]
-    public async Task<IActionResult> GetRecentTrades([FromQuery] int limit = 20)
+    public async Task<ICollection<ApiModels.TradeResult>> GetRecentTradesAsync(int limit, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var end = DateTimeOffset.UtcNow;
-            var start = end.AddHours(-1); // Last hour by default for recent trades
-            
-            var trades = await _arbitrageRepository.GetTradeResultsAsync(start, end);
-            
-            // Convert the tuples to a flat structure for the frontend
-            var tradeResults = trades
-                .Take(limit)
-                .Select(t => new
-                {
-                    Id = $"{t.Opportunity.BuyExchangeId}_{t.Opportunity.SellExchangeId}_{t.Timestamp:yyyyMMddHHmmssfff}",
-                    OpportunityId = t.Opportunity.DetectedAt.ToString("yyyyMMddHHmmssfff"),
-                    TradingPair = t.Opportunity.TradingPair,
-                    BuyExchangeId = t.Opportunity.BuyExchangeId,
-                    SellExchangeId = t.Opportunity.SellExchangeId,
-                    BuyPrice = t.Opportunity.BuyPrice,
-                    SellPrice = t.Opportunity.SellPrice,
-                    Quantity = t.Opportunity.EffectiveQuantity,
-                    Timestamp = t.Timestamp,
-                    Status = t.BuyResult?.IsSuccess == true && t.SellResult?.IsSuccess == true 
-                        ? TradeStatus.Completed 
-                        : TradeStatus.Failed,
-                    ProfitAmount = t.Profit,
-                    ProfitPercentage = t.Opportunity.SpreadPercentage,
-                    Fees = (t.BuyResult?.Fee ?? 0) + (t.SellResult?.Fee ?? 0),
-                    ExecutionTimeMs = t.BuyResult != null && t.SellResult != null 
-                        ? (t.BuyResult.ExecutionTimeMs + t.SellResult.ExecutionTimeMs) / 2 
-                        : 0
-                })
-                .ToList();
-            
-            return Ok(tradeResults);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving recent trade results");
-            return StatusCode(500, "An error occurred while retrieving recent trade results");
-        }
+        _logger.LogInformation("Getting {Limit} recent trades", limit);
+        var trades = await _arbitrageRepository.GetRecentTradesAsync(limit);
+        return trades.Select(MapToContractModel).ToList();
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetTradesByTimeRange(
-        [FromQuery] string? start = null,
-        [FromQuery] string? end = null)
+    public async Task<ICollection<ApiModels.TradeResult>> GetTradesByTimeRangeAsync(
+        DateTimeOffset? start = null,
+        DateTimeOffset? end = null,
+        CancellationToken cancellationToken = default)
     {
-        try
+        _logger.LogInformation("Getting trades between {Start} and {End}", start, end);
+        
+        // Use default values if start/end not provided
+        start ??= DateTimeOffset.UtcNow.AddDays(-7);
+        end ??= DateTimeOffset.UtcNow;
+        
+        var trades = await _arbitrageRepository.GetTradesByTimeRangeAsync(start.Value, end.Value);
+        return trades.Select(MapToContractModel).ToList();
+    }
+    
+    private ApiModels.TradeResult MapToContractModel(DomainModels.TradeResult trade)
+    {
+        return new ApiModels.TradeResult
         {
-            var endTime = string.IsNullOrEmpty(end) 
-                ? DateTimeOffset.UtcNow 
-                : DateTimeOffset.Parse(end);
-            
-            var startTime = string.IsNullOrEmpty(start) 
-                ? endTime.AddDays(-1) 
-                : DateTimeOffset.Parse(start);
-            
-            var trades = await _arbitrageRepository.GetTradeResultsAsync(startTime, endTime);
-            
-            // Convert the tuples to a flat structure for the frontend
-            var tradeResults = trades
-                .Select(t => new
-                {
-                    Id = $"{t.Opportunity.BuyExchangeId}_{t.Opportunity.SellExchangeId}_{t.Timestamp:yyyyMMddHHmmssfff}",
-                    OpportunityId = t.Opportunity.DetectedAt.ToString("yyyyMMddHHmmssfff"),
-                    TradingPair = t.Opportunity.TradingPair,
-                    BuyExchangeId = t.Opportunity.BuyExchangeId,
-                    SellExchangeId = t.Opportunity.SellExchangeId,
-                    BuyPrice = t.Opportunity.BuyPrice,
-                    SellPrice = t.Opportunity.SellPrice,
-                    Quantity = t.Opportunity.EffectiveQuantity,
-                    Timestamp = t.Timestamp,
-                    Status = t.BuyResult?.IsSuccess == true && t.SellResult?.IsSuccess == true 
-                        ? TradeStatus.Completed 
-                        : TradeStatus.Failed,
-                    ProfitAmount = t.Profit,
-                    ProfitPercentage = t.Opportunity.SpreadPercentage,
-                    Fees = (t.BuyResult?.Fee ?? 0) + (t.SellResult?.Fee ?? 0),
-                    ExecutionTimeMs = t.BuyResult != null && t.SellResult != null 
-                        ? (t.BuyResult.ExecutionTimeMs + t.SellResult.ExecutionTimeMs) / 2 
-                        : 0
-                })
-                .ToList();
-            
-            return Ok(tradeResults);
-        }
-        catch (FormatException ex)
-        {
-            _logger.LogError(ex, "Invalid date format in request");
-            return BadRequest("Invalid date format. Use ISO 8601 format (e.g. 2023-09-01T00:00:00Z)");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving trade results by time range");
-            return StatusCode(500, "An error occurred while retrieving trade results");
-        }
+            id = trade.Id.ToString(),
+            opportunityId = trade.OpportunityId.ToString(),
+            tradingPair = new ApiModels.TradingPair
+            {
+                baseCurrency = trade.TradingPair.Split('/')[0],
+                quoteCurrency = trade.TradingPair.Contains('/') ? trade.TradingPair.Split('/')[1] : string.Empty
+            },
+            buyExchangeId = trade.BuyExchangeId,
+            sellExchangeId = trade.SellExchangeId,
+            buyPrice = trade.BuyPrice,
+            sellPrice = trade.SellPrice,
+            quantity = trade.Quantity,
+            timestamp = trade.Timestamp.ToString("o"),
+            status = trade.Status.ToString(),
+            profitAmount = trade.ProfitAmount,
+            profitPercentage = trade.ProfitPercentage,
+            fees = trade.Fees,
+            executionTimeMs = trade.ExecutionTimeMs
+        };
     }
 } 

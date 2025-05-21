@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import App from './App';
 import * as apiService from './services/api';
 
@@ -42,12 +42,14 @@ describe('App Component', () => {
     jest.clearAllMocks();
   });
 
-  test('renders without crashing', () => {
-    render(<App />);
+  test('renders without crashing', async () => {
+    await act(async () => {
+      render(<App />);
+    });
     expect(screen.getByText(/Layout Mock/i)).toBeInTheDocument();
   });
 
-  test('fetches statistics data on mount', () => {
+  test('fetches statistics data on mount', async () => {
     const mockStats = {
       totalProfit: 1000.50,
       successfulTrades: 20,
@@ -57,18 +59,22 @@ describe('App Component', () => {
     
     (apiService.getArbitrageStatistics as jest.Mock).mockResolvedValue(mockStats);
     
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     expect(apiService.getArbitrageStatistics).toHaveBeenCalled();
   });
 
-  test('shows loading state while fetching statistics', () => {
+  test('shows loading state while fetching statistics', async () => {
     // Don't resolve the promise yet to keep app in loading state
     (apiService.getArbitrageStatistics as jest.Mock).mockImplementation(
       () => new Promise(() => {})
     );
     
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
@@ -93,7 +99,9 @@ describe('App Component', () => {
     
     (apiService.getArbitrageStatistics as jest.Mock).mockResolvedValue(mockStats);
     
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     // Wait for the loading state to finish
     await waitFor(() => {
@@ -110,7 +118,9 @@ describe('App Component', () => {
       new Error('API Error')
     );
     
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     // Wait for the error to be displayed
     await waitFor(() => {

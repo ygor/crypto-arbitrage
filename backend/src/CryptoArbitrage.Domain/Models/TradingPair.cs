@@ -60,6 +60,38 @@ public readonly record struct TradingPair
     }
 
     /// <summary>
+    /// Tries to parse a trading pair from a string in the format "BASE/QUOTE".
+    /// </summary>
+    /// <param name="tradingPairString">The trading pair string to parse.</param>
+    /// <param name="tradingPair">When this method returns, contains the parsed trading pair if the parsing succeeded, or default(TradingPair) if the parsing failed.</param>
+    /// <returns>true if the parsing succeeded; otherwise, false.</returns>
+    public static bool TryParse(string tradingPairString, out TradingPair tradingPair)
+    {
+        tradingPair = default;
+
+        if (string.IsNullOrWhiteSpace(tradingPairString))
+        {
+            return false;
+        }
+
+        var parts = tradingPairString.Split('/');
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        try
+        {
+            tradingPair = new TradingPair(parts[0], parts[1]);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Returns a string representation of the trading pair in the format "BASE/QUOTE".
     /// </summary>
     /// <returns>The string representation of the trading pair.</returns>

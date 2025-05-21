@@ -50,6 +50,31 @@ It will:
 
 This is useful for catching API contract mismatches early in the development process.
 
+## Features
+
+### Dashboard Overview
+The main dashboard provides a comprehensive view of the arbitrage system's performance, including:
+- Statistics (profit, volume, success rates)
+- Recent arbitrage opportunities
+- Recent trades
+
+### Monitoring Features
+The new monitoring tab offers real-time visibility into the system's operation:
+
+#### Activity Log
+- Real-time log of bot activities and system events
+- Filterable by event type (Info, Warning, Error, Success)
+- Searchable content
+- Expandable details for comprehensive information
+- Auto-refreshing with SignalR for live updates
+
+#### Exchange Status
+- Real-time monitoring of all connected exchanges
+- Visual indicators for online/offline status
+- Response time metrics
+- Last checked timestamps
+- Auto-refreshing with SignalR for immediate status changes
+
 ## Comprehensive Testing Strategy
 
 We've implemented a multi-layered testing approach to ensure the application's reliability:
@@ -77,6 +102,17 @@ We've implemented comprehensive API contract testing to ensure alignment between
 3. **Contract Verification**: The `verify-api` script checks alignment with backend controllers
 
 For more details, see the [API Contract Testing README](src/services/README.md).
+
+## Real-time Functionality
+
+The application uses SignalR for real-time updates in several areas:
+
+1. **Arbitrage Opportunities**: Live updates when new opportunities are detected
+2. **Trade Results**: Immediate notification when trades are executed
+3. **Activity Logs**: Real-time streaming of system activities and events
+4. **Exchange Status**: Live monitoring of exchange connectivity and health
+
+This ensures users always have the most up-to-date information without manual refreshing.
 
 ## Project Structure
 

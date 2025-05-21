@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Models;
 using CryptoArbitrage.Tests.Mocks;
-using CryptoArbitrage.Infrastructure.Services;
+// Use fully qualified names to avoid ambiguous references
+using InfrastructurePaperTradingService = CryptoArbitrage.Infrastructure.Services.PaperTradingService;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -17,8 +18,8 @@ public class PaperTradingServiceTests
 {
     private readonly Mock<IConfigurationService> _mockConfigService;
     private readonly Mock<IMarketDataService> _mockMarketDataService;
-    private readonly Mock<ILogger<PaperTradingService>> _mockLogger;
-    private readonly PaperTradingService _paperTradingService;
+    private readonly Mock<ILogger<InfrastructurePaperTradingService>> _mockLogger;
+    private readonly InfrastructurePaperTradingService _paperTradingService;
     private readonly TradingPair _btcUsdt = new TradingPair("BTC", "USDT");
     private readonly MockArbitrageRepository _mockArbitrageRepository;
     private readonly MockExchangeFactory _mockExchangeFactory;
@@ -27,7 +28,7 @@ public class PaperTradingServiceTests
     {
         _mockConfigService = new Mock<IConfigurationService>();
         _mockMarketDataService = new Mock<IMarketDataService>();
-        _mockLogger = new Mock<ILogger<PaperTradingService>>();
+        _mockLogger = new Mock<ILogger<InfrastructurePaperTradingService>>();
         _mockArbitrageRepository = new MockArbitrageRepository();
         _mockExchangeFactory = new MockExchangeFactory();
         
@@ -52,7 +53,7 @@ public class PaperTradingServiceTests
         _mockMarketDataService.Setup(x => x.GetLatestOrderBook(It.IsAny<string>(), It.IsAny<TradingPair>()))
             .Returns(defaultOrderBook);
         
-        _paperTradingService = new PaperTradingService(
+        _paperTradingService = new InfrastructurePaperTradingService(
             _mockConfigService.Object,
             _mockMarketDataService.Object,
             _mockLogger.Object);

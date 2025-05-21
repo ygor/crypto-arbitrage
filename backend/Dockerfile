@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy csproj files and restore dependencies
@@ -29,7 +29,7 @@ RUN dotnet publish -c Release -o /app/api ./CryptoArbitrage.Api/
 RUN dotnet publish -c Release -o /app/worker ./CryptoArbitrage.Worker/
 
 # Runtime image for API
-FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS api
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS api
 WORKDIR /app
 COPY --from=build /app/api ./
 EXPOSE 80
@@ -37,7 +37,7 @@ EXPOSE 443
 ENTRYPOINT ["dotnet", "CryptoArbitrage.Api.dll"]
 
 # Runtime image for Worker
-FROM mcr.microsoft.com/dotnet/runtime:7.0 AS worker
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS worker
 WORKDIR /app
 COPY --from=build /app/worker ./
 ENTRYPOINT ["dotnet", "CryptoArbitrage.Worker.dll"] 

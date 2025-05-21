@@ -369,7 +369,8 @@ public class KrakenExchangeClient : BaseExchangeClient
                 price,
                 quantity,
                 0, // Fee not known until order is filled
-                tradingPair.QuoteCurrency);
+                tradingPair.QuoteCurrency,
+                DateTimeOffset.UtcNow);
             
             return TradeResult.Success(tradeExecution, stopwatch.ElapsedMilliseconds);
         }
