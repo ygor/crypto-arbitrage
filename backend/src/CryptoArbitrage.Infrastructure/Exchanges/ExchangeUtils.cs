@@ -40,6 +40,13 @@ public static class ExchangeUtils
         var baseCurrency = tradingPair.BaseCurrency;
         var quoteCurrency = tradingPair.QuoteCurrency;
         
+        // Special handling for Coinbase - convert USDT to USD since Coinbase doesn't support USDT directly
+        if (exchangeId.ToLowerInvariant() == "coinbase" && quoteCurrency == "USDT")
+        {
+            quoteCurrency = "USD";
+            logger?.LogInformation("Converted USDT to USD for Coinbase exchange trading pair {TradingPair}", tradingPair);
+        }
+        
         string symbol = exchangeId.ToLowerInvariant() switch
         {
             "binance" => $"{baseCurrency}{quoteCurrency}",

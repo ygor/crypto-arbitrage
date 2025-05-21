@@ -32,6 +32,27 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     private readonly string _baseUrl = "https://api.exchange.coinbase.com";
     private readonly string _wsUrl = "wss://ws-feed.exchange.coinbase.com";
     
+    private class CoinbaseOrderBook
+    {
+        public JArray Bids { get; set; } = new JArray();
+        public JArray Asks { get; set; } = new JArray();
+        public string Time { get; set; } = string.Empty;
+    }
+    
+    private class CoinbaseAccount
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Currency { get; set; } = string.Empty;
+        public string Balance { get; set; } = string.Empty;
+        public string Available { get; set; } = string.Empty;
+        public string Hold { get; set; } = string.Empty;
+    }
+
+    private class CoinbaseAccountsResponse
+    {
+        public List<CoinbaseAccount> Accounts { get; set; } = new();
+    }
+    
     /// <summary>
     /// Initializes a new instance of the <see cref="CoinbaseExchangeClient"/> class.
     /// </summary>
@@ -585,17 +606,17 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             }
             
             // Map to Balance objects
-            foreach (var account in accounts.Values<JObject>())
+            foreach (var account in accounts)
             {
-                var currency = account["currency"]?.ToString();
+                var currency = account.Currency;
                 if (string.IsNullOrEmpty(currency))
                 {
                     continue;
                 }
                 
-                if (decimal.TryParse(account["balance"]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var total) &&
-                    decimal.TryParse(account["available"]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var available) &&
-                    decimal.TryParse(account["hold"]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var hold))
+                if (decimal.TryParse(account.Balance, NumberStyles.Any, CultureInfo.InvariantCulture, out var total) &&
+                    decimal.TryParse(account.Available, NumberStyles.Any, CultureInfo.InvariantCulture, out var available) &&
+                    decimal.TryParse(account.Hold, NumberStyles.Any, CultureInfo.InvariantCulture, out var hold))
                 {
                     var balance = new Balance(ExchangeId, currency, total, available, hold);
                     balances.Add(balance);
@@ -616,17 +637,17 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     /// <summary>
     /// Fetches the accounts from Coinbase.
     /// </summary>
-    private async Task<JArray?> FetchAccountsInternalAsync(CancellationToken cancellationToken = default)
+    private async Task<List<CoinbaseAccount>?> FetchAccountsInternalAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await SendAuthenticatedRequestAsync<JObject>(
+            var response = await SendAuthenticatedRequestAsync<CoinbaseAccountsResponse>(
                 HttpMethod.Get,
                 "/accounts",
                 null,
                 cancellationToken);
             
-            return response?["accounts"] as JArray;
+            return response?.Accounts;
         }
         catch (Exception ex)
         {
@@ -642,24 +663,24 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         try
         {
-            var endpoint = "/accounts";
-            var accounts = await SendAuthenticatedRequestAsync<JArray>(HttpMethod.Get, endpoint, null, cancellationToken);
+            var accounts = await FetchAccountsInternalAsync(cancellationToken);
             
-            if (accounts == null)
+            if (accounts == null || accounts.Count == 0)
             {
                 return Balances.Values.ToList().AsReadOnly();
             }
             
             foreach (var account in accounts)
             {
-                var currency = account["currency"]?.ToString();
-                var available = decimal.Parse(account["available"]?.ToString() ?? "0", CultureInfo.InvariantCulture);
-                var hold = decimal.Parse(account["hold"]?.ToString() ?? "0", CultureInfo.InvariantCulture);
-                var total = available + hold;
-                
-                if (currency != null)
+                if (decimal.TryParse(account.Available, NumberStyles.Any, CultureInfo.InvariantCulture, out var available) &&
+                    decimal.TryParse(account.Hold, NumberStyles.Any, CultureInfo.InvariantCulture, out var hold))
                 {
-                    Balances[currency] = new Balance(ExchangeId, currency, available, hold, total);
+                    var total = available + hold;
+                    
+                    if (!string.IsNullOrEmpty(account.Currency))
+                    {
+                        Balances[account.Currency] = new Balance(ExchangeId, account.Currency, total, available, hold);
+                    }
                 }
             }
             
@@ -954,28 +975,37 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             Logger.LogInformation("Requesting order book for {Symbol} from Coinbase at endpoint {Endpoint}", 
                 symbol, endpoint);
                 
-            JObject? response = await _httpClient.GetFromJsonAsync<JObject>(
-                $"{_baseUrl}{endpoint}", 
-                cancellationToken);
+            // Use HttpClient to get the raw response and then use Newtonsoft.Json for deserialization
+            var response = await _httpClient.GetAsync($"{_baseUrl}{endpoint}", cancellationToken);
             
-            if (response == null)
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Received error response {StatusCode} from Coinbase for {TradingPair} ({Symbol})",
+                    response.StatusCode, tradingPair, symbol);
+                return null;
+            }
+            
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+            var orderBookData = JsonConvert.DeserializeObject<CoinbaseOrderBook>(content);
+            
+            if (orderBookData == null)
             {
                 Logger.LogWarning("Received null response from Coinbase order book request for {TradingPair}", tradingPair);
                 return null;
             }
             
-            var bids = ParseOrderBookLevels(response["bids"] as JArray, OrderSide.Buy)
+            var bids = ParseOrderBookLevels(orderBookData.Bids, OrderSide.Buy)
                 .OrderByDescending(x => x.Price)
                 .Select(level => new OrderBookEntry(level.Price, level.Quantity))
                 .ToList();
             
-            var asks = ParseOrderBookLevels(response["asks"] as JArray, OrderSide.Sell)
+            var asks = ParseOrderBookLevels(orderBookData.Asks, OrderSide.Sell)
                 .OrderBy(x => x.Price)
                 .Select(level => new OrderBookEntry(level.Price, level.Quantity))
                 .ToList();
             
-            var timestamp = response["time"] != null 
-                ? DateTime.Parse(response["time"]?.ToString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal) 
+            var timestamp = !string.IsNullOrEmpty(orderBookData.Time)
+                ? DateTime.Parse(orderBookData.Time, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal) 
                 : DateTime.UtcNow;
             
             Logger.LogInformation("Successfully fetched order book for {TradingPair} from Coinbase with {BidCount} bids and {AskCount} asks", 
@@ -1008,16 +1038,28 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         foreach (var level in levels)
         {
-            if (level is JArray levelArray && levelArray.Count >= 2)
+            try
             {
-                if (decimal.TryParse(levelArray[0]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var price) &&
-                    decimal.TryParse(levelArray[1]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var size))
+                if (level != null && level.Count() >= 2)
                 {
-                    if (price > 0 && size > 0)
+                    // Get the price and size as strings first, then convert to decimal
+                    string priceStr = level[0].ToString();
+                    string sizeStr = level[1].ToString();
+                    
+                    if (decimal.TryParse(priceStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var price) &&
+                        decimal.TryParse(sizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var size))
                     {
-                        result.Add(new OrderBookEntry(price, size));
+                        if (price > 0 && size > 0)
+                        {
+                            result.Add(new OrderBookEntry(price, size));
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Log but continue processing other levels
+                Logger.LogWarning(ex, "Error parsing order book level: {Level}", level?.ToString() ?? "null");
             }
         }
         
@@ -1083,7 +1125,15 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             // Check for successful response
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<T>(options: null, cancellationToken);
+                // For Newtonsoft.Json types, use Newtonsoft deserializer instead of System.Text.Json
+                if (typeof(T) == typeof(JObject) || typeof(T) == typeof(JArray) || typeof(T) == typeof(JToken))
+                {
+                    string content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    return JsonConvert.DeserializeObject<T>(content);
+                }
+                
+                // For other types use the standard System.Text.Json deserializer
+                return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
             }
             
             // Handle error response

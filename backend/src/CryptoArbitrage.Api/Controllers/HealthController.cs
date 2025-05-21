@@ -37,12 +37,16 @@ public class HealthController : ControllerBase, IHealthController
             var cpuUsage = process.TotalProcessorTime.TotalMilliseconds / 
                            (Environment.ProcessorCount * (DateTime.UtcNow - process.StartTime).TotalMilliseconds) * 100;
             var isRunning = _arbitrageService.IsRunning;
+            var uptime = DateTime.UtcNow - _startTime;
             
             return new ApiModels.HealthStatus
             {
+                healthy = true,
                 status = "Healthy",
+                message = "API is functioning correctly",
                 version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0",
-                uptime = (DateTime.UtcNow - _startTime).ToString(),
+                uptime = uptime.ToString(),
+                uptimeSeconds = (long)uptime.TotalSeconds,
                 memoryUsageMB = (int)memoryMB,
                 cpuUsagePercent = Math.Round(cpuUsage, 2),
                 cryptoArbitrageBotRunning = isRunning,
