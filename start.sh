@@ -20,7 +20,7 @@ read -p "Enter your choice (1-3): " choice
 case $choice in
   1)
     echo -e "${GREEN}Starting with Docker Compose...${NC}"
-    docker-compose up -d --build
+    docker-compose up --build
     if [ $? -eq 0 ]; then
       echo -e "${GREEN}Services started successfully.${NC}"
       echo -e "Access the application at: http://localhost:3000"

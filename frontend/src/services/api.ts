@@ -26,6 +26,7 @@ import {
   ArbitrageConfigEvaluationStrategy as ClientEvaluationStrategy,
   ArbitrageConfigExecutionStrategy as ClientExecutionStrategy
 } from './generated/api-client';
+import { API_BASE_URL, HubEvents } from './apiEndpoints';
 
 // Type converters for enum mappings
 const convertClientArbitrageOpportunityStatus = (clientStatus?: ClientArbitrageOpportunityStatus): ArbitrageOpportunityStatus | undefined => {
