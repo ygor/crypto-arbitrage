@@ -17,6 +17,7 @@ alwaysApply: true
 - **Always prioritize small, targeted changes with minimal blast radius**
 - **Prefer incremental improvements over large-scale refactoring**
 - **Ensure each change is independently testable and deployable**
+- Always fix issues rather than just suppressing the warnings
 
 ## Core Principles
 - Always produce clean, readable, and self-documenting code

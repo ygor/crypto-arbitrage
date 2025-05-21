@@ -1,11 +1,9 @@
-import axios from 'axios';
 import * as signalR from '@microsoft/signalr';
 import { 
   ArbitrageOpportunity, 
   ArbitrageTradeResult, 
   ArbitrageStatistics, 
   Balance, 
-  PriceQuote,
   RiskProfile,
   ArbitrageConfig,
   ExchangeConfig,
@@ -26,7 +24,6 @@ import {
   ArbitrageConfigEvaluationStrategy as ClientEvaluationStrategy,
   ArbitrageConfigExecutionStrategy as ClientExecutionStrategy
 } from './generated/api-client';
-import { API_BASE_URL, HubEvents } from './apiEndpoints';
 
 // Type converters for enum mappings
 const convertClientArbitrageOpportunityStatus = (clientStatus?: ClientArbitrageOpportunityStatus): ArbitrageOpportunityStatus | undefined => {
@@ -210,7 +207,7 @@ export const getRiskProfile = async (): Promise<RiskProfile> => {
 };
 
 export const updateRiskProfile = async (riskProfile: RiskProfile): Promise<RiskProfile> => {
-  const result = await client.updateRiskProfile(riskProfile as any);
+  await client.updateRiskProfile(riskProfile as any);
   return client.getRiskProfile() as unknown as RiskProfile;
 };
 

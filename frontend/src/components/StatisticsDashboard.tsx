@@ -13,8 +13,6 @@ interface StatisticsDashboardProps {
   statistics: ArbitrageStatistics;
 }
 
-const COLORS = ['#4caf50', '#f44336', '#2196f3', '#ff9800', '#9c27b0'];
-
 // Default statistics to use if any property is undefined
 const defaultStats: ArbitrageStatistics = {
   totalProfit: 0,

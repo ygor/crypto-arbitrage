@@ -10,7 +10,7 @@ import {
   Divider,
   Paper
 } from '@mui/material';
-import { ArbitrageConfig, TradingPair } from '../../models/types';
+import { ArbitrageConfig } from '../../models/types';
 
 interface ArbitrageConfigFormProps {
   config: ArbitrageConfig;
@@ -34,14 +34,6 @@ const ArbitrageConfigForm: React.FC<ArbitrageConfigFormProps> = ({ config, onSav
     setFormValues(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) : value)
-    }));
-  };
-
-  const handleSelectChange = (e: any) => {
-    const { name, value } = e.target;
-    setFormValues(prev => ({
-      ...prev,
-      [name]: value
     }));
   };
 

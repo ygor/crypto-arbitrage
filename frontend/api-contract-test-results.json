@@ -7,255 +7,255 @@
     {
       "methodName": "getArbitrageOpportunities",
       "source": "services/api.ts",
-      "line": 97
+      "line": 95
     },
     {
       "methodName": "getArbitrageTrades",
       "source": "services/api.ts",
-      "line": 106
+      "line": 104
     },
     {
       "methodName": "getArbitrageStatistics",
       "source": "services/api.ts",
-      "line": 141
+      "line": 139
     },
     {
       "methodName": "getRecentOpportunities",
       "source": "services/api.ts",
-      "line": 146
+      "line": 144
     },
     {
       "methodName": "getOpportunitiesByTimeRange",
       "source": "services/api.ts",
-      "line": 157
+      "line": 155
     },
     {
       "methodName": "getRecentTrades",
       "source": "services/api.ts",
-      "line": 166
+      "line": 164
     },
     {
       "methodName": "getTradesByTimeRange",
       "source": "services/api.ts",
-      "line": 180
+      "line": 178
     },
     {
       "methodName": "getStatistics",
       "source": "services/api.ts",
-      "line": 192
+      "line": 190
     },
     {
       "methodName": "getRiskProfile",
       "source": "services/api.ts",
-      "line": 208
+      "line": 206
     },
     {
       "methodName": "updateRiskProfile",
       "source": "services/api.ts",
-      "line": 212
+      "line": 210
     },
     {
       "methodName": "getRiskProfile",
       "source": "services/api.ts",
-      "line": 213
+      "line": 211
     },
     {
       "methodName": "getArbitrageConfig",
       "source": "services/api.ts",
-      "line": 217
+      "line": 215
     },
     {
       "methodName": "updateArbitrageConfig",
       "source": "services/api.ts",
-      "line": 232
+      "line": 230
     },
     {
       "methodName": "getArbitrageConfig",
       "source": "services/api.ts",
-      "line": 234
+      "line": 232
     },
     {
       "methodName": "getExchangeConfigurations",
       "source": "services/api.ts",
-      "line": 243
+      "line": 241
     },
     {
       "methodName": "updateExchangeConfigurations",
       "source": "services/api.ts",
-      "line": 247
+      "line": 245
     },
     {
       "methodName": "getExchangeConfigurations",
       "source": "services/api.ts",
-      "line": 248
+      "line": 246
     },
     {
       "methodName": "startArbitrageBot",
       "source": "services/api.ts",
-      "line": 254
+      "line": 252
     },
     {
       "methodName": "stopArbitrageBot",
       "source": "services/api.ts",
-      "line": 259
+      "line": 257
     },
     {
       "methodName": "getBotStatus",
       "source": "services/api.ts",
-      "line": 264
+      "line": 262
     },
     {
       "methodName": "getActivityLogs",
       "source": "services/api.ts",
-      "line": 273
+      "line": 271
     },
     {
       "methodName": "getExchangeStatus",
       "source": "services/api.ts",
-      "line": 293
+      "line": 291
     },
     {
       "methodName": "getArbitrageStatistics",
       "source": "services/api.ts",
-      "line": 96,
+      "line": 94,
       "functionName": "getArbitrageOpportunities"
     },
     {
       "methodName": "getStatistics",
       "source": "services/api.ts",
-      "line": 145,
+      "line": 143,
       "functionName": "getRecentOpportunities"
     },
     {
       "methodName": "getRiskProfile",
       "source": "services/api.ts",
-      "line": 196,
+      "line": 194,
       "functionName": "getBalances"
     },
     {
       "methodName": "getRiskProfile",
       "source": "services/api.ts",
-      "line": 211,
+      "line": 209,
       "functionName": "updateRiskProfile"
     },
     {
       "methodName": "getExchangeConfigurations",
       "source": "services/api.ts",
-      "line": 216,
+      "line": 214,
       "functionName": "getArbitrageConfig"
     },
     {
       "methodName": "getExchangeStatus",
       "source": "services/api.ts",
-      "line": 246,
+      "line": 244,
       "functionName": "updateExchangeConfig"
     },
     {
       "methodName": "getArbitrageOpportunities",
       "source": "services/api.ts",
-      "line": 96,
+      "line": 94,
       "functionName": "getArbitrageOpportunities"
     },
     {
       "methodName": "getArbitrageTrades",
       "source": "services/api.ts",
-      "line": 105,
+      "line": 103,
       "functionName": "getTradeResults"
     },
     {
       "methodName": "getArbitrageStatistics",
       "source": "services/api.ts",
-      "line": 140,
+      "line": 138,
       "functionName": "getArbitrageStatistics"
     },
     {
       "methodName": "getRecentOpportunities",
       "source": "services/api.ts",
-      "line": 145,
+      "line": 143,
       "functionName": "getRecentOpportunities"
     },
     {
       "methodName": "getOpportunitiesByTimeRange",
       "source": "services/api.ts",
-      "line": 153,
+      "line": 151,
       "functionName": "getOpportunitiesByTimeRange"
     },
     {
       "methodName": "getRecentTrades",
       "source": "services/api.ts",
-      "line": 165,
+      "line": 163,
       "functionName": "getRecentTradeResults"
     },
     {
       "methodName": "getTradesByTimeRange",
       "source": "services/api.ts",
-      "line": 176,
+      "line": 174,
       "functionName": "getTradeResultsByTimeRange"
     },
     {
       "methodName": "getStatistics",
       "source": "services/api.ts",
-      "line": 191,
+      "line": 189,
       "functionName": "getStatistics"
     },
     {
       "methodName": "updateRiskProfile",
       "source": "services/api.ts",
-      "line": 211,
+      "line": 209,
       "functionName": "updateRiskProfile"
     },
     {
       "methodName": "getArbitrageConfig",
       "source": "services/api.ts",
-      "line": 216,
+      "line": 214,
       "functionName": "getArbitrageConfig"
     },
     {
       "methodName": "updateArbitrageConfig",
       "source": "services/api.ts",
-      "line": 225,
+      "line": 223,
       "functionName": "updateArbitrageConfig"
     },
     {
       "methodName": "getExchangeConfigurations",
       "source": "services/api.ts",
-      "line": 242,
+      "line": 240,
       "functionName": "getExchangeConfigs"
     },
     {
       "methodName": "updateExchangeConfigurations",
       "source": "services/api.ts",
-      "line": 246,
+      "line": 244,
       "functionName": "updateExchangeConfig"
     },
     {
       "methodName": "startArbitrageBot",
       "source": "services/api.ts",
-      "line": 253,
+      "line": 251,
       "functionName": "startArbitrageService"
     },
     {
       "methodName": "stopArbitrageBot",
       "source": "services/api.ts",
-      "line": 258,
+      "line": 256,
       "functionName": "stopArbitrageService"
     },
     {
       "methodName": "getBotStatus",
       "source": "services/api.ts",
-      "line": 263,
+      "line": 261,
       "functionName": "getServiceStatus"
     },
     {
       "methodName": "getActivityLogs",
       "source": "services/api.ts",
-      "line": 272,
+      "line": 270,
       "functionName": "getActivityLogs"
     },
     {
       "methodName": "getExchangeStatus",
       "source": "services/api.ts",
-      "line": 292,
+      "line": 290,
       "functionName": "getExchangeStatus"
     }
   ],
@@ -395,5 +395,5 @@
     }
   ],
   "missingEndpoints": [],
-  "timestamp": "2025-05-21T12:56:42.889Z"
+  "timestamp": "2025-05-21T15:25:34.314Z"
 }
