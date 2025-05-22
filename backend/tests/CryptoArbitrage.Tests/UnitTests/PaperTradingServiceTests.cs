@@ -71,31 +71,31 @@ public class PaperTradingServiceTests
         var balances = await _paperTradingService.GetAllBalancesAsync();
         
         // Check if default balances were setup for major exchanges
-        Assert.Contains("binance", balances.Keys);
         Assert.Contains("coinbase", balances.Keys);
+        Assert.Contains("kraken", balances.Keys);
         
-        var binanceBalances = balances["binance"];
         var coinbaseBalances = balances["coinbase"];
+        var krakenBalances = balances["kraken"];
         
         // Check if specific currencies exist
-        Assert.Contains(binanceBalances, b => b.Currency == "USDT");
-        Assert.Contains(binanceBalances, b => b.Currency == "BTC");
         Assert.Contains(coinbaseBalances, b => b.Currency == "USDT");
         Assert.Contains(coinbaseBalances, b => b.Currency == "BTC");
+        Assert.Contains(krakenBalances, b => b.Currency == "USDT");
+        Assert.Contains(krakenBalances, b => b.Currency == "BTC");
         
         // Verify that default balances have expected values
-        var binanceUsdt = binanceBalances.First(b => b.Currency == "USDT");
-        var binanceBtc = binanceBalances.First(b => b.Currency == "BTC");
+        var coinbaseUsdt = coinbaseBalances.First(b => b.Currency == "USDT");
+        var coinbaseBtc = coinbaseBalances.First(b => b.Currency == "BTC");
         
-        Assert.Equal(10000m, binanceUsdt.Total);
-        Assert.Equal(1m, binanceBtc.Total);
+        Assert.Equal(10000m, coinbaseUsdt.Total);
+        Assert.Equal(1m, coinbaseBtc.Total);
     }
     
     [Fact]
     public async Task SimulateMarketBuyOrderAsync_ShouldUpdateBalances()
     {
         // Arrange
-        const string exchangeId = "binance";
+        const string exchangeId = "coinbase";
         const decimal quantity = 0.1m; // Buy 0.1 BTC instead of 0.5 BTC
         const decimal btcPrice = 10000m; // BTC price at $10,000 instead of $50,000
         
@@ -156,7 +156,7 @@ public class PaperTradingServiceTests
     public async Task SimulateMarketSellOrderAsync_ShouldUpdateBalances()
     {
         // Arrange
-        const string exchangeId = "binance";
+        const string exchangeId = "coinbase";
         const decimal quantity = 0.1m; // Sell 0.1 BTC instead of 0.5 BTC
         const decimal btcPrice = 10000m; // BTC price at $10,000 instead of $50,000
         
@@ -217,7 +217,7 @@ public class PaperTradingServiceTests
     public async Task GetTradeHistoryAsync_ShouldReturnAllTrades()
     {
         // Arrange
-        const string exchangeId = "binance";
+        const string exchangeId = "coinbase";
         const decimal quantity = 0.1m; // Use 0.1 BTC instead of 0.5 BTC
         
         // Setup mock order books for buy and sell
@@ -274,7 +274,7 @@ public class PaperTradingServiceTests
     public async Task ResetAsync_ShouldClearAllData()
     {
         // Arrange
-        const string exchangeId = "binance";
+        const string exchangeId = "coinbase";
         const decimal quantity = 0.1m; // Use 0.1 BTC instead of 0.5 BTC
         
         // Setup mock order book
@@ -318,7 +318,7 @@ public class PaperTradingServiceTests
     public async Task SimulateMarketBuyOrderAsync_WithInsufficientBalance_ShouldFail()
     {
         // Arrange
-        const string exchangeId = "binance";
+        const string exchangeId = "coinbase";
         const decimal quantity = 100m; // Very large quantity that exceeds default balance
         
         // Setup mock order book with high price to ensure balance is insufficient

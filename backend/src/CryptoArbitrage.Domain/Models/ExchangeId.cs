@@ -32,9 +32,6 @@ public readonly record struct ExchangeId
     public override string ToString() => Value;
     
     // Define some common exchanges as static properties
-    public static ExchangeId Binance => new("binance");
     public static ExchangeId Coinbase => new("coinbase");
     public static ExchangeId Kraken => new("kraken");
-    public static ExchangeId KuCoin => new("kucoin");
-    public static ExchangeId OKX => new("okx");
 } 

@@ -29,7 +29,6 @@ public class PaperTradingService : IPaperTradingService
     // Fee structure for simulated trades (default to somewhat conservative estimates)
     private readonly Dictionary<string, decimal> _exchangeFees = new()
     {
-        ["binance"] = 0.001m,  // 0.1% fee
         ["coinbase"] = 0.005m, // 0.5% fee
         ["kraken"] = 0.0026m,  // 0.26% fee
         ["default"] = 0.002m   // 0.2% default fee for other exchanges
@@ -71,7 +70,7 @@ public class PaperTradingService : IPaperTradingService
         
         var config = await _configurationService.GetConfigurationAsync(cancellationToken);
         var tradingPairs = config?.TradingPairs?.ToList() ?? new List<TradingPair>();
-        var exchanges = new HashSet<string>() { "binance", "coinbase", "kraken" };
+        var exchanges = new HashSet<string>() { "coinbase", "kraken" };
         
         if (initialBalances != null)
         {

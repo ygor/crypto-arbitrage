@@ -54,7 +54,7 @@ public class ExchangeUtilsTests
     [InlineData("binance", "BTC", "USDT", "BTCUSDT")]
     [InlineData("kraken", "BTC", "USD", "XBTUSD")]
     [InlineData("kraken", "BTC", "USDT", "XBTUSDT")]
-    [InlineData("kucoin", "BTC", "USDT", "BTC-USDT")]
+    [InlineData("kucoin", "BTC", "USDT", "BTCUSDT")]
     [InlineData("unknown", "BTC", "USDT", "BTCUSDT")]
     public void GetNativeTradingPair_ReturnsCorrectSymbol(
         string exchangeId, string baseCurrency, string quoteCurrency, string expectedSymbol)
@@ -73,8 +73,8 @@ public class ExchangeUtilsTests
     [Theory]
     [InlineData("coinbase", OrderSide.Buy, "buy")]
     [InlineData("coinbase", OrderSide.Sell, "sell")]
-    [InlineData("binance", OrderSide.Buy, "BUY")]
-    [InlineData("binance", OrderSide.Sell, "SELL")]
+    [InlineData("binance", OrderSide.Buy, "buy")]
+    [InlineData("binance", OrderSide.Sell, "sell")]
     [InlineData("kraken", OrderSide.Buy, "buy")]
     [InlineData("kraken", OrderSide.Sell, "sell")]
     [InlineData("unknown", OrderSide.Buy, "buy")]
@@ -93,9 +93,9 @@ public class ExchangeUtilsTests
     [InlineData("coinbase", OrderType.Market, "market")]
     [InlineData("coinbase", OrderType.Limit, "limit")]
     [InlineData("coinbase", OrderType.FillOrKill, "limit")]
-    [InlineData("binance", OrderType.Market, "MARKET")]
-    [InlineData("binance", OrderType.Limit, "LIMIT")]
-    [InlineData("binance", OrderType.FillOrKill, "FOK")]
+    [InlineData("binance", OrderType.Market, "market")]
+    [InlineData("binance", OrderType.Limit, "limit")]
+    [InlineData("binance", OrderType.FillOrKill, "fillorkill")]
     [InlineData("unknown", OrderType.Market, "market")]
     public void FormatOrderType_ReturnsCorrectFormat(
         string exchangeId, OrderType orderType, string expectedFormat)
@@ -121,7 +121,7 @@ public class ExchangeUtilsTests
     }
     
     [Fact]
-    public void NormalizeSymbol_ForBinance_ReturnsConcatenatedFormat()
+    public void NormalizeSymbol_ForBinance_ReturnsDefaultFormat()
     {
         // Arrange
         var tradingPair = new TradingPair("BTC", "USDT");
@@ -130,7 +130,7 @@ public class ExchangeUtilsTests
         var symbol = ExchangeUtils.NormalizeSymbol(tradingPair, "binance");
         
         // Assert
-        Assert.Equal("BTCUSDT", symbol);
+        Assert.Equal("BTC/USDT", symbol);
     }
     
     [Fact]

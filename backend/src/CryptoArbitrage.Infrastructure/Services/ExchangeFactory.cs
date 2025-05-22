@@ -43,12 +43,9 @@ public class ExchangeFactory : IExchangeFactory
         
         return exchangeId.ToLowerInvariant() switch
         {
-            "binance" => new StubExchangeClient(exchangeId, _configurationService, _loggerFactory.CreateLogger<StubExchangeClient>()),
             "coinbase" => _serviceProvider.GetRequiredService<CoinbaseExchangeClient>(),
             "kraken" => _serviceProvider.GetRequiredService<KrakenExchangeClient>(),
-            "kucoin" => new StubExchangeClient(exchangeId, _configurationService, _loggerFactory.CreateLogger<StubExchangeClient>()),
-            "okx" => new StubExchangeClient(exchangeId, _configurationService, _loggerFactory.CreateLogger<StubExchangeClient>()),
-            _ => throw new ArgumentException($"Unsupported exchange: {exchangeId}", nameof(exchangeId))
+            _ => throw new ArgumentException($"Unsupported exchange: {exchangeId}. Supported exchanges: {string.Join(", ", GetSupportedExchanges())}", nameof(exchangeId))
         };
     }
     
@@ -67,11 +64,8 @@ public class ExchangeFactory : IExchangeFactory
     {
         return new[]
         {
-            "binance",
             "coinbase",
-            "kraken",
-            "kucoin",
-            "okx"
+            "kraken"
         };
     }
 } 

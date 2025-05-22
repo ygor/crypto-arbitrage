@@ -20,7 +20,6 @@ public static class ExchangeUtils
         {
             "coinbase" => $"{tradingPair.BaseCurrency}-{tradingPair.QuoteCurrency}", // Coinbase uses BTC-USD format
             "kraken" => $"{tradingPair.BaseCurrency}{tradingPair.QuoteCurrency}",    // Kraken uses BTCUSD format
-            "binance" => $"{tradingPair.BaseCurrency}{tradingPair.QuoteCurrency}",   // Binance uses BTCUSDT format
             _ => $"{tradingPair.BaseCurrency}/{tradingPair.QuoteCurrency}"           // Default format
         };
     }
@@ -49,11 +48,8 @@ public static class ExchangeUtils
         
         string symbol = exchangeId.ToLowerInvariant() switch
         {
-            "binance" => $"{baseCurrency}{quoteCurrency}",
             "coinbase" => $"{baseCurrency}-{quoteCurrency}", // Coinbase always uses hyphen separators (e.g., ETH-USDT, BTC-USD)
             "kraken" => GetKrakenPairSymbol(baseCurrency, quoteCurrency),
-            "kucoin" => $"{baseCurrency}-{quoteCurrency}",
-            "okx" => $"{baseCurrency}-{quoteCurrency}",
             _ => $"{baseCurrency}{quoteCurrency}"
         };
         
@@ -82,11 +78,8 @@ public static class ExchangeUtils
     {
         return exchangeId.ToLowerInvariant() switch
         {
-            "binance" => side == OrderSide.Buy ? "BUY" : "SELL",
             "coinbase" => side == OrderSide.Buy ? "buy" : "sell",
             "kraken" => side == OrderSide.Buy ? "buy" : "sell",
-            "kucoin" => side == OrderSide.Buy ? "buy" : "sell",
-            "okx" => side == OrderSide.Buy ? "buy" : "sell",
             _ => side.ToString().ToLowerInvariant()
         };
     }
@@ -101,14 +94,6 @@ public static class ExchangeUtils
     {
         return exchangeId.ToLowerInvariant() switch
         {
-            "binance" => orderType switch
-            {
-                OrderType.Market => "MARKET",
-                OrderType.Limit => "LIMIT",
-                OrderType.FillOrKill => "FOK",
-                OrderType.ImmediateOrCancel => "IOC",
-                _ => orderType.ToString().ToUpperInvariant()
-            },
             "coinbase" => orderType switch
             {
                 OrderType.Market => "market",

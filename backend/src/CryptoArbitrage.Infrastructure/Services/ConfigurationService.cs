@@ -296,31 +296,6 @@ public class ConfigurationService : IConfigurationService
     /// </summary>
     private void InitializeDefaultExchangeConfigurations()
     {
-        // Binance configuration
-        var binanceConfig = new ExchangeConfiguration
-        {
-            ExchangeId = ExchangeId.Binance.Value,
-            IsEnabled = true,
-            ApiUrl = "https://api.binance.com",
-            WebSocketUrl = "wss://stream.binance.com:9443/ws",
-            ApiKey = "placeholder_api_key", // This should be securely stored in a real application
-            ApiSecret = "placeholder_api_secret", // This should be securely stored in a real application
-            SupportedTradingPairs = new List<TradingPair>
-            {
-                TradingPair.BTCUSDT,
-                TradingPair.ETHUSDT,
-                TradingPair.XRPUSDT
-            },
-            ApiTimeoutMs = 5000,
-            WebSocketReconnectIntervalMs = 1000,
-            RateLimits = new ExchangeRateLimits
-            {
-                RequestsPerMinute = 1200, // Binance allows 1200 requests per minute
-                OrdersPerMinute = 100,
-                MarketDataRequestsPerMinute = 600
-            }
-        };
-        _defaultExchangeConfigs[ExchangeId.Binance] = binanceConfig;
         
         // Coinbase configuration
         var coinbaseConfig = new ExchangeConfiguration
