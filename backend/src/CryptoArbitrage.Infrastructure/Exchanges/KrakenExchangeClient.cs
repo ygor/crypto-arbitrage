@@ -11,6 +11,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Threading.Channels;
 using System.Text.Json.Nodes;
+using System.Text.Json;
+using System.Net.WebSockets;
+using CryptoArbitrage.Domain.Exceptions;
 
 namespace CryptoArbitrage.Infrastructure.Exchanges;
 
@@ -21,10 +24,13 @@ public class KrakenExchangeClient : BaseExchangeClient
 {
     private readonly HttpClient _httpClient;
     private readonly Dictionary<TradingPair, Channel<OrderBook>> _orderBookChannels = new();
+    private readonly Dictionary<string, TradingPair> _subscribedPairs = new();
+    private readonly Dictionary<int, string> _channelIdToSymbol = new();
     
     private string? _apiKey;
     private string? _apiSecret;
     private readonly string _baseUrl = "https://api.kraken.com";
+    private readonly string _wsUrl = "wss://ws.kraken.com";  // Kraken WebSocket API v1 endpoint
     private readonly long _nonce;
     
     /// <summary>
@@ -45,10 +51,70 @@ public class KrakenExchangeClient : BaseExchangeClient
         _httpClient.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
         _nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        
+        // Set WebSocket URL in base class
+        WebSocketUrl = _wsUrl;
+        
+        // Log streaming info
+        Logger.LogInformation("Kraken exchange supports WebSocket streaming for real-time order book data");
     }
     
     /// <inheritdoc />
-    public override bool SupportsStreaming => false;
+    public override bool SupportsStreaming => true;
+    
+    /// <inheritdoc />
+    public override async Task ConnectAsync(CancellationToken cancellationToken = default)
+    {
+        if (_isConnected)
+        {
+            Logger.LogDebug("Client for {ExchangeId} is already connected", ExchangeId);
+            return;
+        }
+        
+        Logger.LogInformation("Connecting to {ExchangeId}...", ExchangeId);
+        
+        try
+        {
+            // Get exchange configuration to retrieve credentials
+            var exchangeConfig = await ConfigurationService.GetExchangeConfigurationAsync(ExchangeId, cancellationToken);
+            
+            if (exchangeConfig != null)
+            {
+                // Load credentials if they exist, but don't require them for public data feeds
+                _apiKey = exchangeConfig.ApiKey;
+                _apiSecret = exchangeConfig.ApiSecret;
+                
+                // Log what type of connection we're making
+                if (!string.IsNullOrEmpty(_apiKey) && !string.IsNullOrEmpty(_apiSecret))
+                {
+                    Logger.LogInformation("Credentials found, will use authenticated connection when needed");
+                }
+                else
+                {
+                    Logger.LogInformation("No credentials provided, will use public connections only");
+                }
+            }
+            
+            // Initialize WebSocket client
+            WebSocketClient = new ClientWebSocket();
+            _webSocketCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            
+            // Connect to WebSocket
+            await WebSocketClient.ConnectAsync(new Uri(_wsUrl), _webSocketCts.Token);
+            
+            // Start processing WebSocket messages
+            _isProcessingMessages = true;
+            _webSocketProcessingTask = Task.Run(() => ProcessWebSocketMessagesAsync(_webSocketCts.Token), _webSocketCts.Token);
+            
+            _isConnected = true;
+            Logger.LogInformation("Connected to {ExchangeId} WebSocket at {WebSocketUrl}", ExchangeId, _wsUrl);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error connecting to {ExchangeId}", ExchangeId);
+            throw;
+        }
+    }
     
     /// <inheritdoc />
     protected override async Task AuthenticateWithCredentialsAsync(string apiKey, string apiSecret, CancellationToken cancellationToken = default)
@@ -101,18 +167,42 @@ public class KrakenExchangeClient : BaseExchangeClient
         var channel = Channel.CreateUnbounded<OrderBook>();
         _orderBookChannels[tradingPair] = channel;
         
-        var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+        // Get properly formatted Kraken trading pair - for WebSocket API
+        string symbol;
+        if (tradingPair.BaseCurrency == "BTC")
+        {
+            // Kraken uses XBT instead of BTC and needs specific formatting for pairs
+            symbol = $"XBT/{tradingPair.QuoteCurrency}";
+        }
+        else
+        {
+            symbol = $"{tradingPair.BaseCurrency}/{tradingPair.QuoteCurrency}";
+        }
         
         try
         {
             Logger.LogInformation("Subscribing to order book for {TradingPair} ({Symbol}) on Kraken", tradingPair, symbol);
             
-            // Get initial snapshot
-            var orderBook = await FetchKrakenOrderBookAsync(tradingPair, 20, cancellationToken);
-            if (orderBook != null)
+            // Add to subscribed pairs
+            _subscribedPairs[symbol] = tradingPair;
+            
+            // Create subscription message for WebSocket - using v1 format
+            var subscribeMessage = new
             {
-                OrderBooks[tradingPair] = orderBook;
-            }
+                @event = "subscribe",  // "event" is a reserved keyword in C#, need @ prefix
+                reqid = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000),
+                pair = new[] { symbol },
+                subscription = new
+                {
+                    name = "book",
+                    depth = 25 // Depth level (10, 25, 100, 500, 1000)
+                }
+            };
+            
+            var messageJson = JsonConvert.SerializeObject(subscribeMessage);
+            await SendWebSocketMessageAsync(messageJson, cancellationToken);
+            
+            Logger.LogInformation("Sent WebSocket subscription for order book {Symbol}", symbol);
         }
         catch (Exception ex)
         {
@@ -138,6 +228,7 @@ public class KrakenExchangeClient : BaseExchangeClient
             }
         }
         
+        // Read all updates from the channel
         await foreach (var orderBook in channel.Reader.ReadAllAsync(cancellationToken))
         {
             yield return orderBook;
@@ -396,8 +487,75 @@ public class KrakenExchangeClient : BaseExchangeClient
     /// <inheritdoc />
     public override async Task<OrderBook> GetOrderBookSnapshotAsync(TradingPair tradingPair, int depth = 10, CancellationToken cancellationToken = default)
     {
-        // Delegate to the FetchKrakenOrderBookAsync method to avoid code duplication
-        return await FetchKrakenOrderBookAsync(tradingPair, depth, cancellationToken);
+        // First check if we already have an order book from WebSocket
+        if (OrderBooks.TryGetValue(tradingPair, out var cachedOrderBook))
+        {
+            return cachedOrderBook;
+        }
+        
+        try
+        {
+            // Try to get via WebSocket if connected
+            if (_isConnected && WebSocketClient?.State == WebSocketState.Open)
+            {
+                Logger.LogInformation("Requesting order book via WebSocket for {TradingPair}", tradingPair);
+                
+                // Get properly formatted Kraken trading pair - for WebSocket API
+                string symbol;
+                if (tradingPair.BaseCurrency == "BTC")
+                {
+                    // Kraken uses XBT instead of BTC and needs specific formatting for pairs
+                    symbol = $"XBT/{tradingPair.QuoteCurrency}";
+                }
+                else
+                {
+                    symbol = $"{tradingPair.BaseCurrency}/{tradingPair.QuoteCurrency}";
+                }
+                
+                // Subscribe via WebSocket
+                await SubscribeToOrderBookAsync(tradingPair, cancellationToken);
+                
+                // Wait for the order book to be received via WebSocket
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)); // Set timeout
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+                
+                try
+                {
+                    while (!OrderBooks.ContainsKey(tradingPair) && !linkedCts.Token.IsCancellationRequested)
+                    {
+                        await Task.Delay(100, linkedCts.Token);
+                    }
+                    
+                    if (OrderBooks.TryGetValue(tradingPair, out var orderBook))
+                    {
+                        return orderBook;
+                    }
+                    
+                    // If we get here, it means we timed out
+                    throw new ExchangeClientException(ExchangeId, 
+                        $"Failed to get order book for {tradingPair} ({symbol}) on Kraken: Timed out waiting for WebSocket snapshot");
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogWarning("Timed out waiting for WebSocket order book, falling back to REST API");
+                    throw new ExchangeClientException(ExchangeId, 
+                        $"Failed to get order book for {tradingPair} ({symbol}) on Kraken: Timed out waiting for WebSocket snapshot");
+                }
+            }
+            
+            // Fall back to REST API
+            return await FetchKrakenOrderBookAsync(tradingPair, depth, cancellationToken);
+        }
+        catch (ExchangeClientException)
+        {
+            // Re-throw exchange client exceptions
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error getting order book snapshot for {TradingPair}", tradingPair);
+            throw;
+        }
     }
     
     /// <inheritdoc />
@@ -662,6 +820,74 @@ public class KrakenExchangeClient : BaseExchangeClient
         }
     }
     
+    /// <inheritdoc />
+    public override async Task UnsubscribeFromOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
+    {
+        if (!_isConnected)
+        {
+            Logger.LogWarning("Cannot unsubscribe - client for {ExchangeId} is not connected", ExchangeId);
+            return;
+        }
+        
+        // Get properly formatted Kraken trading pair - for WebSocket API
+        string symbol;
+        if (tradingPair.BaseCurrency == "BTC")
+        {
+            // Kraken uses XBT instead of BTC and needs specific formatting for pairs
+            symbol = $"XBT/{tradingPair.QuoteCurrency}";
+        }
+        else
+        {
+            symbol = $"{tradingPair.BaseCurrency}/{tradingPair.QuoteCurrency}";
+        }
+        
+        Logger.LogInformation("Unsubscribing from order book for {TradingPair} ({Symbol}) on Kraken", tradingPair, symbol);
+        
+        try
+        {
+            // Remove from subscribed pairs
+            if (_subscribedPairs.Remove(symbol) && WebSocketClient?.State == WebSocketState.Open)
+            {
+                // Send unsubscribe message via WebSocket - using v1 format
+                var unsubscribeMessage = new
+                {
+                    @event = "unsubscribe", // Use event property
+                    reqid = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000),
+                    pair = new[] { symbol },
+                    subscription = new
+                    {
+                        name = "book"
+                    }
+                };
+                
+                var messageJson = JsonConvert.SerializeObject(unsubscribeMessage);
+                await SendWebSocketMessageAsync(messageJson, cancellationToken);
+                
+                Logger.LogInformation("Sent WebSocket unsubscription for order book {Symbol}", symbol);
+            }
+            
+            // Remove the channel and complete it
+            if (_orderBookChannels.TryGetValue(tradingPair, out var channel))
+            {
+                channel.Writer.Complete();
+                _orderBookChannels.Remove(tradingPair);
+            }
+            
+            // Remove from order books
+            OrderBooks.Remove(tradingPair);
+            
+            // Clean up channel mapping if exists
+            foreach (var channelPair in _channelIdToSymbol.Where(x => x.Value == symbol).ToList())
+            {
+                _channelIdToSymbol.Remove(channelPair.Key);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error unsubscribing from order book for {TradingPair} ({Symbol}) on Kraken", tradingPair, symbol);
+        }
+    }
+    
     // Private helper methods
     
     private async Task<T?> SendAuthenticatedRequestAsync<T>(
@@ -800,6 +1026,326 @@ public class KrakenExchangeClient : BaseExchangeClient
         else
         {
             result = result.OrderBy(x => x.Price).ToList();
+        }
+        
+        return result;
+    }
+    
+    /// <inheritdoc />
+    protected override async Task ProcessWebSocketMessageAsync(string message, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Try to parse as a JSON object first (for events like subscribe/unsubscribe)
+            if (message.StartsWith("{"))
+            {
+                var jObject = JObject.Parse(message);
+                
+                // Check if it's an event message
+                if (jObject.ContainsKey("event"))
+                {
+                    var eventType = jObject["event"]?.ToString();
+                    Logger.LogDebug("Received Kraken WebSocket event: {EventType}", eventType);
+                    
+                    if (eventType == "subscriptionStatus")
+                    {
+                        await ProcessSubscriptionStatusAsync(jObject, cancellationToken);
+                    }
+                    else if (eventType == "error")
+                    {
+                        var errorMsg = jObject["errorMessage"]?.ToString() ?? "Unknown error";
+                        Logger.LogError("Kraken WebSocket error: {ErrorMessage}", errorMsg);
+                    }
+                }
+            }
+            // Try to parse as JSON array (for order book updates)
+            else if (message.StartsWith("["))
+            {
+                var jArray = JArray.Parse(message);
+                
+                // Check if it's an order book message
+                if (jArray.Count >= 2 && jArray[1] is JObject)
+                {
+                    var secondElement = jArray[1] as JObject;
+                    
+                    // Check if it contains order book data
+                    if (secondElement != null && 
+                        (secondElement.ContainsKey("as") || secondElement.ContainsKey("a") || 
+                         secondElement.ContainsKey("bs") || secondElement.ContainsKey("b")))
+                    {
+                        await ProcessOrderBookMessageAsync(jArray, cancellationToken);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing WebSocket message from Kraken: {Message}", message);
+        }
+    }
+    
+    private async Task ProcessSubscriptionStatusAsync(JObject message, CancellationToken cancellationToken)
+    {
+        var status = message["status"]?.ToString();
+        var channelName = message["channelName"]?.ToString();
+        var pair = message["pair"]?.ToString();
+        var reqid = message["reqid"]?.ToObject<int>() ?? 0;
+        
+        if (status == "subscribed" && channelName?.StartsWith("book") == true && !string.IsNullOrEmpty(pair))
+        {
+            Logger.LogInformation("Successfully subscribed to {ChannelName} for {Pair} on Kraken", channelName, pair);
+            
+            // If channel ID is provided, store the mapping
+            if (message["channelID"] != null && message["channelID"].Type == JTokenType.Integer)
+            {
+                var channelId = message["channelID"].ToObject<int>();
+                _channelIdToSymbol[channelId] = pair;
+                Logger.LogDebug("Mapped channel ID {ChannelId} to symbol {Symbol}", channelId, pair);
+            }
+        }
+        else if (status == "error")
+        {
+            var errorMsg = message["errorMessage"]?.ToString() ?? "Unknown error";
+            Logger.LogError("Kraken subscription error for {ChannelName} {Pair}: {ErrorMessage}", 
+                channelName, pair, errorMsg);
+            
+            // If the error is about the event not found, let's try to resubscribe with proper format
+            if (errorMsg.Contains("Event(s) not found", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.LogWarning("Retrying subscription with proper event format");
+                // Extract pair from the failed subscription if possible
+                if (!string.IsNullOrEmpty(pair) && _subscribedPairs.TryGetValue(pair, out var tradingPair))
+                {
+                    try 
+                    {
+                        // Wait a bit before retrying
+                        await Task.Delay(1000, cancellationToken);
+                        
+                        // Create a proper subscription message
+                        var retrySubscribeMessage = new
+                        {
+                            @event = "subscribe",
+                            pair = new[] { pair },
+                            subscription = new
+                            {
+                                name = "book",
+                                depth = 25
+                            }
+                        };
+                        
+                        var retryMessageJson = JsonConvert.SerializeObject(retrySubscribeMessage);
+                        await SendWebSocketMessageAsync(retryMessageJson, cancellationToken);
+                        Logger.LogInformation("Retried WebSocket subscription for {Symbol}", pair);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Error retrying subscription for {Pair}", pair);
+                    }
+                }
+            }
+        }
+    }
+    
+    private async Task ProcessOrderBookMessageAsync(JArray message, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Extract channel ID, type, and pair
+            var channelId = message[0].Type == JTokenType.Integer ? message[0].ToObject<int>() : 0;
+            var channelName = message[message.Count - 2]?.ToString() ?? string.Empty;
+            var pair = message[message.Count - 1]?.ToString() ?? string.Empty;
+            
+            // Check if this is a book channel
+            if (!channelName.StartsWith("book"))
+            {
+                return;
+            }
+            
+            // Get the trading pair from the symbol
+            if (!_subscribedPairs.TryGetValue(pair, out var tradingPair))
+            {
+                Logger.LogWarning("Received order book update for unsubscribed pair: {Pair}", pair);
+                return;
+            }
+            
+            // Get the order book data from the message
+            var bookData = message[1] as JObject;
+            if (bookData == null)
+            {
+                Logger.LogWarning("Invalid order book data format: {Message}", message);
+                return;
+            }
+            
+            bool isSnapshot = bookData.ContainsKey("as") && bookData.ContainsKey("bs");
+            
+            // Process either snapshot or update
+            if (isSnapshot)
+            {
+                await ProcessOrderBookSnapshotAsync(tradingPair, bookData, cancellationToken);
+            }
+            else
+            {
+                await ProcessOrderBookUpdateAsync(tradingPair, bookData, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing order book message: {Message}", message);
+        }
+    }
+    
+    private async Task ProcessOrderBookSnapshotAsync(TradingPair tradingPair, JObject bookData, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Parse asks and bids
+            var asks = ParseOrderBookLevelsFromWebSocket(bookData["as"] as JArray, OrderSide.Sell);
+            var bids = ParseOrderBookLevelsFromWebSocket(bookData["bs"] as JArray, OrderSide.Buy);
+            
+            if (asks.Count == 0 && bids.Count == 0)
+            {
+                Logger.LogWarning("Received empty order book snapshot for {TradingPair}", tradingPair);
+                return;
+            }
+            
+            // Create order book
+            var orderBook = new OrderBook(ExchangeId, tradingPair, DateTime.UtcNow, bids, asks);
+            
+            // Store in local cache
+            OrderBooks[tradingPair] = orderBook;
+            
+            // Publish to subscribers
+            if (_orderBookChannels.TryGetValue(tradingPair, out var channel))
+            {
+                await channel.Writer.WriteAsync(orderBook, cancellationToken);
+                Logger.LogInformation("Published order book snapshot for {TradingPair}: {BidCount} bids, {AskCount} asks", 
+                    tradingPair, bids.Count, asks.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing order book snapshot for {TradingPair}", tradingPair);
+        }
+    }
+    
+    private async Task ProcessOrderBookUpdateAsync(TradingPair tradingPair, JObject bookData, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Check if we have a cached order book to update
+            if (!OrderBooks.TryGetValue(tradingPair, out var existingOrderBook))
+            {
+                Logger.LogWarning("Received order book update for {TradingPair} but no snapshot yet", tradingPair);
+                return;
+            }
+            
+            // Create new lists based on the existing order book
+            var bids = new List<OrderBookEntry>(existingOrderBook.Bids);
+            var asks = new List<OrderBookEntry>(existingOrderBook.Asks);
+            bool updated = false;
+            
+            // Process ask updates
+            if (bookData.ContainsKey("a") && bookData["a"] is JArray askUpdates && askUpdates.Count > 0)
+            {
+                var askEntries = ParseOrderBookLevelsFromWebSocket(askUpdates, OrderSide.Sell);
+                foreach (var askEntry in askEntries)
+                {
+                    // Update the order book (remove entry if quantity is 0)
+                    UpdateOrderBookSide(asks, askEntry.Price, askEntry.Quantity);
+                    updated = true;
+                }
+            }
+            
+            // Process bid updates
+            if (bookData.ContainsKey("b") && bookData["b"] is JArray bidUpdates && bidUpdates.Count > 0)
+            {
+                var bidEntries = ParseOrderBookLevelsFromWebSocket(bidUpdates, OrderSide.Buy);
+                foreach (var bidEntry in bidEntries)
+                {
+                    // Update the order book (remove entry if quantity is 0)
+                    UpdateOrderBookSide(bids, bidEntry.Price, bidEntry.Quantity);
+                    updated = true;
+                }
+            }
+            
+            // If we made updates, update the timestamp and publish
+            if (updated)
+            {
+                // Sort the order book entries
+                bids.Sort((a, b) => b.Price.CompareTo(a.Price)); // Descending for bids
+                asks.Sort((a, b) => a.Price.CompareTo(b.Price)); // Ascending for asks
+                
+                // Create a new order book with the updated lists
+                var updatedOrderBook = new OrderBook(
+                    existingOrderBook.ExchangeId,
+                    existingOrderBook.TradingPair,
+                    DateTime.UtcNow,
+                    bids,
+                    asks);
+                
+                // Store the updated order book
+                OrderBooks[tradingPair] = updatedOrderBook;
+                
+                // Publish to subscribers
+                if (_orderBookChannels.TryGetValue(tradingPair, out var channel))
+                {
+                    await channel.Writer.WriteAsync(updatedOrderBook, cancellationToken);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing order book update for {TradingPair}", tradingPair);
+        }
+    }
+    
+    private void UpdateOrderBookSide(List<OrderBookEntry> entries, decimal price, decimal size)
+    {
+        // Find existing entry with the same price
+        var existingIndex = entries.FindIndex(e => e.Price == price);
+        
+        if (existingIndex >= 0)
+        {
+            if (size == 0)
+            {
+                // Remove the entry if size is 0
+                entries.RemoveAt(existingIndex);
+            }
+            else
+            {
+                // Update the quantity
+                entries[existingIndex] = new OrderBookEntry(price, size);
+            }
+        }
+        else if (size > 0)
+        {
+            // Add new entry if it doesn't exist and size > 0
+            entries.Add(new OrderBookEntry(price, size));
+        }
+    }
+    
+    private List<OrderBookEntry> ParseOrderBookLevelsFromWebSocket(JArray? levels, OrderSide side)
+    {
+        var result = new List<OrderBookEntry>();
+        
+        if (levels == null)
+        {
+            return result;
+        }
+        
+        foreach (var level in levels)
+        {
+            if (level is JArray levelArray && levelArray.Count >= 2)
+            {
+                if (decimal.TryParse(levelArray[0]?.ToString() ?? "0", NumberStyles.Any, CultureInfo.InvariantCulture, out var price) &&
+                    decimal.TryParse(levelArray[1]?.ToString() ?? "0", NumberStyles.Any, CultureInfo.InvariantCulture, out var quantity))
+                {
+                    if (price > 0)
+                    {
+                        result.Add(new OrderBookEntry(price, quantity));
+                    }
+                }
+            }
         }
         
         return result;

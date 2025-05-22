@@ -157,6 +157,22 @@ public abstract class BaseExchangeClient : IExchangeClient
         
         try
         {
+            // Unsubscribe from all order books first
+            foreach (var tradingPair in OrderBookChannels.Keys.ToList())
+            {
+                try
+                {
+                    // Don't use ValidateConnected here as we're in the process of disconnecting
+                    await UnsubscribeFromOrderBookAsync(tradingPair, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Log but continue with disconnection
+                    Logger.LogWarning(ex, "Error unsubscribing from {TradingPair} during disconnect for {ExchangeId}", 
+                        tradingPair, ExchangeId);
+                }
+            }
+            
             // Cancel WebSocket processing
             if (_webSocketCts != null && !_webSocketCts.IsCancellationRequested)
             {
@@ -166,7 +182,15 @@ public abstract class BaseExchangeClient : IExchangeClient
             // Close WebSocket connection
             if (WebSocketClient != null && WebSocketClient.State == WebSocketState.Open)
             {
-                await WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disconnecting", cancellationToken);
+                try
+                {
+                    await WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disconnecting", cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Just log the error and continue with disconnection
+                    Logger.LogWarning(ex, "Error closing WebSocket for {ExchangeId}", ExchangeId);
+                }
             }
             
             // Wait for WebSocket processing task to complete
@@ -174,25 +198,62 @@ public abstract class BaseExchangeClient : IExchangeClient
             {
                 try
                 {
-                    await _webSocketProcessingTask;
+                    // Use a short timeout to avoid hanging during shutdown
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                        timeoutCts.Token, cancellationToken);
+                    
+                    await _webSocketProcessingTask.WaitAsync(linkedCts.Token);
                 }
                 catch (OperationCanceledException)
                 {
                     // Expected when cancellation is requested
+                    Logger.LogDebug("Cancelled waiting for WebSocket processing task to complete for {ExchangeId}", ExchangeId);
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Error waiting for WebSocket processing task to complete for {ExchangeId}", ExchangeId);
+                    Logger.LogWarning(ex, "Error waiting for WebSocket processing task to complete for {ExchangeId}", ExchangeId);
                 }
                 
                 _webSocketProcessingTask = null;
             }
             
+            // Clean up all channels
+            foreach (var channel in OrderBookChannels.Values)
+            {
+                try
+                {
+                    channel.Writer.Complete();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Error completing channel for {ExchangeId}", ExchangeId);
+                }
+            }
+            
+            OrderBookChannels.Clear();
+            
             // Dispose WebSocket resources
-            WebSocketClient?.Dispose();
+            try
+            {
+                WebSocketClient?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error disposing WebSocket for {ExchangeId}", ExchangeId);
+            }
+            
             WebSocketClient = null;
             
-            _webSocketCts?.Dispose();
+            try
+            {
+                _webSocketCts?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error disposing WebSocket CTS for {ExchangeId}", ExchangeId);
+            }
+            
             _webSocketCts = null;
             
             _isProcessingMessages = false;
@@ -202,8 +263,12 @@ public abstract class BaseExchangeClient : IExchangeClient
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error disconnecting from {ExchangeId}", ExchangeId);
-            throw;
+            // Log but don't rethrow to ensure cleanup continues
+            Logger.LogError(ex, "Error during disconnect for {ExchangeId}", ExchangeId);
+            
+            // Make sure we set disconnected state even if there were errors
+            _isProcessingMessages = false;
+            _isConnected = false;
         }
     }
 
@@ -309,7 +374,12 @@ public abstract class BaseExchangeClient : IExchangeClient
     /// <inheritdoc />
     public virtual Task UnsubscribeFromOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
     {
-        ValidateConnected();
+        // Don't validate connection - we may be disconnecting
+        if (!_isConnected)
+        {
+            Logger.LogDebug("Not unsubscribing from order book for {TradingPair} on {ExchangeId} - not connected", tradingPair, ExchangeId);
+            return Task.CompletedTask;
+        }
         
         Logger.LogInformation("Unsubscribing from order book for {TradingPair} on {ExchangeId}", tradingPair, ExchangeId);
         
@@ -518,7 +588,9 @@ public abstract class BaseExchangeClient : IExchangeClient
     {
         if (WebSocketClient == null || WebSocketClient.State != WebSocketState.Open)
         {
-            throw new InvalidOperationException("WebSocket is not connected");
+            Logger.LogWarning("Cannot send WebSocket message - connection is not open (current state: {State})", 
+                WebSocketClient?.State.ToString() ?? "null");
+            return; // Return instead of throwing exception
         }
         
         var messageBytes = Encoding.UTF8.GetBytes(message);
