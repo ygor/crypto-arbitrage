@@ -420,7 +420,7 @@ public class CoinbaseExchangeClientTests
     }
 
     [Fact]
-    public async Task ConnectAsync_WithoutAuthCredentials_ThrowsException()
+    public async Task ConnectAsync_WithoutAuthCredentials_UsesPublicConnection()
     {
         // Arrange
         var mockConfigService = new Mock<IConfigurationService>();
@@ -433,18 +433,26 @@ public class CoinbaseExchangeClientTests
                 ApiSecret = "secret"
             });
         
-        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, _mockLogger.Object);
+        var mockLogger = new Mock<ILogger<CoinbaseExchangeClient>>();
+        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, mockLogger.Object);
         
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            client.ConnectAsync());
+        // Act
+        await client.ConnectAsync();
         
-        // Verify the exception message contains information about required authentication
-        Assert.Contains("requires authentication", exception.Message);
+        // Assert
+        // Verify the logger was called with a message about using public connections
+        mockLogger.Verify(
+            x => x.Log(
+                It.Is<LogLevel>(l => l == LogLevel.Information),
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("public connections")),
+                It.IsAny<Exception>(),
+                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+            Times.Once);
     }
 
     [Fact]
-    public async Task ConnectAsync_WithoutApiSecret_ThrowsException()
+    public async Task ConnectAsync_WithoutApiSecret_UsesPublicConnection()
     {
         // Arrange
         var mockConfigService = new Mock<IConfigurationService>();
@@ -457,18 +465,26 @@ public class CoinbaseExchangeClientTests
                 ApiSecret = "", // Empty API secret
             });
         
-        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, _mockLogger.Object);
+        var mockLogger = new Mock<ILogger<CoinbaseExchangeClient>>();
+        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, mockLogger.Object);
         
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            client.ConnectAsync());
+        // Act
+        await client.ConnectAsync();
         
-        // Verify the exception message contains information about required authentication
-        Assert.Contains("requires authentication", exception.Message);
+        // Assert
+        // Verify the logger was called with a message about using public connections
+        mockLogger.Verify(
+            x => x.Log(
+                It.Is<LogLevel>(l => l == LogLevel.Information),
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("public connections")),
+                It.IsAny<Exception>(),
+                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+            Times.Once);
     }
 
     [Fact]
-    public async Task ConnectAsync_WithoutPassphrase_ThrowsException()
+    public async Task ConnectAsync_WithoutPassphrase_UsesPublicConnection()
     {
         // Arrange
         var mockConfigService = new Mock<IConfigurationService>();
@@ -482,18 +498,26 @@ public class CoinbaseExchangeClientTests
                 AdditionalAuthParams = new Dictionary<string, string>() // No passphrase
             });
         
-        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, _mockLogger.Object);
+        var mockLogger = new Mock<ILogger<CoinbaseExchangeClient>>();
+        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, mockLogger.Object);
         
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            client.ConnectAsync());
+        // Act
+        await client.ConnectAsync();
         
-        // Verify the exception message contains information about required passphrase
-        Assert.Contains("passphrase", exception.Message);
+        // Assert
+        // Verify the logger was called with a message about using public connections
+        mockLogger.Verify(
+            x => x.Log(
+                It.Is<LogLevel>(l => l == LogLevel.Information),
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("public connections")),
+                It.IsAny<Exception>(),
+                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+            Times.Once);
     }
 
     [Fact]
-    public async Task ConnectAsync_WithEmptyPassphrase_ThrowsException()
+    public async Task ConnectAsync_WithEmptyPassphrase_UsesPublicConnection()
     {
         // Arrange
         var mockConfigService = new Mock<IConfigurationService>();
@@ -510,14 +534,22 @@ public class CoinbaseExchangeClientTests
                 }
             });
         
-        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, _mockLogger.Object);
+        var mockLogger = new Mock<ILogger<CoinbaseExchangeClient>>();
+        var client = new CoinbaseExchangeClient(_httpClient, mockConfigService.Object, mockLogger.Object);
         
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            client.ConnectAsync());
+        // Act
+        await client.ConnectAsync();
         
-        // Verify the exception message contains information about required passphrase
-        Assert.Contains("passphrase", exception.Message);
+        // Assert
+        // Verify the logger was called with a message about using public connections
+        mockLogger.Verify(
+            x => x.Log(
+                It.Is<LogLevel>(l => l == LogLevel.Information),
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("public connections")),
+                It.IsAny<Exception>(),
+                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()),
+            Times.Once);
     }
 
     [Fact]

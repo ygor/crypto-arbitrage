@@ -86,52 +86,39 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     {
         if (_isConnected)
         {
-            Logger.LogDebug("Client for {ExchangeId} is already connected", ExchangeId);
             return;
         }
         
-        Logger.LogInformation("Connecting to {ExchangeId}...", ExchangeId);
-        
         try
         {
-            // Check if we have configuration loaded
+            Logger.LogInformation("Connecting to {ExchangeId} WebSocket at {WebSocketUrl}", ExchangeId, _wsUrl);
+            
+            // Get exchange configuration to retrieve credentials
             var exchangeConfig = await ConfigurationService.GetExchangeConfigurationAsync(ExchangeId, cancellationToken);
             
-            if (exchangeConfig == null)
+            if (exchangeConfig != null)
             {
-                throw new InvalidOperationException("Coinbase configuration not found");
+                // Load credentials if they exist, but don't require them for public data feeds
+                _apiKey = exchangeConfig.ApiKey;
+                _apiSecret = exchangeConfig.ApiSecret;
+                
+                // Try to get passphrase from additional auth params
+                if (exchangeConfig.AdditionalAuthParams != null)
+                {
+                    exchangeConfig.AdditionalAuthParams.TryGetValue("passphrase", out string? passphrase);
+                    _passphrase = passphrase;
+                }
+                
+                // Log what type of connection we're making
+                if (!string.IsNullOrEmpty(_apiKey) && !string.IsNullOrEmpty(_apiSecret) && !string.IsNullOrEmpty(_passphrase))
+                {
+                    Logger.LogInformation("Credentials found, will use authenticated connection when needed");
+                }
+                else
+                {
+                    Logger.LogInformation("No credentials provided or incomplete credentials, will use public connections only");
+                }
             }
-            
-            // Validate credentials are available
-            if (string.IsNullOrEmpty(exchangeConfig.ApiKey) || 
-                string.IsNullOrEmpty(exchangeConfig.ApiSecret))
-            {
-                throw new InvalidOperationException(
-                    "Coinbase level2 WebSocket feed requires authentication. " +
-                    "Please provide API key and secret in the exchange configuration.");
-            }
-            
-            // For Coinbase, we also need a passphrase
-            bool hasPassphrase = false;
-            string? passphrase = null;
-            
-            // Check for additional auth params and passphrase
-            if (exchangeConfig.AdditionalAuthParams != null)
-            {
-                hasPassphrase = exchangeConfig.AdditionalAuthParams.TryGetValue("passphrase", out passphrase);
-            }
-            
-            if (!hasPassphrase || string.IsNullOrEmpty(passphrase))
-            {
-                throw new InvalidOperationException(
-                    "Coinbase requires a passphrase in addition to API key and secret. " +
-                    "Please add 'passphrase' to AdditionalAuthParams in the exchange configuration.");
-            }
-            
-            // Store credentials for later use in subscriptions
-            _apiKey = exchangeConfig.ApiKey;
-            _apiSecret = exchangeConfig.ApiSecret;
-            _passphrase = passphrase;
             
             // Initialize WebSocket client
             WebSocketClient = new ClientWebSocket();
@@ -278,14 +265,6 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         try
         {
-            // Validate that we have authentication credentials 
-            if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_apiSecret) || string.IsNullOrEmpty(_passphrase))
-            {
-                throw new InvalidOperationException(
-                    "Coinbase level2 WebSocket feed requires authentication. " +
-                    "Please provide API key, secret, and passphrase in the exchange configuration.");
-            }
-            
             // Create a channel for this trading pair if it doesn't exist
             if (!OrderBookChannels.TryGetValue(tradingPair, out _))
             {
@@ -294,26 +273,49 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 // Add to subscribed pairs
                 _subscribedPairs[symbol] = tradingPair;
                 
-                // Subscribe to WebSocket feed with authentication
-                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-                var signature = GenerateCoinbaseSubscriptionSignature(timestamp, symbol);
+                // Check if we have authentication credentials available
+                bool useAuthenticated = !string.IsNullOrEmpty(_apiKey) && 
+                                        !string.IsNullOrEmpty(_apiSecret) && 
+                                        !string.IsNullOrEmpty(_passphrase);
                 
-                var subscribeMessage = new
+                object subscribeMessage;
+                
+                if (useAuthenticated)
                 {
-                    type = "subscribe",
-                    product_ids = new[] { symbol },
-                    channels = new[] { "level2", "heartbeat" },
-                    signature = signature,
-                    key = _apiKey,
-                    passphrase = _passphrase,
-                    timestamp = timestamp
-                };
+                    // Authenticated subscription - better rate limits and reliability
+                    var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+                    var signature = GenerateCoinbaseSubscriptionSignature(timestamp, symbol);
+                    
+                    subscribeMessage = new
+                    {
+                        type = "subscribe",
+                        product_ids = new[] { symbol },
+                        channels = new[] { "level2", "heartbeat" },
+                        signature = signature,
+                        key = _apiKey,
+                        passphrase = _passphrase,
+                        timestamp = timestamp
+                    };
+                    
+                    Logger.LogInformation("Sending authenticated WebSocket subscription for level2 channel");
+                }
+                else
+                {
+                    // Public subscription - no authentication required
+                    subscribeMessage = new
+                    {
+                        type = "subscribe",
+                        product_ids = new[] { symbol },
+                        channels = new[] { "level2", "heartbeat" }
+                    };
+                    
+                    Logger.LogInformation("Sending public WebSocket subscription for level2 channel");
+                }
                 
                 var messageJson = System.Text.Json.JsonSerializer.Serialize(subscribeMessage);
-                Logger.LogInformation("Sending authenticated WebSocket subscription for level2 channel");
                 await SendWebSocketMessageAsync(messageJson, cancellationToken);
                 
-                // We no longer get an initial snapshot via REST API - we'll wait for the snapshot via WebSocket
+                // We'll wait for the snapshot via WebSocket
                 Logger.LogInformation("Waiting for initial orderbook snapshot from WebSocket for {Symbol}", symbol);
             }
         }
