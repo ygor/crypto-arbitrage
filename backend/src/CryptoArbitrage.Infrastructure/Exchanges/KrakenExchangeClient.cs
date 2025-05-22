@@ -167,16 +167,19 @@ public class KrakenExchangeClient : BaseExchangeClient
         var channel = Channel.CreateUnbounded<OrderBook>();
         _orderBookChannels[tradingPair] = channel;
         
-        // Get properly formatted Kraken trading pair - for WebSocket API
+        // For WebSocket API we need a specific format with a slash
+        var (baseCurrency, quoteCurrency, _) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+        
+        // Kraken WebSocket API uses a different format than the REST API
         string symbol;
-        if (tradingPair.BaseCurrency == "BTC")
+        if (baseCurrency == "BTC")
         {
-            // Kraken uses XBT instead of BTC and needs specific formatting for pairs
-            symbol = $"XBT/{tradingPair.QuoteCurrency}";
+            // Kraken uses XBT instead of BTC and needs slash formatting for WebSocket API
+            symbol = $"XBT/{quoteCurrency}";
         }
         else
         {
-            symbol = $"{tradingPair.BaseCurrency}/{tradingPair.QuoteCurrency}";
+            symbol = $"{baseCurrency}/{quoteCurrency}";
         }
         
         try
@@ -500,17 +503,22 @@ public class KrakenExchangeClient : BaseExchangeClient
             {
                 Logger.LogInformation("Requesting order book via WebSocket for {TradingPair}", tradingPair);
                 
-                // Get properly formatted Kraken trading pair - for WebSocket API
+                // For WebSocket API we need a specific format with a slash
+                var (baseCurrency, quoteCurrency, _) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+                
+                // Kraken WebSocket API uses a different format than the REST API - with slash
                 string symbol;
-                if (tradingPair.BaseCurrency == "BTC")
+                if (baseCurrency == "BTC")
                 {
-                    // Kraken uses XBT instead of BTC and needs specific formatting for pairs
-                    symbol = $"XBT/{tradingPair.QuoteCurrency}";
+                    // Kraken uses XBT instead of BTC and needs slash formatting for WebSocket API
+                    symbol = $"XBT/{quoteCurrency}";
                 }
                 else
                 {
-                    symbol = $"{tradingPair.BaseCurrency}/{tradingPair.QuoteCurrency}";
+                    symbol = $"{baseCurrency}/{quoteCurrency}";
                 }
+                
+                Logger.LogInformation("Using Kraken WebSocket symbol format: {Symbol}", symbol);
                 
                 // Subscribe via WebSocket
                 await SubscribeToOrderBookAsync(tradingPair, cancellationToken);
@@ -544,6 +552,8 @@ public class KrakenExchangeClient : BaseExchangeClient
             }
             
             // Fall back to REST API
+            var (_, _, restSymbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+            Logger.LogInformation("Falling back to REST API for order book using symbol: {Symbol}", restSymbol);
             return await FetchKrakenOrderBookAsync(tradingPair, depth, cancellationToken);
         }
         catch (ExchangeClientException)
@@ -823,68 +833,132 @@ public class KrakenExchangeClient : BaseExchangeClient
     /// <inheritdoc />
     public override async Task UnsubscribeFromOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
     {
-        if (!_isConnected)
+        if (!_isConnected || WebSocketClient == null)
         {
             Logger.LogWarning("Cannot unsubscribe - client for {ExchangeId} is not connected", ExchangeId);
+            CleanupOrderBookResources(tradingPair);
             return;
         }
         
-        // Get properly formatted Kraken trading pair - for WebSocket API
+        // For WebSocket API we need a specific format with a slash
+        var (baseCurrency, quoteCurrency, _) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+        
+        // Kraken WebSocket API uses a different format than the REST API
         string symbol;
-        if (tradingPair.BaseCurrency == "BTC")
+        if (baseCurrency == "BTC")
         {
-            // Kraken uses XBT instead of BTC and needs specific formatting for pairs
-            symbol = $"XBT/{tradingPair.QuoteCurrency}";
+            // Kraken uses XBT instead of BTC and needs slash formatting for WebSocket API
+            symbol = $"XBT/{quoteCurrency}";
         }
         else
         {
-            symbol = $"{tradingPair.BaseCurrency}/{tradingPair.QuoteCurrency}";
+            symbol = $"{baseCurrency}/{quoteCurrency}";
         }
         
         Logger.LogInformation("Unsubscribing from order book for {TradingPair} ({Symbol}) on Kraken", tradingPair, symbol);
         
         try
         {
-            // Remove from subscribed pairs
-            if (_subscribedPairs.Remove(symbol) && WebSocketClient?.State == WebSocketState.Open)
+            // Only attempt to send the unsubscribe message if the WebSocket is still open and not canceled
+            if (_subscribedPairs.Remove(symbol) && WebSocketClient.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
-                // Send unsubscribe message via WebSocket - using v1 format
-                var unsubscribeMessage = new
+                try
                 {
-                    @event = "unsubscribe", // Use event property
-                    reqid = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000),
-                    pair = new[] { symbol },
-                    subscription = new
+                    // Use a timeout to prevent hanging during shutdown
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+                    
+                    // Send unsubscribe message via WebSocket - using v1 format
+                    var unsubscribeMessage = new
                     {
-                        name = "book"
-                    }
-                };
-                
-                var messageJson = JsonConvert.SerializeObject(unsubscribeMessage);
-                await SendWebSocketMessageAsync(messageJson, cancellationToken);
-                
-                Logger.LogInformation("Sent WebSocket unsubscription for order book {Symbol}", symbol);
+                        @event = "unsubscribe", // Use event property
+                        reqid = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % 1000000),
+                        pair = new[] { symbol },
+                        subscription = new
+                        {
+                            name = "book"
+                        }
+                    };
+                    
+                    var messageJson = JsonConvert.SerializeObject(unsubscribeMessage);
+                    await SendWebSocketMessageAsync(messageJson, linkedCts.Token);
+                    
+                    Logger.LogDebug("Successfully sent unsubscribe message for {Symbol}", symbol);
+                }
+                catch (OperationCanceledException)
+                {
+                    // This is expected during shutdown, just continue with cleanup
+                    Logger.LogDebug("Unsubscribe message canceled (likely during shutdown) for {TradingPair} ({Symbol})", tradingPair, symbol);
+                }
+                catch (Exception ex)
+                {
+                    // Just log the error but continue with cleanup
+                    Logger.LogWarning(ex, "Error sending unsubscribe message for {TradingPair} ({Symbol}), continuing with cleanup", tradingPair, symbol);
+                }
             }
             
-            // Remove the channel and complete it
-            if (_orderBookChannels.TryGetValue(tradingPair, out var channel))
-            {
-                channel.Writer.Complete();
-                _orderBookChannels.Remove(tradingPair);
-            }
-            
-            // Remove from order books
-            OrderBooks.Remove(tradingPair);
-            
-            // Clean up channel mapping if exists
-            foreach (var channelPair in _channelIdToSymbol.Where(x => x.Value == symbol).ToList())
-            {
-                _channelIdToSymbol.Remove(channelPair.Key);
-            }
+            // Always clean up resources even if sending the message fails
+            CleanupOrderBookResources(tradingPair, symbol);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error unsubscribing from order book for {TradingPair} ({Symbol}) on Kraken", tradingPair, symbol);
+            
+            // Still try to clean up resources
+            try
+            {
+                CleanupOrderBookResources(tradingPair, symbol);
+            }
+            catch (Exception cleanupEx)
+            {
+                Logger.LogError(cleanupEx, "Error cleaning up resources for {TradingPair}", tradingPair);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Cleans up order book resources for a trading pair.
+    /// </summary>
+    /// <param name="tradingPair">The trading pair.</param>
+    /// <param name="symbol">The symbol used for channel mapping.</param>
+    private void CleanupOrderBookResources(TradingPair tradingPair, string? symbol = null)
+    {
+        // Remove the channel and complete it
+        if (_orderBookChannels.TryGetValue(tradingPair, out var channel))
+        {
+            try
+            {
+                channel.Writer.Complete();
+                _orderBookChannels.Remove(tradingPair);
+                Logger.LogDebug("Removed order book channel for {TradingPair}", tradingPair);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error completing channel for {TradingPair}", tradingPair);
+            }
+        }
+        
+        // Remove from order books
+        if (OrderBooks.Remove(tradingPair))
+        {
+            Logger.LogDebug("Removed order book for {TradingPair}", tradingPair);
+        }
+        
+        // Clean up channel mapping if exists and if symbol is provided
+        if (!string.IsNullOrEmpty(symbol))
+        {
+            try
+            {
+                foreach (var channelPair in _channelIdToSymbol.Where(x => x.Value == symbol).ToList())
+                {
+                    _channelIdToSymbol.Remove(channelPair.Key);
+                }
+                Logger.LogDebug("Removed channel mappings for {Symbol}", symbol);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error removing channel mappings for {Symbol}", symbol);
+            }
         }
     }
     

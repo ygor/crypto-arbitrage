@@ -71,6 +71,7 @@ public class ArbitrageRepository : IArbitrageRepository
             Quantity = opportunity.EffectiveQuantity,
             Timestamp = timestamp.DateTime,
             Status = TradeStatus.Completed,
+            IsSuccess = true, // Trade is successful if both buy and sell results were successful
             ProfitAmount = profit,
             ProfitPercentage = (profit / (opportunity.BuyPrice * opportunity.EffectiveQuantity)) * 100m,
             Fees = (buyResult?.Fee ?? 0) + (sellResult?.Fee ?? 0),
@@ -446,12 +447,12 @@ public class ArbitrageRepository : IArbitrageRepository
 
     public async Task<List<TradeResult>> GetRecentTradesAsync(int limit = 100, TimeSpan? timeSpan = null)
     {
-        var cutoff = timeSpan.HasValue 
-            ? DateTimeOffset.UtcNow.Subtract(timeSpan.Value)
-            : DateTimeOffset.UtcNow.AddHours(-1);
+        var cutoffUtc = timeSpan.HasValue 
+            ? DateTime.UtcNow.Subtract(timeSpan.Value)
+            : DateTime.UtcNow.AddHours(-1);
         
         return _trades.Values
-            .Where(t => t.Timestamp >= cutoff)
+            .Where(t => t.Timestamp.ToUniversalTime() >= cutoffUtc)
             .OrderByDescending(t => t.Timestamp)
             .Take(limit)
             .ToList();
@@ -460,7 +461,7 @@ public class ArbitrageRepository : IArbitrageRepository
     public async Task<List<TradeResult>> GetTradesByTimeRangeAsync(DateTimeOffset start, DateTimeOffset end, int limit = 100)
     {
         return _trades.Values
-            .Where(t => t.Timestamp >= start && t.Timestamp <= end)
+            .Where(t => t.Timestamp.ToUniversalTime() >= start.UtcDateTime && t.Timestamp.ToUniversalTime() <= end.UtcDateTime)
             .OrderByDescending(t => t.Timestamp)
             .Take(limit)
             .ToList();

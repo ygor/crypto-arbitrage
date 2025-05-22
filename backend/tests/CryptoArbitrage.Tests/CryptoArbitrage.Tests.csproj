@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\src\CryptoArbitrage.Domain\CryptoArbitrage.Domain.csproj" />
     <ProjectReference Include="..\..\src\CryptoArbitrage.Infrastructure\CryptoArbitrage.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\CryptoArbitrage.Worker\CryptoArbitrage.Worker.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Api\CryptoArbitrage.Api.csproj" />
   </ItemGroup>
 
 </Project>

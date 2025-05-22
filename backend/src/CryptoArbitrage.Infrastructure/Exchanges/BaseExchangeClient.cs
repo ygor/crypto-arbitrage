@@ -586,17 +586,63 @@ public abstract class BaseExchangeClient : IExchangeClient
     /// <returns>A task representing the asynchronous operation.</returns>
     protected virtual async Task SendWebSocketMessageAsync(string message, CancellationToken cancellationToken)
     {
-        if (WebSocketClient == null || WebSocketClient.State != WebSocketState.Open)
+        if (WebSocketClient == null)
         {
-            Logger.LogWarning("Cannot send WebSocket message - connection is not open (current state: {State})", 
-                WebSocketClient?.State.ToString() ?? "null");
+            Logger.LogWarning("Cannot send WebSocket message - WebSocketClient is null");
             return; // Return instead of throwing exception
         }
         
-        var messageBytes = Encoding.UTF8.GetBytes(message);
-        await WebSocketClient.SendAsync(new ArraySegment<byte>(messageBytes), WebSocketMessageType.Text, true, cancellationToken);
+        if (WebSocketClient.State != WebSocketState.Open)
+        {
+            Logger.LogWarning("Cannot send WebSocket message - connection is not open (current state: {State})", 
+                WebSocketClient.State);
+            return; // Return instead of throwing exception
+        }
         
-        Logger.LogTrace("Sent WebSocket message: {Message}", message);
+        // Check for cancellation before trying to send
+        if (cancellationToken.IsCancellationRequested)
+        {
+            Logger.LogDebug("Skipping WebSocket message send - cancellation requested");
+            return;
+        }
+        
+        try
+        {
+            var messageBytes = Encoding.UTF8.GetBytes(message);
+            
+            // Create a linked cancellation token that will time out after 3 seconds
+            // This prevents hanging during shutdown
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+            
+            await WebSocketClient.SendAsync(
+                new ArraySegment<byte>(messageBytes), 
+                WebSocketMessageType.Text, 
+                true, 
+                linkedCts.Token);
+            
+            Logger.LogTrace("Sent WebSocket message: {Message}", message);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected during shutdown, log at debug level
+            Logger.LogDebug("WebSocket message send canceled - shutdown in progress");
+        }
+        catch (WebSocketException ex)
+        {
+            // Log and return gracefully - don't throw exceptions for WebSocket issues
+            Logger.LogWarning(ex, "WebSocket error while sending message: {Message}", ex.Message);
+        }
+        catch (ObjectDisposedException ex)
+        {
+            // WebSocket may be disposed during shutdown
+            Logger.LogWarning(ex, "WebSocket was disposed while trying to send message");
+        }
+        catch (Exception ex)
+        {
+            // Log other errors but don't rethrow - WebSocket errors shouldn't break the app
+            Logger.LogError(ex, "Error sending WebSocket message: {Message}", ex.Message);
+        }
     }
     
     /// <summary>

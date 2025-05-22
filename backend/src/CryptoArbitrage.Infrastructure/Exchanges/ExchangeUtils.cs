@@ -57,8 +57,17 @@ public static class ExchangeUtils
             _ => $"{baseCurrency}{quoteCurrency}"
         };
         
-        logger?.LogInformation("Converted trading pair {TradingPair} to native format {Symbol} for exchange {ExchangeId}", 
-            tradingPair, symbol, exchangeId);
+        // Special case logging for Coinbase to help diagnose WebSocket issues
+        if (exchangeId.ToLowerInvariant() == "coinbase")
+        {
+            logger?.LogInformation("Coinbase format: TradingPair {TradingPair} converted to native format: Base={BaseCurrency}, Quote={QuoteCurrency}, Symbol={Symbol}", 
+                tradingPair, baseCurrency, quoteCurrency, symbol);
+        }
+        else
+        {
+            logger?.LogInformation("Converted trading pair {TradingPair} to native format {Symbol} for exchange {ExchangeId}", 
+                tradingPair, symbol, exchangeId);
+        }
             
         return (baseCurrency, quoteCurrency, symbol);
     }

@@ -215,9 +215,9 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             return orderBook;
         }
         
-        // Format for Coinbase is BASE-QUOTE (e.g., BTC-USD, ETH-USD)
-        string symbol = $"{tradingPair.BaseCurrency}-{tradingPair.QuoteCurrency}";
-        Logger.LogWarning("No order book snapshot available for {TradingPair} ({Symbol}). Subscribe to order book updates first.", 
+        // Get properly formatted Coinbase trading pair
+        var (baseCurrency, quoteCurrency, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+        Logger.LogInformation("No order book snapshot available for {TradingPair} ({Symbol}). Subscribe to order book updates first.", 
             tradingPair, symbol);
         
         try 
@@ -258,8 +258,8 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     {
         ValidateConnected();
         
-        // Format for Coinbase is BASE-QUOTE (e.g., BTC-USD, ETH-USD)
-        string symbol = $"{tradingPair.BaseCurrency}-{tradingPair.QuoteCurrency}";
+        // Get properly formatted Coinbase trading pair
+        var (baseCurrency, quoteCurrency, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
         Logger.LogInformation("Subscribing to order book for {TradingPair} ({Symbol}) on Coinbase", tradingPair, symbol);
         
         try
@@ -277,7 +277,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                                         !string.IsNullOrEmpty(_apiSecret) && 
                                         !string.IsNullOrEmpty(_passphrase);
                 
-                object subscribeMessage;
+                object? subscribeMessage = null; // Initialize to null
                 
                 if (useAuthenticated)
                 {
@@ -285,37 +285,63 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                     var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
                     var signature = GenerateCoinbaseSubscriptionSignature(timestamp, symbol);
                     
+                    // Updated format according to Coinbase API documentation
                     subscribeMessage = new
                     {
                         type = "subscribe",
                         product_ids = new[] { symbol },
-                        channels = new[] { "level2", "heartbeat" },
+                        channels = new object[] 
+                        { 
+                            "level2",
+                            "heartbeat"
+                        },
                         signature = signature,
                         key = _apiKey,
                         passphrase = _passphrase,
                         timestamp = timestamp
                     };
                     
-                    Logger.LogInformation("Sending authenticated WebSocket subscription for level2 channel");
+                    Logger.LogInformation("Sending authenticated WebSocket subscription for level2 channel with product_id: {Symbol}", symbol);
                 }
                 else
                 {
-                    // Public subscription - no authentication required
-                    subscribeMessage = new
-                    {
-                        type = "subscribe",
-                        product_ids = new[] { symbol },
-                        channels = new[] { "level2", "heartbeat" }
-                    };
-                    
-                    Logger.LogInformation("Sending public WebSocket subscription for level2 channel");
+                    // Coinbase now requires authentication for level2, log warning and skip if not authenticated
+                    Logger.LogWarning("Coinbase requires authentication for level2 channel. Skipping subscription for {Symbol} as credentials are not available.", symbol);
                 }
                 
-                var messageJson = System.Text.Json.JsonSerializer.Serialize(subscribeMessage);
-                await SendWebSocketMessageAsync(messageJson, cancellationToken);
-                
-                // We'll wait for the snapshot via WebSocket
-                Logger.LogInformation("Waiting for initial orderbook snapshot from WebSocket for {Symbol}", symbol);
+                // Only proceed if a valid subscription message was created
+                if (subscribeMessage != null)
+                {
+                    // Log the actual subscription message (removing sensitive data) for diagnostic purposes
+                    var messageJson = System.Text.Json.JsonSerializer.Serialize(subscribeMessage);
+                    var diagnosticMessage = messageJson;
+                    
+                    // Redact sensitive information for logging
+                    if (useAuthenticated) // Should always be true if subscribeMessage is not null
+                    {
+                        diagnosticMessage = System.Text.RegularExpressions.Regex.Replace(
+                            diagnosticMessage, 
+                            "\"key\":\"[^\"]+\"", 
+                            "\"key\":\"REDACTED\"");
+                        
+                        diagnosticMessage = System.Text.RegularExpressions.Regex.Replace(
+                            diagnosticMessage, 
+                            "\"passphrase\":\"[^\"]+\"", 
+                            "\"passphrase\":\"REDACTED\"");
+                        
+                        diagnosticMessage = System.Text.RegularExpressions.Regex.Replace(
+                            diagnosticMessage, 
+                            "\"signature\":\"[^\"]+\"", 
+                            "\"signature\":\"REDACTED\"");
+                    }
+                    
+                    Logger.LogDebug("Coinbase subscription message: {Message}", diagnosticMessage);
+                    
+                    await SendWebSocketMessageAsync(messageJson, cancellationToken);
+                    
+                    // We'll wait for the snapshot via WebSocket
+                    Logger.LogInformation("Waiting for initial orderbook snapshot from WebSocket for {Symbol}", symbol);
+                }
             }
         }
         catch (Exception ex)
@@ -328,46 +354,100 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     /// <inheritdoc />
     public override async Task UnsubscribeFromOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
     {
-        if (!_isConnected)
+        if (!_isConnected || WebSocketClient == null)
         {
             Logger.LogWarning("Cannot unsubscribe - client for {ExchangeId} is not connected", ExchangeId);
+            CleanupOrderBookResources(tradingPair);
             return;
         }
         
-        // Format for Coinbase is BASE-QUOTE (e.g., BTC-USD, ETH-USD)
-        string symbol = $"{tradingPair.BaseCurrency}-{tradingPair.QuoteCurrency}";
+        // Get properly formatted Coinbase trading pair
+        var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
         Logger.LogInformation("Unsubscribing from order book for {TradingPair} ({Symbol}) on Coinbase", tradingPair, symbol);
         
         try
         {
-            // Remove from subscribed pairs
-            if (_subscribedPairs.Remove(symbol) && WebSocketClient?.State == WebSocketState.Open)
+            // Check if we need to send an unsubscribe message
+            if (_subscribedPairs.Remove(symbol) && WebSocketClient.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
-                // Unsubscribe from WebSocket feed
-                var unsubscribeMessage = new
+                try
                 {
-                    type = "unsubscribe",
-                    product_ids = new[] { symbol },
-                    channels = new[] { "level2", "heartbeat" }
-                };
-                
-                var messageJson = System.Text.Json.JsonSerializer.Serialize(unsubscribeMessage);
-                await SendWebSocketMessageAsync(messageJson, cancellationToken);
+                    // Unsubscribe from WebSocket feed with a timeout to prevent hanging
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2)); // Short timeout for shutdown
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+                    
+                    // Unsubscribe from WebSocket feed
+                    var unsubscribeMessage = new
+                    {
+                        type = "unsubscribe",
+                        product_ids = new[] { symbol },
+                        channels = new object[] 
+                        { 
+                            "level2",
+                            "heartbeat"
+                        }
+                    };
+                    
+                    var messageJson = System.Text.Json.JsonSerializer.Serialize(unsubscribeMessage);
+                    await SendWebSocketMessageAsync(messageJson, linkedCts.Token);
+                    Logger.LogDebug("Successfully sent unsubscribe message for {Symbol}", symbol);
+                }
+                catch (OperationCanceledException)
+                {
+                    // This is expected during shutdown, just continue with cleanup
+                    Logger.LogDebug("Unsubscribe message canceled (likely during shutdown) for {TradingPair} ({Symbol})", tradingPair, symbol);
+                }
+                catch (Exception ex)
+                {
+                    // Just log the error but continue with cleanup
+                    Logger.LogWarning(ex, "Error sending unsubscribe message for {TradingPair} ({Symbol}), continuing with cleanup", tradingPair, symbol);
+                }
             }
             
-            // Remove the channel and complete it
-            if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
-            {
-                channel.Writer.Complete();
-                OrderBookChannels.Remove(tradingPair);
-            }
-            
-            // Remove from order books
-            OrderBooks.Remove(tradingPair);
+            // Always clean up resources even if sending the message fails
+            CleanupOrderBookResources(tradingPair);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error unsubscribing from order book for {TradingPair} ({Symbol}) on Coinbase", tradingPair, symbol);
+            
+            // Still try to clean up resources
+            try
+            {
+                CleanupOrderBookResources(tradingPair);
+            }
+            catch (Exception cleanupEx)
+            {
+                Logger.LogError(cleanupEx, "Error cleaning up resources for {TradingPair}", tradingPair);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Cleans up order book resources for a trading pair.
+    /// </summary>
+    /// <param name="tradingPair">The trading pair.</param>
+    private void CleanupOrderBookResources(TradingPair tradingPair)
+    {
+        // Remove the channel and complete it
+        if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
+        {
+            try
+            {
+                channel.Writer.Complete();
+                OrderBookChannels.Remove(tradingPair);
+                Logger.LogDebug("Removed order book channel for {TradingPair}", tradingPair);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error completing channel for {TradingPair}", tradingPair);
+            }
+        }
+        
+        // Remove from order books
+        if (OrderBooks.Remove(tradingPair))
+        {
+            Logger.LogDebug("Removed order book for {TradingPair}", tradingPair);
         }
     }
     
@@ -398,12 +478,50 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                         break;
                     case "subscriptions":
                         Logger.LogInformation("Received subscriptions confirmation from Coinbase: {Message}", message);
+                        
+                        // Log subscribed channels for diagnostic purposes
+                        if (root.TryGetProperty("channels", out var channelsElement) && 
+                            channelsElement.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var channel in channelsElement.EnumerateArray())
+                            {
+                                if (channel.TryGetProperty("name", out var nameElement) && 
+                                    channel.TryGetProperty("product_ids", out var productIdsElement) &&
+                                    productIdsElement.ValueKind == JsonValueKind.Array)
+                                {
+                                    var channelName = nameElement.GetString();
+                                    var productIds = string.Join(", ", productIdsElement.EnumerateArray()
+                                        .Select(p => p.GetString())
+                                        .Where(p => p != null));
+                                    
+                                    Logger.LogInformation("Coinbase subscribed to channel {ChannelName} for products: {ProductIds}", 
+                                        channelName, productIds);
+                                }
+                            }
+                        }
                         break;
                     case "error":
                         if (root.TryGetProperty("message", out var errorMessageElement))
                         {
                             var errorMessage = errorMessageElement.GetString();
                             Logger.LogError("Received error from Coinbase WebSocket: {Message}", errorMessage);
+                            
+                            // Log additional diagnostic information
+                            var reason = root.TryGetProperty("reason", out var reasonElement) ? reasonElement.GetString() : "Unknown reason";
+                            
+                            if (errorMessage != null && errorMessage.Contains("subscribe", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Extract subscription details for better debugging
+                                Logger.LogError("Coinbase subscription failed: {ErrorMessage}, Reason: {Reason}, Raw message: {RawMessage}", 
+                                    errorMessage, reason, message);
+                                
+                                // Check which products we tried to subscribe to
+                                foreach (var pair in _subscribedPairs)
+                                {
+                                    Logger.LogWarning("Currently attempting to subscribe to: {Symbol} for trading pair {TradingPair}", 
+                                        pair.Key, pair.Value);
+                                }
+                            }
                             
                             // If the error is about authentication, throw an exception
                             if (errorMessage != null && (
