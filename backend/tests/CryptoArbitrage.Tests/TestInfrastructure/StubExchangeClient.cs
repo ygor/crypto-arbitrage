@@ -2,10 +2,11 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Models;
+using CryptoArbitrage.Infrastructure.Exchanges;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
-namespace CryptoArbitrage.Infrastructure.Exchanges;
+namespace CryptoArbitrage.Tests.TestInfrastructure;
 
 /// <summary>
 /// Extension methods for Random.
