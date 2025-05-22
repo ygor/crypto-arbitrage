@@ -31,30 +31,41 @@ public class CoinbaseContractTests
             ""time"": ""2025-05-21T12:00:00Z""
         }";
 
-        // Act - Parse with dynamic to check structure
-        dynamic apiResponse = JsonConvert.DeserializeObject(apiResponseJson);
+        // Act - Parse with dynamic to check structure - using explicit cast to object first
+        var jsonObject = JsonConvert.DeserializeObject<JObject>(apiResponseJson);
+        Assert.NotNull(jsonObject);
         
         // Assert - Verify the structure matches what we expect
-        Assert.NotNull(apiResponse);
-        Assert.NotNull(apiResponse.bids);
-        Assert.NotNull(apiResponse.asks);
-        Assert.NotNull(apiResponse.time);
+        Assert.NotNull(jsonObject["bids"]);
+        Assert.NotNull(jsonObject["asks"]);
+        Assert.NotNull(jsonObject["time"]);
         
         // Verify bids and asks are arrays of arrays
-        Assert.True(apiResponse.bids is JArray);
-        Assert.True(apiResponse.asks is JArray);
-        Assert.True(apiResponse.bids[0] is JArray);
-        Assert.True(apiResponse.asks[0] is JArray);
+        Assert.True(jsonObject["bids"] is JArray);
+        Assert.True(jsonObject["asks"] is JArray);
+        
+        var bidsArray = jsonObject["bids"] as JArray;
+        var asksArray = jsonObject["asks"] as JArray;
+        
+        Assert.NotNull(bidsArray);
+        Assert.NotNull(asksArray);
+        Assert.True(bidsArray[0] is JArray);
+        Assert.True(asksArray[0] is JArray);
         
         // Verify the inner arrays have price and quantity
-        Assert.Equal(2, apiResponse.bids[0].Count);
-        Assert.Equal(2, apiResponse.asks[0].Count);
+        var firstBid = bidsArray[0] as JArray;
+        var firstAsk = asksArray[0] as JArray;
+        
+        Assert.NotNull(firstBid);
+        Assert.NotNull(firstAsk);
+        Assert.Equal(2, firstBid.Count);
+        Assert.Equal(2, firstAsk.Count);
         
         // Parse using invariant culture and verify with approximate equality
-        decimal bidPrice = decimal.Parse(apiResponse.bids[0][0].ToString(), 
+        decimal bidPrice = decimal.Parse(firstBid[0].ToString(), 
             System.Globalization.NumberStyles.Any, 
             System.Globalization.CultureInfo.InvariantCulture);
-        decimal bidSize = decimal.Parse(apiResponse.bids[0][1].ToString(), 
+        decimal bidSize = decimal.Parse(firstBid[1].ToString(), 
             System.Globalization.NumberStyles.Any, 
             System.Globalization.CultureInfo.InvariantCulture);
         

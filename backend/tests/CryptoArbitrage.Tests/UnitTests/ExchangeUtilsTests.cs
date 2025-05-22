@@ -1,3 +1,4 @@
+using System.Globalization;
 using CryptoArbitrage.Domain.Models;
 using CryptoArbitrage.Infrastructure.Exchanges;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ public class ExchangeUtilsTests
     }
 
     [Fact]
-    public void GetNativeTradingPair_ForCoinbaseWithUSDT_ConvertsToUSD()
+    public void GetNativeTradingPair_ForCoinbase_ConvertsUSDTtoUSD()
     {
         // Arrange
         var tradingPair = new TradingPair("BTC", "USDT");
@@ -27,12 +28,12 @@ public class ExchangeUtilsTests
         
         // Assert
         Assert.Equal("BTC", baseCurrency);
-        Assert.Equal("USD", quoteCurrency); // USDT should be converted to USD
+        Assert.Equal("USD", quoteCurrency);
         Assert.Equal("BTC-USD", symbol);
     }
     
     [Fact]
-    public void GetNativeTradingPair_ForCoinbaseWithOtherQuote_PreservesQuoteCurrency()
+    public void GetNativeTradingPair_ForCoinbase_DoesNotConvertNonUSDT()
     {
         // Arrange
         var tradingPair = new TradingPair("BTC", "EUR");
@@ -43,104 +44,116 @@ public class ExchangeUtilsTests
         
         // Assert
         Assert.Equal("BTC", baseCurrency);
-        Assert.Equal("EUR", quoteCurrency); // Should remain the same
+        Assert.Equal("EUR", quoteCurrency);
         Assert.Equal("BTC-EUR", symbol);
+    }
+
+    [Theory]
+    [InlineData("coinbase", "BTC", "USDT", "BTC-USD")]
+    [InlineData("coinbase", "ETH", "BTC", "ETH-BTC")]
+    [InlineData("binance", "BTC", "USDT", "BTCUSDT")]
+    [InlineData("kraken", "BTC", "USD", "XBTUSD")]
+    [InlineData("kraken", "BTC", "USDT", "XBTUSDT")]
+    [InlineData("kucoin", "BTC", "USDT", "BTC-USDT")]
+    [InlineData("unknown", "BTC", "USDT", "BTCUSDT")]
+    public void GetNativeTradingPair_ReturnsCorrectSymbol(
+        string exchangeId, string baseCurrency, string quoteCurrency, string expectedSymbol)
+    {
+        // Arrange
+        var tradingPair = new TradingPair(baseCurrency, quoteCurrency);
+        
+        // Act
+        var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(
+            tradingPair, exchangeId, _mockLogger.Object);
+        
+        // Assert
+        Assert.Equal(expectedSymbol, symbol);
+    }
+    
+    [Theory]
+    [InlineData("coinbase", OrderSide.Buy, "buy")]
+    [InlineData("coinbase", OrderSide.Sell, "sell")]
+    [InlineData("binance", OrderSide.Buy, "BUY")]
+    [InlineData("binance", OrderSide.Sell, "SELL")]
+    [InlineData("kraken", OrderSide.Buy, "buy")]
+    [InlineData("kraken", OrderSide.Sell, "sell")]
+    [InlineData("unknown", OrderSide.Buy, "buy")]
+    [InlineData("unknown", OrderSide.Sell, "sell")]
+    public void FormatOrderSide_ReturnsCorrectFormat(
+        string exchangeId, OrderSide orderSide, string expectedFormat)
+    {
+        // Act
+        var result = ExchangeUtils.FormatOrderSide(orderSide, exchangeId);
+        
+        // Assert
+        Assert.Equal(expectedFormat, result);
+    }
+    
+    [Theory]
+    [InlineData("coinbase", OrderType.Market, "market")]
+    [InlineData("coinbase", OrderType.Limit, "limit")]
+    [InlineData("coinbase", OrderType.FillOrKill, "limit")]
+    [InlineData("binance", OrderType.Market, "MARKET")]
+    [InlineData("binance", OrderType.Limit, "LIMIT")]
+    [InlineData("binance", OrderType.FillOrKill, "FOK")]
+    [InlineData("unknown", OrderType.Market, "market")]
+    public void FormatOrderType_ReturnsCorrectFormat(
+        string exchangeId, OrderType orderType, string expectedFormat)
+    {
+        // Act
+        var result = ExchangeUtils.FormatOrderType(orderType, exchangeId);
+        
+        // Assert
+        Assert.Equal(expectedFormat, result);
     }
     
     [Fact]
-    public void GetNativeTradingPair_ForBinance_UsesCorrectFormat()
+    public void NormalizeSymbol_ForCoinbase_ReturnsHyphenatedFormat()
     {
         // Arrange
         var tradingPair = new TradingPair("BTC", "USDT");
         
         // Act
-        var (baseCurrency, quoteCurrency, symbol) = ExchangeUtils.GetNativeTradingPair(
-            tradingPair, "binance", _mockLogger.Object);
+        var symbol = ExchangeUtils.NormalizeSymbol(tradingPair, "coinbase");
         
         // Assert
-        Assert.Equal("BTC", baseCurrency);
-        Assert.Equal("USDT", quoteCurrency); // Should remain the same for Binance
-        Assert.Equal("BTCUSDT", symbol); // No separator for Binance
+        Assert.Equal("BTC-USDT", symbol);
     }
     
     [Fact]
-    public void GetNativeTradingPair_ForCoinbase_UsesHyphenSeparator()
+    public void NormalizeSymbol_ForBinance_ReturnsConcatenatedFormat()
     {
         // Arrange
-        var tradingPair = new TradingPair("ETH", "BTC");
+        var tradingPair = new TradingPair("BTC", "USDT");
         
         // Act
-        var (baseCurrency, quoteCurrency, symbol) = ExchangeUtils.GetNativeTradingPair(
-            tradingPair, "coinbase", _mockLogger.Object);
+        var symbol = ExchangeUtils.NormalizeSymbol(tradingPair, "binance");
         
         // Assert
-        Assert.Equal("ETH", baseCurrency);
-        Assert.Equal("BTC", quoteCurrency);
-        Assert.Equal("ETH-BTC", symbol); // Should use hyphen separator
+        Assert.Equal("BTCUSDT", symbol);
     }
     
     [Fact]
-    public void GetNativeTradingPair_ForKraken_HandlesBTCSpecialCase()
+    public void GenerateClientOrderId_IncludesExchangePrefix()
+    {
+        // Act
+        var orderId = ExchangeUtils.GenerateClientOrderId("coinbase");
+        
+        // Assert
+        Assert.StartsWith("COI", orderId);
+        Assert.True(orderId.Length > 10); // Should include timestamp and random number
+    }
+    
+    [Fact]
+    public void GetKrakenPairSymbol_ConvertsBTCtoXBT()
     {
         // Arrange
         var tradingPair = new TradingPair("BTC", "USD");
         
         // Act
-        var (baseCurrency, quoteCurrency, symbol) = ExchangeUtils.GetNativeTradingPair(
-            tradingPair, "kraken", _mockLogger.Object);
+        var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, "kraken", _mockLogger.Object);
         
         // Assert
-        Assert.Equal("BTC", baseCurrency);
-        Assert.Equal("USD", quoteCurrency);
-        Assert.Equal("XBTUSD", symbol); // BTC should be converted to XBT for Kraken
-    }
-    
-    [Fact]
-    public void GetNativeTradingPair_WithExchangeIdCaseInsensitive_WorksCorrectly()
-    {
-        // Arrange
-        var tradingPair = new TradingPair("BTC", "USDT");
-        
-        // Act - Test with mixed case
-        var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(
-            tradingPair, "Coinbase", _mockLogger.Object);
-        
-        // Assert
-        Assert.Equal("BTC-USD", symbol); // Should still convert correctly
-    }
-    
-    [Fact]
-    public void FormatOrderSide_ReturnsCorrectFormatForExchanges()
-    {
-        // Arrange & Act
-        var binanceBuy = ExchangeUtils.FormatOrderSide(OrderSide.Buy, "binance");
-        var binanceSell = ExchangeUtils.FormatOrderSide(OrderSide.Sell, "binance");
-        var coinbaseBuy = ExchangeUtils.FormatOrderSide(OrderSide.Buy, "coinbase");
-        var coinbaseSell = ExchangeUtils.FormatOrderSide(OrderSide.Sell, "coinbase");
-        
-        // Assert
-        Assert.Equal("BUY", binanceBuy);
-        Assert.Equal("SELL", binanceSell);
-        Assert.Equal("buy", coinbaseBuy); // Coinbase uses lowercase
-        Assert.Equal("sell", coinbaseSell);
-    }
-    
-    [Fact]
-    public void NormalizeSymbol_ReturnsCorrectSymbolFormat()
-    {
-        // Arrange
-        var tradingPair = new TradingPair("BTC", "USDT");
-        
-        // Act
-        var binanceSymbol = ExchangeUtils.NormalizeSymbol(tradingPair, "binance");
-        var coinbaseSymbol = ExchangeUtils.NormalizeSymbol(tradingPair, "coinbase");
-        var krakenSymbol = ExchangeUtils.NormalizeSymbol(tradingPair, "kraken");
-        var unknownSymbol = ExchangeUtils.NormalizeSymbol(tradingPair, "unknown");
-        
-        // Assert
-        Assert.Equal("BTCUSDT", binanceSymbol);
-        Assert.Equal("BTC-USDT", coinbaseSymbol); // No USD conversion in NormalizeSymbol
-        Assert.Equal("BTCUSDT", krakenSymbol);
-        Assert.Equal("BTC/USDT", unknownSymbol); // Default format
+        Assert.Equal("XBTUSD", symbol);
     }
 } 

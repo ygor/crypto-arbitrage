@@ -73,6 +73,9 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         // Set WebSocket URL in base class
         WebSocketUrl = _wsUrl;
+        
+        // Log streaming requirement
+        Logger.LogInformation("Coinbase exchange requires authenticated WebSocket connection for real-time order book data");
     }
     
     /// <inheritdoc />
@@ -91,6 +94,45 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         try
         {
+            // Check if we have configuration loaded
+            var exchangeConfig = await ConfigurationService.GetExchangeConfigurationAsync(ExchangeId, cancellationToken);
+            
+            if (exchangeConfig == null)
+            {
+                throw new InvalidOperationException("Coinbase configuration not found");
+            }
+            
+            // Validate credentials are available
+            if (string.IsNullOrEmpty(exchangeConfig.ApiKey) || 
+                string.IsNullOrEmpty(exchangeConfig.ApiSecret))
+            {
+                throw new InvalidOperationException(
+                    "Coinbase level2 WebSocket feed requires authentication. " +
+                    "Please provide API key and secret in the exchange configuration.");
+            }
+            
+            // For Coinbase, we also need a passphrase
+            bool hasPassphrase = false;
+            string? passphrase = null;
+            
+            // Check for additional auth params and passphrase
+            if (exchangeConfig.AdditionalAuthParams != null)
+            {
+                hasPassphrase = exchangeConfig.AdditionalAuthParams.TryGetValue("passphrase", out passphrase);
+            }
+            
+            if (!hasPassphrase || string.IsNullOrEmpty(passphrase))
+            {
+                throw new InvalidOperationException(
+                    "Coinbase requires a passphrase in addition to API key and secret. " +
+                    "Please add 'passphrase' to AdditionalAuthParams in the exchange configuration.");
+            }
+            
+            // Store credentials for later use in subscriptions
+            _apiKey = exchangeConfig.ApiKey;
+            _apiSecret = exchangeConfig.ApiSecret;
+            _passphrase = passphrase;
+            
             // Initialize WebSocket client
             WebSocketClient = new ClientWebSocket();
             _webSocketCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -180,15 +222,50 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     {
         ValidateConnected();
         
-        var orderBook = await FetchOrderBookAsync(tradingPair, cancellationToken);
-        if (orderBook == null)
+        // First check if we already have an order book for this pair
+        if (OrderBooks.TryGetValue(tradingPair, out var orderBook))
         {
-            var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
-            Logger.LogWarning("Failed to get order book from Coinbase for {TradingPair} ({Symbol})", tradingPair, symbol);
-            throw new ExchangeClientException(ExchangeId, $"Failed to get order book for {tradingPair} ({symbol}) on Coinbase");
+            return orderBook;
         }
         
-        return orderBook;
+        // If not, we need to subscribe to get the order book
+        var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+        Logger.LogWarning("No order book snapshot available for {TradingPair} ({Symbol}). Subscribe to order book updates first.", 
+            tradingPair, symbol);
+        
+        // Try to subscribe
+        await SubscribeToOrderBookAsync(tradingPair, cancellationToken);
+        
+        // Wait for a short time to receive the initial snapshot
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+        
+        try 
+        {
+            // Wait for the order book to be received
+            while (!OrderBooks.TryGetValue(tradingPair, out orderBook) && !linkedCts.Token.IsCancellationRequested)
+            {
+                await Task.Delay(100, linkedCts.Token);
+            }
+            
+            if (orderBook == null)
+            {
+                throw new ExchangeClientException(ExchangeId, 
+                    $"Failed to get order book for {tradingPair} ({symbol}) on Coinbase: Timed out waiting for WebSocket snapshot");
+            }
+            
+            return orderBook;
+        }
+        catch (OperationCanceledException)
+        {
+            if (timeoutCts.Token.IsCancellationRequested)
+            {
+                throw new ExchangeClientException(ExchangeId, 
+                    $"Failed to get order book for {tradingPair} ({symbol}) on Coinbase: Timed out waiting for WebSocket snapshot");
+            }
+            
+            throw;
+        }
     }
     
     /// <inheritdoc />
@@ -201,6 +278,14 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         try
         {
+            // Validate that we have authentication credentials 
+            if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_apiSecret) || string.IsNullOrEmpty(_passphrase))
+            {
+                throw new InvalidOperationException(
+                    "Coinbase level2 WebSocket feed requires authentication. " +
+                    "Please provide API key, secret, and passphrase in the exchange configuration.");
+            }
+            
             // Create a channel for this trading pair if it doesn't exist
             if (!OrderBookChannels.TryGetValue(tradingPair, out _))
             {
@@ -209,24 +294,27 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 // Add to subscribed pairs
                 _subscribedPairs[symbol] = tradingPair;
                 
-                // Subscribe to WebSocket feed
+                // Subscribe to WebSocket feed with authentication
+                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+                var signature = GenerateCoinbaseSubscriptionSignature(timestamp, symbol);
+                
                 var subscribeMessage = new
                 {
                     type = "subscribe",
                     product_ids = new[] { symbol },
-                    channels = new[] { "level2", "heartbeat" }
+                    channels = new[] { "level2", "heartbeat" },
+                    signature = signature,
+                    key = _apiKey,
+                    passphrase = _passphrase,
+                    timestamp = timestamp
                 };
                 
                 var messageJson = System.Text.Json.JsonSerializer.Serialize(subscribeMessage);
+                Logger.LogInformation("Sending authenticated WebSocket subscription for level2 channel");
                 await SendWebSocketMessageAsync(messageJson, cancellationToken);
                 
-                // Get an initial snapshot via REST API
-                var initialOrderBook = await FetchOrderBookAsync(tradingPair, cancellationToken);
-                if (initialOrderBook != null)
-                {
-                    OrderBooks[tradingPair] = initialOrderBook;
-                    await OrderBookChannels[tradingPair].Writer.WriteAsync(initialOrderBook, cancellationToken);
-                }
+                // We no longer get an initial snapshot via REST API - we'll wait for the snapshot via WebSocket
+                Logger.LogInformation("Waiting for initial orderbook snapshot from WebSocket for {Symbol}", symbol);
             }
         }
         catch (Exception ex)
@@ -308,7 +396,17 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                     case "error":
                         if (root.TryGetProperty("message", out var errorMessageElement))
                         {
-                            Logger.LogError("Received error from Coinbase WebSocket: {Message}", errorMessageElement.GetString());
+                            var errorMessage = errorMessageElement.GetString();
+                            Logger.LogError("Received error from Coinbase WebSocket: {Message}", errorMessage);
+                            
+                            // If the error is about authentication, throw an exception
+                            if (errorMessage != null && (
+                                errorMessage.Contains("authentication", StringComparison.OrdinalIgnoreCase) || 
+                                errorMessage.Contains("auth", StringComparison.OrdinalIgnoreCase) || 
+                                errorMessage.Contains("signature", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                throw new InvalidOperationException($"Coinbase WebSocket authentication failed: {errorMessage}");
+                            }
                         }
                         else
                         {
@@ -345,14 +443,10 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             // Check if we have the order book
             if (!OrderBooks.TryGetValue(tradingPair, out var orderBook))
             {
-                // Get an initial snapshot
-                orderBook = await FetchOrderBookAsync(tradingPair, cancellationToken);
-                if (orderBook == null)
-                {
-                    return;
-                }
-                
-                OrderBooks[tradingPair] = orderBook;
+                // Skip this update if we don't have an order book yet
+                // The snapshot will come first in the WebSocket feed
+                Logger.LogWarning("Received level2 update for {TradingPair} but no order book snapshot yet", tradingPair);
+                return;
             }
             
             // Process the updates
@@ -433,14 +527,18 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         {
             if (!root.TryGetProperty("product_id", out var productIdElement))
             {
+                Logger.LogWarning("Received snapshot without product_id from Coinbase");
                 return;
             }
             
             var productId = productIdElement.GetString();
             if (productId == null || !_subscribedPairs.TryGetValue(productId, out var tradingPair))
             {
+                Logger.LogWarning("Received snapshot for unknown product_id from Coinbase: {ProductId}", productId);
                 return;
             }
+            
+            Logger.LogInformation("Received order book snapshot from Coinbase WebSocket for {ProductId}", productId);
             
             var bids = new List<OrderBookEntry>();
             var asks = new List<OrderBookEntry>();
@@ -450,7 +548,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             {
                 foreach (var bid in bidsElement.EnumerateArray())
                 {
-                    if (bid.ValueKind != JsonValueKind.Array || bid.GetArrayLength() != 2)
+                    if (bid.ValueKind != JsonValueKind.Array || bid.GetArrayLength() < 2)
                     {
                         continue;
                     }
@@ -473,7 +571,10 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                         continue;
                     }
                     
-                    bids.Add(new OrderBookEntry(price, size));
+                    if (price > 0 && size > 0)
+                    {
+                        bids.Add(new OrderBookEntry(price, size));
+                    }
                 }
             }
             
@@ -482,7 +583,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             {
                 foreach (var ask in asksElement.EnumerateArray())
                 {
-                    if (ask.ValueKind != JsonValueKind.Array || ask.GetArrayLength() != 2)
+                    if (ask.ValueKind != JsonValueKind.Array || ask.GetArrayLength() < 2)
                     {
                         continue;
                     }
@@ -505,13 +606,19 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                         continue;
                     }
                     
-                    asks.Add(new OrderBookEntry(price, size));
+                    if (price > 0 && size > 0)
+                    {
+                        asks.Add(new OrderBookEntry(price, size));
+                    }
                 }
             }
             
             // Sort the order book
             bids = bids.OrderByDescending(e => e.Price).Take(100).ToList();
             asks = asks.OrderBy(e => e.Price).Take(100).ToList();
+            
+            Logger.LogInformation("Successfully processed order book snapshot for {ProductId} with {BidCount} bids and {AskCount} asks", 
+                productId, bids.Count, asks.Count);
             
             // Create a new order book
             var orderBook = new OrderBook(
@@ -528,6 +635,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
             {
                 await channel.Writer.WriteAsync(orderBook, cancellationToken);
+                Logger.LogInformation("Published initial order book for {TradingPair} from WebSocket snapshot", tradingPair);
             }
         }
         catch (Exception ex)
@@ -965,73 +1073,6 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     
     // Private helper methods
     
-    private async Task<OrderBook?> FetchOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken)
-    {
-        var (_, _, symbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
-        var endpoint = $"/products/{symbol}/book?level=2";
-        
-        try
-        {
-            Logger.LogInformation("Requesting order book for {Symbol} from Coinbase at endpoint {Endpoint}", 
-                symbol, endpoint);
-                
-            // Use HttpClient to get the raw response and then use Newtonsoft.Json for deserialization
-            var response = await _httpClient.GetAsync($"{_baseUrl}{endpoint}", cancellationToken);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                Logger.LogWarning("Received error response {StatusCode} from Coinbase for {TradingPair} ({Symbol})",
-                    response.StatusCode, tradingPair, symbol);
-                return null;
-            }
-            
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
-            var orderBookData = JsonConvert.DeserializeObject<CoinbaseOrderBook>(content);
-            
-            if (orderBookData == null)
-            {
-                Logger.LogWarning("Received null response from Coinbase order book request for {TradingPair}", tradingPair);
-                return null;
-            }
-            
-            var bids = ParseOrderBookLevels(orderBookData.Bids, OrderSide.Buy)
-                .OrderByDescending(x => x.Price)
-                .Select(level => new OrderBookEntry(level.Price, level.Quantity))
-                .ToList();
-            
-            var asks = ParseOrderBookLevels(orderBookData.Asks, OrderSide.Sell)
-                .OrderBy(x => x.Price)
-                .Select(level => new OrderBookEntry(level.Price, level.Quantity))
-                .ToList();
-            
-            var timestamp = !string.IsNullOrEmpty(orderBookData.Time)
-                ? DateTime.Parse(orderBookData.Time, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal) 
-                : DateTime.UtcNow;
-            
-            Logger.LogInformation("Successfully fetched order book for {TradingPair} from Coinbase with {BidCount} bids and {AskCount} asks", 
-                tradingPair, bids.Count, asks.Count);
-                
-            return new OrderBook(
-                ExchangeId,
-                tradingPair,
-                timestamp,
-                bids,
-                asks);
-        }
-        catch (HttpRequestException ex)
-        {
-            Logger.LogError(ex, "HTTP error fetching order book for {TradingPair} ({Symbol}) from Coinbase: {ErrorMessage}", 
-                tradingPair, symbol, ex.Message);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error fetching order book for {TradingPair} ({Symbol}) from Coinbase: {ErrorMessage}", 
-                tradingPair, symbol, ex.Message);
-            return null;
-        }
-    }
-    
     private List<OrderBookEntry> ParseOrderBookLevels(JArray levels, OrderSide side)
     {
         var result = new List<OrderBookEntry>();
@@ -1166,6 +1207,27 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         // Compute the HMAC-SHA256 signature
         using var hmac = new HMACSHA256(decodedSecret);
         var messageBytes = Encoding.UTF8.GetBytes(messageString);
+        var signatureBytes = hmac.ComputeHash(messageBytes);
+        
+        // Convert the signature to a base64 string
+        return Convert.ToBase64String(signatureBytes);
+    }
+
+    // Add a new method to generate the signature for WebSocket subscription
+    private string GenerateCoinbaseSubscriptionSignature(string timestamp, string symbol)
+    {
+        // The signature is created by base64-decoding the API secret, creating an HMAC-SHA256 with 
+        // the decoded secret, and signing the message string with it.
+        // The message string format is: timestamp + "GET" + "/users/self/verify"
+        
+        var message = $"{timestamp}GET/users/self/verify";
+        
+        // Convert the API secret from base64
+        var decodedSecret = Convert.FromBase64String(_apiSecret);
+        
+        // Compute the HMAC-SHA256 signature
+        using var hmac = new HMACSHA256(decodedSecret);
+        var messageBytes = Encoding.UTF8.GetBytes(message);
         var signatureBytes = hmac.ComputeHash(messageBytes);
         
         // Convert the signature to a base64 string
