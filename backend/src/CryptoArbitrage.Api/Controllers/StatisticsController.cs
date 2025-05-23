@@ -80,6 +80,15 @@ public class StatisticsController : ControllerBase, IStatisticsController
         var domainStats = await _arbitrageRepository.GetLastMonthStatisticsAsync();
         return MapToContractModel(domainStats);
     }
+
+    [HttpGet]
+    public async Task<ApiModels.ArbitrageStatistics> GetStatistics(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Getting general statistics");
+        // Return current day statistics as the default/general statistics
+        var domainStats = await _arbitrageRepository.GetCurrentDayStatisticsAsync();
+        return MapToContractModel(domainStats);
+    }
     
     private ApiModels.ArbitrageStatistics MapToContractModel(DomainModels.ArbitrageStatistics domainStats)
     {

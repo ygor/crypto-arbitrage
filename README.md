@@ -209,6 +209,60 @@ The project follows a clean architecture approach with:
 - SignalR for real-time communication
 - React with Material-UI for the frontend
 
+## Testing
+
+### API Contract Verification
+
+This project includes comprehensive testing to ensure API contracts are maintained:
+
+#### Contract Verification Script
+```bash
+./verify-contracts.sh
+```
+
+This script verifies that:
+- Frontend expects endpoints that exist in the OpenAPI specification
+- Backend actually implements all endpoints defined in the OpenAPI specification
+- Contract alignment is maintained across all layers
+
+#### Regression Tests
+
+To prevent API contract issues from reoccurring, run:
+```bash
+# Run backend regression tests
+cd backend
+dotnet test --filter "ApiContractRegressionTests"
+dotnet test --filter "OpenApiContractTests"
+```
+
+These tests specifically verify:
+- **Critical endpoint availability**: Ensures endpoints like `/api/statistics`, `/api/settings/bot/activity-logs`, and `/api/settings/bot/exchange-status` don't go missing again
+- **Bot control success responses**: Verifies that start/stop endpoints return `success: true` when they succeed
+- **Response format consistency**: Validates that endpoints return expected JSON structures (arrays vs objects)
+- **Status code correctness**: Ensures endpoints return 200 OK instead of 404 Not Found
+
+#### Running All Tests
+```bash
+# Run comprehensive endpoint testing including regression tests
+./test-backend-endpoints.sh
+```
+
+This script:
+1. Tests all critical endpoints for HTTP 200 responses
+2. Runs automated regression tests
+3. Provides detailed results and prevents deployment of broken contracts
+
+### Unit and Integration Tests
+```bash
+# Backend tests
+cd backend
+dotnet test
+
+# Frontend tests  
+cd frontend/arbitrage-dashboard
+npm test
+```
+
 ## Troubleshooting
 
 ### Common Issues

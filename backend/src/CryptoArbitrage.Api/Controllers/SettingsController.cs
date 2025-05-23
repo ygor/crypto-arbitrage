@@ -218,7 +218,7 @@ public class SettingsController : ControllerBase, ISettingsController
         try
         {
             await _arbitrageService.StartAsync(cancellationToken);
-            return new ApiModels.BotResponse { message = "Arbitrage bot started successfully" };
+            return ApiModels.BotResponse.Success("Arbitrage bot started successfully");
         }
         catch (Exception ex)
         {
@@ -233,7 +233,7 @@ public class SettingsController : ControllerBase, ISettingsController
         try
         {
             await _arbitrageService.StopAsync(cancellationToken);
-            return new ApiModels.BotResponse { message = "Arbitrage bot stopped successfully" };
+            return ApiModels.BotResponse.Success("Arbitrage bot stopped successfully");
         }
         catch (Exception ex)
         {
