@@ -490,6 +490,8 @@ public class KrakenExchangeClient : BaseExchangeClient
     /// <inheritdoc />
     public override async Task<OrderBook> GetOrderBookSnapshotAsync(TradingPair tradingPair, int depth = 10, CancellationToken cancellationToken = default)
     {
+        ValidateConnected();
+        
         // First check if we already have an order book from WebSocket
         if (OrderBooks.TryGetValue(tradingPair, out var cachedOrderBook))
         {
@@ -498,63 +500,51 @@ public class KrakenExchangeClient : BaseExchangeClient
         
         try
         {
-            // Try to get via WebSocket if connected
-            if (_isConnected && WebSocketClient?.State == WebSocketState.Open)
+            var (baseCurrency, quoteCurrency, _) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
+            
+            // Kraken WebSocket API uses a different format than the REST API - with slash
+            string symbol;
+            if (baseCurrency == "BTC")
             {
-                Logger.LogInformation("Requesting order book via WebSocket for {TradingPair}", tradingPair);
-                
-                // For WebSocket API we need a specific format with a slash
-                var (baseCurrency, quoteCurrency, _) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
-                
-                // Kraken WebSocket API uses a different format than the REST API - with slash
-                string symbol;
-                if (baseCurrency == "BTC")
-                {
-                    // Kraken uses XBT instead of BTC and needs slash formatting for WebSocket API
-                    symbol = $"XBT/{quoteCurrency}";
-                }
-                else
-                {
-                    symbol = $"{baseCurrency}/{quoteCurrency}";
-                }
-                
-                Logger.LogInformation("Using Kraken WebSocket symbol format: {Symbol}", symbol);
-                
-                // Subscribe via WebSocket
-                await SubscribeToOrderBookAsync(tradingPair, cancellationToken);
-                
-                // Wait for the order book to be received via WebSocket
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)); // Set timeout
-                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
-                
-                try
-                {
-                    while (!OrderBooks.ContainsKey(tradingPair) && !linkedCts.Token.IsCancellationRequested)
-                    {
-                        await Task.Delay(100, linkedCts.Token);
-                    }
-                    
-                    if (OrderBooks.TryGetValue(tradingPair, out var orderBook))
-                    {
-                        return orderBook;
-                    }
-                    
-                    // If we get here, it means we timed out
-                    throw new ExchangeClientException(ExchangeId, 
-                        $"Failed to get order book for {tradingPair} ({symbol}) on Kraken: Timed out waiting for WebSocket snapshot");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.LogWarning("Timed out waiting for WebSocket order book, falling back to REST API");
-                    throw new ExchangeClientException(ExchangeId, 
-                        $"Failed to get order book for {tradingPair} ({symbol}) on Kraken: Timed out waiting for WebSocket snapshot");
-                }
+                // Kraken uses XBT instead of BTC and needs slash formatting for WebSocket API
+                symbol = $"XBT/{quoteCurrency}";
+            }
+            else
+            {
+                symbol = $"{baseCurrency}/{quoteCurrency}";
             }
             
-            // Fall back to REST API
-            var (_, _, restSymbol) = ExchangeUtils.GetNativeTradingPair(tradingPair, ExchangeId, Logger);
-            Logger.LogInformation("Falling back to REST API for order book using symbol: {Symbol}", restSymbol);
-            return await FetchKrakenOrderBookAsync(tradingPair, depth, cancellationToken);
+            Logger.LogInformation("Getting order book snapshot for {TradingPair} ({Symbol}) from Kraken WebSocket", 
+                tradingPair, symbol);
+            
+            // Subscribe to public order book feed (no authentication needed)
+            await SubscribeToOrderBookAsync(tradingPair, cancellationToken);
+            
+            // Wait for the order book to be received via WebSocket
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+            
+            try
+            {
+                while (!OrderBooks.ContainsKey(tradingPair) && !linkedCts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(100, linkedCts.Token);
+                }
+                
+                if (OrderBooks.TryGetValue(tradingPair, out var orderBook))
+                {
+                    return orderBook;
+                }
+                
+                // If we get here, it means we timed out
+                throw new ExchangeClientException(ExchangeId, 
+                    $"Failed to get order book for {tradingPair} ({symbol}) on Kraken: Timed out waiting for WebSocket snapshot");
+            }
+            catch (OperationCanceledException)
+            {
+                throw new ExchangeClientException(ExchangeId, 
+                    $"Failed to get order book for {tradingPair} ({symbol}) on Kraken: Operation was cancelled");
+            }
         }
         catch (ExchangeClientException)
         {
@@ -564,7 +554,8 @@ public class KrakenExchangeClient : BaseExchangeClient
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error getting order book snapshot for {TradingPair}", tradingPair);
-            throw;
+            throw new ExchangeClientException(ExchangeId, 
+                $"Failed to get order book for {tradingPair} on Kraken: {ex.Message}");
         }
     }
     

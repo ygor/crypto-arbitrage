@@ -35,6 +35,9 @@ public class ArbitrageController : ControllerBase, IArbitrageController
     {
         _logger.LogInformation("Getting {Limit} arbitrage opportunities", limit);
         var opportunities = await _arbitrageRepository.GetRecentOpportunitiesAsync(limit);
+        
+        _logger.LogInformation("Retrieved {Count} real opportunities from repository", opportunities.Count);
+        
         return opportunities.Select(MapToContractModel).ToList();
     }
 
