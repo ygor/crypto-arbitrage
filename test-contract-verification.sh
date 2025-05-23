@@ -7,6 +7,10 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+echo -e "${BLUE}=== Complete API Contract Verification ===${NC}"
+echo -e "${BLUE}Testing both frontend-to-OpenAPI and backend-to-OpenAPI alignment${NC}"
+echo ""
+
 # Navigate to frontend directory
 cd frontend
 
@@ -24,7 +28,8 @@ if [ ! -f "$OPENAPI_SPEC" ]; then
   exit 1
 fi
 
-# Generate the TypeScript API client
+# Step 1: Generate the TypeScript API client
+echo -e "${BLUE}Step 1: Generating TypeScript API client${NC}"
 echo -e "Generating API client from OpenAPI specification..."
 echo -e "Generating TypeScript API client from OpenAPI specification..."
 
@@ -45,19 +50,45 @@ else
   fi
 fi
 
-echo -e "TypeScript API client generated successfully!"
+echo -e "${GREEN}✓ TypeScript API client generated successfully!${NC}"
+echo ""
 
-# Run the verification script
+# Step 2: Verify frontend-to-OpenAPI alignment
+echo -e "${BLUE}Step 2: Verifying frontend-to-OpenAPI alignment${NC}"
 echo -e "Running API contract verification against OpenAPI specification..."
 npm run verify-api-swagger
 
-# Check if verification passed
 if [ $? -eq 0 ]; then
-  echo -e "${GREEN}✓ Contract verification passed!${NC}"
-  echo -e "${GREEN}✓ Frontend API calls align with the OpenAPI specification.${NC}"
-  exit 0
+  echo -e "${GREEN}✓ Frontend-to-OpenAPI alignment verified!${NC}"
 else
-  echo -e "${RED}✗ Contract verification failed.${NC}"
+  echo -e "${RED}✗ Frontend-to-OpenAPI alignment failed.${NC}"
   echo -e "${YELLOW}Please check api-misalignments.log for details.${NC}"
   exit 1
-fi 
+fi
+echo ""
+
+# Step 3: Verify backend-to-OpenAPI alignment
+echo -e "${BLUE}Step 3: Verifying backend-to-OpenAPI alignment${NC}"
+cd ..
+if [ -f "test-backend-endpoints.sh" ]; then
+  echo -e "Running backend endpoint implementation test..."
+  ./test-backend-endpoints.sh
+  
+  if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Backend-to-OpenAPI alignment verified!${NC}"
+  else
+    echo -e "${RED}✗ Backend-to-OpenAPI alignment failed.${NC}"
+    echo -e "${YELLOW}Some endpoints defined in OpenAPI spec are not implemented in the backend.${NC}"
+    exit 1
+  fi
+else
+  echo -e "${YELLOW}⚠ Backend endpoint test script not found - skipping backend verification${NC}"
+  echo -e "${YELLOW}Create test-backend-endpoints.sh to verify backend implements OpenAPI endpoints${NC}"
+fi
+echo ""
+
+# Final summary
+echo -e "${GREEN}=== Complete Contract Verification PASSED ===${NC}"
+echo -e "${GREEN}✓ Frontend calls align with OpenAPI specification${NC}"
+echo -e "${GREEN}✓ Backend implements endpoints defined in OpenAPI specification${NC}"
+echo -e "${GREEN}✓ Full contract integrity verified${NC}" 

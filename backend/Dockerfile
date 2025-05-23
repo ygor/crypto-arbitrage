@@ -37,7 +37,7 @@ EXPOSE 443
 ENTRYPOINT ["dotnet", "CryptoArbitrage.Api.dll"]
 
 # Runtime image for Worker
-FROM mcr.microsoft.com/dotnet/runtime:9.0 AS worker
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS worker
 WORKDIR /app
 COPY --from=build /app/worker ./
 ENTRYPOINT ["dotnet", "CryptoArbitrage.Worker.dll"] 

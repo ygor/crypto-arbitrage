@@ -59,7 +59,10 @@ builder.Services.AddCors(options =>
 });
 
 // Add SignalR
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+});
 
 // Add application and infrastructure services
 builder.Services.AddApplicationServices();
@@ -122,8 +125,10 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Map SignalR hubs
-app.MapHub<ArbitrageHub>("/hubs/arbitrage");
-app.MapHub<TradeHub>("/hubs/trades");
+app.MapHub<ArbitrageHub>("/hubs/arbitrage").RequireCors("AllowFrontend");
+app.MapHub<TradeHub>("/hubs/trades").RequireCors("AllowFrontend");
+app.MapHub<ActivityHub>("/hubs/activity").RequireCors("AllowFrontend");
+app.MapHub<ExchangeStatusHub>("/hubs/exchanges").RequireCors("AllowFrontend");
 
 // Ensure database and configurations are initialized
 using (var scope = app.Services.CreateScope())

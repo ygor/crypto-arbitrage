@@ -47,11 +47,10 @@ const ExchangeStatus: React.FC<ExchangeStatusProps> = ({
         try {
           const signalRConnection = await subscribeToExchangeStatus((status) => {
             setExchanges(prevExchanges => {
-              // Find and update the exchange status if it exists, otherwise add it
-              const index = prevExchanges.findIndex(e => e.exchangeId === status.exchangeId);
-              if (index >= 0) {
+              const existingIndex = prevExchanges.findIndex(e => e.exchangeId === status.exchangeId);
+              if (existingIndex >= 0) {
                 const newExchanges = [...prevExchanges];
-                newExchanges[index] = status;
+                newExchanges[existingIndex] = status;
                 return newExchanges;
               } else {
                 return [...prevExchanges, status];
@@ -60,11 +59,12 @@ const ExchangeStatus: React.FC<ExchangeStatusProps> = ({
           });
           
           setConnection(signalRConnection);
+          console.log('Real-time exchange status connection established');
         } catch (err) {
-          console.error('Failed to connect to real-time exchange status:', err);
-          setError('Failed to establish real-time connection. Using polling instead.');
+          console.warn('Real-time exchange status not available, using polling fallback:', err);
+          // Don't show error to user immediately - just fall back to polling silently
           
-          // Fallback to polling
+          // Fallback to polling every 30 seconds
           const interval = setInterval(fetchExchangeStatus, 30000);
           return () => clearInterval(interval);
         }

@@ -8,12 +8,13 @@ using System.Threading.Tasks;
 using System;
 using Microsoft.Extensions.Logging;
 using ApiModels = CryptoArbitrage.Api.Models;
+using System.Collections.Generic;
 
 namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
 [Route("api/health")]
-public class HealthController : ControllerBase, IHealthController
+public class HealthController : ControllerBase
 {
     private readonly IArbitrageService _arbitrageService;
     private readonly ILogger<HealthController> _logger;

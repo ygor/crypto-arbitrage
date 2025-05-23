@@ -73,12 +73,13 @@ const ActivityLog: React.FC<ActivityLogProps> = ({
           });
           
           setConnection(signalRConnection);
+          console.log('Real-time activity log connection established');
         } catch (err) {
-          console.error('Failed to connect to real-time activity logs:', err);
-          setError('Failed to establish real-time connection. Using polling instead.');
+          console.warn('Real-time activity logs not available, using polling fallback:', err);
+          // Don't show error to user immediately - just fall back to polling silently
           
-          // Fallback to polling
-          const interval = setInterval(fetchLogs, 10000);
+          // Fallback to polling every 30 seconds (less frequent than before)
+          const interval = setInterval(fetchLogs, 30000);
           return () => clearInterval(interval);
         }
       };
