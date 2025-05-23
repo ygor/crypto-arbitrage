@@ -90,7 +90,7 @@ const ExchangeConfigList: React.FC<ExchangeConfigListProps> = ({ exchangeConfigs
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
               <Typography sx={{ width: '40%', flexShrink: 0, textTransform: 'capitalize' }}>
-                {config.exchangeId}
+                {config.name || config.exchangeId}
               </Typography>
               <Chip 
                 label={config.isEnabled ? 'Enabled' : 'Disabled'}
@@ -110,7 +110,7 @@ const ExchangeConfigList: React.FC<ExchangeConfigListProps> = ({ exchangeConfigs
                       color="primary"
                     />
                   }
-                  label={`Enable ${config.exchangeId}`}
+                  label={`Enable ${config.name || config.exchangeId}`}
                 />
               </Box>
               
@@ -163,7 +163,7 @@ const ExchangeConfigList: React.FC<ExchangeConfigListProps> = ({ exchangeConfigs
                   color="primary"
                   onClick={() => handleSaveConfig(index)}
                 >
-                  Save {config.exchangeId} Configuration
+                  Save {config.name || config.exchangeId} Configuration
                 </Button>
               </Box>
             </Box>

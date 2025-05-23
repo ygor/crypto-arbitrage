@@ -614,14 +614,14 @@ public class CoinbaseExchangeClientTests
         
         // Act & Assert
         // This will throw either an InvalidOperationException (WebSocket not connected)
-        // or an ExchangeClientException (timeout)
+        // or an ExchangeClientException (timeout or WebSocket not connected)
         var exception = await Assert.ThrowsAnyAsync<Exception>(() => 
             client.GetOrderBookSnapshotAsync(tradingPair, cancellationToken: timeoutCts.Token));
         
         // Verify we get either a "WebSocket is not connected" or a timeout error
         Assert.True(
             exception is InvalidOperationException && exception.Message.Contains("WebSocket") ||
-            exception is ExchangeClientException && exception.Message.Contains("Timed out"),
+            exception is ExchangeClientException && (exception.Message.Contains("Timed out") || exception.Message.Contains("WebSocket not connected")),
             $"Unexpected exception: {exception.GetType().Name} - {exception.Message}"
         );
     }

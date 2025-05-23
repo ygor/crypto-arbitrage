@@ -17,7 +17,6 @@ public class SettingsRepository : ISettingsRepository
     private static readonly ArbitrageConfig _defaultArbitrageConfig = new();
     private static readonly List<ExchangeConfig> _defaultExchangeConfigs = new()
     {
-        new ExchangeConfig { ExchangeId = "binance", Name = "Binance", IsEnabled = true },
         new ExchangeConfig { ExchangeId = "coinbase", Name = "Coinbase", IsEnabled = true },
         new ExchangeConfig { ExchangeId = "kraken", Name = "Kraken", IsEnabled = true },
         new ExchangeConfig { ExchangeId = "kucoin", Name = "KuCoin", IsEnabled = false },

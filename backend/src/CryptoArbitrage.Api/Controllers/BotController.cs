@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using System.Linq;
+using System.Net.Http;
+using System.Diagnostics;
 
 namespace CryptoArbitrage.Api.Controllers;
 
@@ -14,10 +16,12 @@ namespace CryptoArbitrage.Api.Controllers;
 public class BotController : ControllerBase
 {
     private readonly ILogger<BotController> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public BotController(ILogger<BotController> logger)
+    public BotController(ILogger<BotController> logger, IHttpClientFactory httpClientFactory)
     {
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
     }
 
     [HttpGet("activity-logs")]
@@ -92,45 +96,83 @@ public class BotController : ControllerBase
         {
             _logger.LogInformation("Getting exchange status");
 
-            // For now, return sample data
-            // TODO: Implement proper exchange status monitoring
-            var sampleExchanges = new List<ApiModels.ExchangeStatus>
-            {
-                new ApiModels.ExchangeStatus
-                {
-                    exchangeId = "binance",
-                    exchangeName = "Binance",
-                    isUp = true,
-                    lastChecked = DateTime.UtcNow.AddSeconds(-30).ToString("O"),
-                    responseTimeMs = 125,
-                    additionalInfo = "All services operational"
-                },
-                new ApiModels.ExchangeStatus
-                {
-                    exchangeId = "coinbase",
-                    exchangeName = "Coinbase Pro",
-                    isUp = true,
-                    lastChecked = DateTime.UtcNow.AddSeconds(-45).ToString("O"),
-                    responseTimeMs = 89,
-                    additionalInfo = "All services operational"
-                },
-                new ApiModels.ExchangeStatus
-                {
-                    exchangeId = "kraken",
-                    exchangeName = "Kraken",
-                    isUp = false,
-                    lastChecked = DateTime.UtcNow.AddMinutes(-2).ToString("O"),
-                    responseTimeMs = 0,
-                    additionalInfo = "Connection timeout - investigating"
-                }
-            };
+            var exchanges = new List<ApiModels.ExchangeStatus>();
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
 
-            return Ok(sampleExchanges);
+            // Test Coinbase (real implementation exists)
+            var coinbaseStatus = await TestExchangeStatus(
+                httpClient, 
+                "coinbase", 
+                "Coinbase Advanced Trade", 
+                "https://api.coinbase.com/v2/time",
+                cancellationToken);
+            exchanges.Add(coinbaseStatus);
+
+            // Test Kraken (real implementation exists)
+            var krakenStatus = await TestExchangeStatus(
+                httpClient, 
+                "kraken", 
+                "Kraken", 
+                "https://api.kraken.com/0/public/SystemStatus",
+                cancellationToken);
+            exchanges.Add(krakenStatus);
+
+            // Note: Binance removed - no real BinanceExchangeClient implementation exists
+
+            return Ok(exchanges);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting exchange status");
             return StatusCode(500, "Internal server error");
+        }
+    }
+
+    private async Task<ApiModels.ExchangeStatus> TestExchangeStatus(
+        HttpClient httpClient,
+        string exchangeId,
+        string exchangeName,
+        string healthEndpoint,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        try
+        {
+            var response = await httpClient.GetAsync(healthEndpoint, cancellationToken);
+            stopwatch.Stop();
+            
+            var isUp = response.IsSuccessStatusCode;
+            var responseTimeMs = (int)stopwatch.ElapsedMilliseconds;
+            
+            var additionalInfo = isUp ? "All services operational" : $"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}";
+            
+            return new ApiModels.ExchangeStatus
+            {
+                exchangeId = exchangeId,
+                exchangeName = exchangeName,
+                isUp = isUp,
+                lastChecked = DateTime.UtcNow.ToString("O"),
+                responseTimeMs = responseTimeMs,
+                additionalInfo = additionalInfo
+            };
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            
+            _logger.LogWarning(ex, "Failed to check status for {ExchangeId}", exchangeId);
+            
+            return new ApiModels.ExchangeStatus
+            {
+                exchangeId = exchangeId,
+                exchangeName = exchangeName,
+                isUp = false,
+                lastChecked = DateTime.UtcNow.ToString("O"),
+                responseTimeMs = (int)stopwatch.ElapsedMilliseconds,
+                additionalInfo = $"Connection error: {ex.Message}"
+            };
         }
     }
 } 
