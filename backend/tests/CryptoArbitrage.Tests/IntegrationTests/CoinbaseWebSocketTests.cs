@@ -5,6 +5,9 @@ using CryptoArbitrage.Domain.Models;
 using CryptoArbitrage.Infrastructure.Exchanges;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Moq.Protected;
+using System.Net.Http;
+using System.Net;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -14,13 +17,30 @@ public class CoinbaseWebSocketTests
 {
     private readonly Mock<IConfigurationService> _mockConfigService;
     private readonly Mock<ILogger<CoinbaseExchangeClient>> _mockLogger;
+    private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
     private readonly HttpClient _httpClient;
 
     public CoinbaseWebSocketTests()
     {
         _mockConfigService = new Mock<IConfigurationService>();
         _mockLogger = new Mock<ILogger<CoinbaseExchangeClient>>();
-        _httpClient = new HttpClient();
+        _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        _httpClient = new HttpClient(_mockHttpMessageHandler.Object)
+        {
+            BaseAddress = new Uri("https://api.exchange.coinbase.com")
+        };
+        
+        // Setup default HTTP response to prevent real API calls
+        _mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"message\": \"mocked response\"}")
+            });
     }
 
     [Fact]

@@ -523,7 +523,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             Logger.LogDebug("Validating trading pair {Symbol} with Coinbase API", symbol);
             
             // Fetch the specific product to check if it exists
-            var response = await _httpClient.GetAsync($"/products/{symbol}", cancellationToken);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/products/{symbol}", cancellationToken);
             
             if (response.IsSuccessStatusCode)
             {

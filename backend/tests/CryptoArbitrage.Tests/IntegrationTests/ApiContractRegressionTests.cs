@@ -8,6 +8,11 @@ using System.Text.Json;
 using System.Text;
 using CryptoArbitrage.Api;
 using CryptoArbitrage.Api.Models;
+using CryptoArbitrage.Application.Interfaces;
+using CryptoArbitrage.Tests.TestInfrastructure;
+using Microsoft.AspNetCore.Hosting;
+using Moq;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Collections.Generic;
 
 namespace CryptoArbitrage.Tests.IntegrationTests;
@@ -19,12 +24,12 @@ namespace CryptoArbitrage.Tests.IntegrationTests;
 /// 2. Bot start/stop returning success: false instead of true
 /// 3. Activity logs and exchange status endpoints working correctly
 /// </summary>
-public class ApiContractRegressionTests : IClassFixture<WebApplicationFactory<Program>>
+public class ApiContractRegressionTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public ApiContractRegressionTests(WebApplicationFactory<Program> factory)
+    public ApiContractRegressionTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
         _client = _factory.CreateClient();

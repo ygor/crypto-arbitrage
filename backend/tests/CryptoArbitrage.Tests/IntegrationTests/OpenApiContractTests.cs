@@ -6,6 +6,7 @@ using System.Net;
 using System.Text.Json;
 using System.Collections.Generic;
 using CryptoArbitrage.Api;
+using CryptoArbitrage.Tests.TestInfrastructure;
 using System;
 using System.Linq;
 
@@ -15,9 +16,9 @@ namespace CryptoArbitrage.Tests.IntegrationTests;
 /// Tests that verify the backend implementation matches the OpenAPI specification.
 /// These tests help catch contract violations during development and CI/CD.
 /// </summary>
-public class OpenApiContractTests : IClassFixture<WebApplicationFactory<Program>>
+public class OpenApiContractTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
     // These are the critical endpoints that the frontend expects based on our OpenAPI spec
@@ -47,7 +48,7 @@ public class OpenApiContractTests : IClassFixture<WebApplicationFactory<Program>
         { "/api/health", "GET" },
     };
 
-    public OpenApiContractTests(WebApplicationFactory<Program> factory)
+    public OpenApiContractTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
         _client = _factory.CreateClient();
