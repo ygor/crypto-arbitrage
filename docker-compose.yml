@@ -34,13 +34,12 @@ services:
       target: api
     container_name: crypto-arbitrage-api
     ports:
-      - "5001:80"
+      - "5001:5001"
     depends_on:
       - mongodb
       - redis
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__MongoDb=mongodb://admin:password@mongodb:27017
       - ConnectionStrings__Redis=redis:6379
       - CryptoArbitrage__PaperTradingEnabled=true

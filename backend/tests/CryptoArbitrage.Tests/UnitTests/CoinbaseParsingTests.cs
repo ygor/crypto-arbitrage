@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using System.Text.Json;
 
 namespace CryptoArbitrage.Tests.UnitTests;
 
@@ -220,7 +221,64 @@ public class CoinbaseParsingTests
     // Helper method to invoke the private ParseOrderBookLevels method
     private List<OrderBookEntry> InvokeParseOrderBookLevels(JArray input, OrderSide side)
     {
-        var result = _parseOrderBookLevelsMethod.Invoke(_client, new object[] { input, side });
+        // Convert JArray to JsonElement[][]
+        var jsonElementArray = ConvertJArrayToJsonElementArray(input);
+        var result = _parseOrderBookLevelsMethod.Invoke(_client, new object[] { jsonElementArray, side });
         return result as List<OrderBookEntry> ?? new List<OrderBookEntry>();
+    }
+    
+    // Helper method to convert JArray to JsonElement[][]
+    private JsonElement[][] ConvertJArrayToJsonElementArray(JArray input)
+    {
+        var result = new List<JsonElement[]>();
+        
+        foreach (var item in input)
+        {
+            if (item is JArray subArray)
+            {
+                var elementArray = new List<JsonElement>();
+                foreach (var subItem in subArray)
+                {
+                    try
+                    {
+                        // Convert JToken to JsonElement by serializing and deserializing
+                        var json = subItem.ToString();
+                        
+                        // If it's not a valid JSON value, wrap it in quotes to make it a string
+                        if (subItem.Type == JTokenType.String || 
+                            (subItem.Type == JTokenType.Raw && !IsValidJson(json)))
+                        {
+                            json = JsonSerializer.Serialize(json);
+                        }
+                        
+                        var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
+                        elementArray.Add(jsonElement);
+                    }
+                    catch (JsonException)
+                    {
+                        // If deserialization fails, treat it as a string
+                        var stringValue = subItem.ToString();
+                        var jsonElement = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(stringValue));
+                        elementArray.Add(jsonElement);
+                    }
+                }
+                result.Add(elementArray.ToArray());
+            }
+        }
+        
+        return result.ToArray();
+    }
+    
+    private bool IsValidJson(string json)
+    {
+        try
+        {
+            JsonDocument.Parse(json);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 } 

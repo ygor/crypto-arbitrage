@@ -13,8 +13,6 @@ using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Exceptions;
 using CryptoArbitrage.Domain.Models;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace CryptoArbitrage.Infrastructure.Exchanges;
 
@@ -26,6 +24,11 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, TradingPair> _subscribedPairs = new();
     
+    // REST API polling fallback fields
+    private readonly Dictionary<TradingPair, Timer> _restApiPollingTimers = new();
+    private readonly Dictionary<TradingPair, bool> _usingRestApiFallback = new();
+    private readonly TimeSpan _restApiPollingInterval = TimeSpan.FromSeconds(5);
+    
     private string? _apiKey;
     private string? _apiSecret;
     private string? _passphrase;
@@ -34,8 +37,8 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     
     private class CoinbaseOrderBook
     {
-        public JArray Bids { get; set; } = new JArray();
-        public JArray Asks { get; set; } = new JArray();
+        public JsonElement[][] Bids { get; set; } = Array.Empty<JsonElement[]>();
+        public JsonElement[][] Asks { get; set; } = Array.Empty<JsonElement[]>();
         public string Time { get; set; } = string.Empty;
     }
     
@@ -51,6 +54,25 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     private class CoinbaseAccountsResponse
     {
         public List<CoinbaseAccount> Accounts { get; set; } = new();
+    }
+
+    private class CoinbaseFeeResponse
+    {
+        public string Maker_Fee_Rate { get; set; } = string.Empty;
+        public string Taker_Fee_Rate { get; set; } = string.Empty;
+    }
+
+    private class CoinbaseOrderResponse
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Price { get; set; } = string.Empty;
+        public string Filled_Size { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string Product_Id { get; set; } = string.Empty;
+        public string Side { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string? Filled_At { get; set; }
     }
     
     /// <summary>
@@ -183,7 +205,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             
             // Test authentication by getting account information
             var endpoint = "/accounts";
-            JArray? response = await SendAuthenticatedRequestAsync<JArray>(HttpMethod.Get, endpoint, null, cancellationToken);
+            CoinbaseAccount[]? response = await SendAuthenticatedRequestAsync<CoinbaseAccount[]>(HttpMethod.Get, endpoint, null, cancellationToken);
             
             if (response != null)
             {
@@ -358,6 +380,33 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             // Add to subscribed pairs
             _subscribedPairs[symbol] = tradingPair;
 
+            // Try WebSocket subscription first
+            bool webSocketSuccess = await TryWebSocketSubscriptionAsync(symbol, tradingPair, cancellationToken);
+            
+            if (!webSocketSuccess)
+            {
+                // Fall back to REST API polling
+                Logger.LogWarning("WebSocket subscription failed for {Symbol}, falling back to REST API polling", symbol);
+                await StartRestApiPollingAsync(tradingPair, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error subscribing to order book for {TradingPair} ({Symbol}) on Coinbase", tradingPair, symbol);
+            // Clean up on error
+            _subscribedPairs.Remove(symbol);
+            CleanupOrderBookResources(tradingPair);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Attempts to subscribe via WebSocket and returns true if successful.
+    /// </summary>
+    private async Task<bool> TryWebSocketSubscriptionAsync(string symbol, TradingPair tradingPair, CancellationToken cancellationToken)
+    {
+        try
+        {
             // Create subscription message for public level2 data (no authentication needed)
             var subscribeMessage = new
             {
@@ -378,7 +427,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 }
             };
 
-            var messageJson = JsonConvert.SerializeObject(subscribeMessage);
+            var messageJson = System.Text.Json.JsonSerializer.Serialize(subscribeMessage);
             
             // Send subscription message
             if (WebSocketClient?.State == WebSocketState.Open)
@@ -388,22 +437,76 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 Logger.LogInformation("Subscription request sent for {Symbol}", symbol);
                 
                 // Wait a moment to see if we get a subscription confirmation or error
-                await Task.Delay(1000, cancellationToken);
+                await Task.Delay(2000, cancellationToken);
+                
+                // Check if we received an error response
+                // If we only get heartbeat subscription confirmation but no level2, it means authentication failed
+                return true; // Let it proceed, error handling will catch authentication failures later
             }
             else
             {
                 Logger.LogWarning("WebSocket not connected, cannot subscribe to {Symbol}", symbol);
-                CleanupOrderBookResources(tradingPair);
-                throw new InvalidOperationException($"WebSocket not connected for {ExchangeId}");
+                return false;
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error subscribing to order book for {TradingPair} ({Symbol}) on Coinbase", tradingPair, symbol);
-            // Clean up on error
-            _subscribedPairs.Remove(symbol);
-            CleanupOrderBookResources(tradingPair);
+            Logger.LogError(ex, "WebSocket subscription failed for {Symbol}: {Message}", symbol, ex.Message);
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// Starts REST API polling for the specified trading pair.
+    /// </summary>
+    private async Task StartRestApiPollingAsync(TradingPair tradingPair, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _usingRestApiFallback[tradingPair] = true;
+            
+            Logger.LogInformation("Starting REST API polling for {TradingPair} every {Interval} seconds", 
+                tradingPair, _restApiPollingInterval.TotalSeconds);
+            
+            // Fetch initial order book
+            await PollOrderBookAsync(tradingPair);
+            
+            // Set up timer for periodic polling
+            var timer = new Timer(async _ => await PollOrderBookAsync(tradingPair), 
+                null, _restApiPollingInterval, _restApiPollingInterval);
+            
+            _restApiPollingTimers[tradingPair] = timer;
+            
+            Logger.LogInformation("REST API polling started for {TradingPair}", tradingPair);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to start REST API polling for {TradingPair}", tradingPair);
             throw;
+        }
+    }
+    
+    /// <summary>
+    /// Polls the order book from REST API and publishes to the channel.
+    /// </summary>
+    private async Task PollOrderBookAsync(TradingPair tradingPair)
+    {
+        try
+        {
+            // Fetch order book from REST API
+            var orderBook = await FetchCoinbaseOrderBookAsync(tradingPair, 25);
+            
+            // Publish to the channel
+            if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
+            {
+                await channel.Writer.WriteAsync(orderBook);
+                Logger.LogDebug("Published order book for {TradingPair} via REST API: {BidCount} bids, {AskCount} asks",
+                    tradingPair, orderBook.Bids.Count, orderBook.Asks.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error polling order book for {TradingPair} from REST API", tradingPair);
         }
     }
     
@@ -463,6 +566,15 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         try
         {
+            // Stop REST API polling if active
+            if (_restApiPollingTimers.TryGetValue(tradingPair, out var timer))
+            {
+                Logger.LogInformation("Stopping REST API polling for {TradingPair}", tradingPair);
+                timer.Dispose();
+                _restApiPollingTimers.Remove(tradingPair);
+                _usingRestApiFallback.Remove(tradingPair);
+            }
+            
             // Check if we need to send an unsubscribe message
             if (_subscribedPairs.Remove(symbol) && WebSocketClient.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
@@ -490,32 +602,18 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 }
                 catch (OperationCanceledException)
                 {
-                    // This is expected during shutdown, just continue with cleanup
-                    Logger.LogDebug("Unsubscribe message canceled (likely during shutdown) for {TradingPair} ({Symbol})", tradingPair, symbol);
+                    Logger.LogDebug("Unsubscribe operation was cancelled for {Symbol}", symbol);
                 }
                 catch (Exception ex)
                 {
-                    // Just log the error but continue with cleanup
-                    Logger.LogWarning(ex, "Error sending unsubscribe message for {TradingPair} ({Symbol}), continuing with cleanup", tradingPair, symbol);
+                    Logger.LogWarning(ex, "Error sending unsubscribe message for {Symbol}: {Message}", symbol, ex.Message);
                 }
             }
-            
-            // Always clean up resources even if sending the message fails
-            CleanupOrderBookResources(tradingPair);
         }
-        catch (Exception ex)
+        finally
         {
-            Logger.LogError(ex, "Error unsubscribing from order book for {TradingPair} ({Symbol}) on Coinbase", tradingPair, symbol);
-            
-            // Still try to clean up resources
-            try
-            {
-                CleanupOrderBookResources(tradingPair);
-            }
-            catch (Exception cleanupEx)
-            {
-                Logger.LogError(cleanupEx, "Error cleaning up resources for {TradingPair}", tradingPair);
-            }
+            // Always clean up resources
+            CleanupOrderBookResources(tradingPair);
         }
     }
     
@@ -525,25 +623,32 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     /// <param name="tradingPair">The trading pair.</param>
     private void CleanupOrderBookResources(TradingPair tradingPair)
     {
-        // Remove the channel and complete it
-        if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
+        try
         {
-            try
+            // Close the order book channel
+            if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
             {
                 channel.Writer.Complete();
                 OrderBookChannels.Remove(tradingPair);
-                Logger.LogDebug("Removed order book channel for {TradingPair}", tradingPair);
             }
-            catch (Exception ex)
+            
+            // Remove cached order book
+            OrderBooks.Remove(tradingPair);
+            
+            // Clean up REST API polling resources
+            if (_restApiPollingTimers.TryGetValue(tradingPair, out var timer))
             {
-                Logger.LogWarning(ex, "Error completing channel for {TradingPair}", tradingPair);
+                timer.Dispose();
+                _restApiPollingTimers.Remove(tradingPair);
             }
+            
+            _usingRestApiFallback.Remove(tradingPair);
+            
+            Logger.LogDebug("Cleaned up order book resources for {TradingPair}", tradingPair);
         }
-        
-        // Remove from order books
-        if (OrderBooks.Remove(tradingPair))
+        catch (Exception ex)
         {
-            Logger.LogDebug("Removed order book for {TradingPair}", tradingPair);
+            Logger.LogError(ex, "Error cleaning up order book resources for {TradingPair}", tradingPair);
         }
     }
     
@@ -996,14 +1101,14 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         {
             // Attempt to get the actual fee structure from Coinbase
             var endpoint = "/fees";
-            var response = await SendAuthenticatedRequestAsync<JObject>(HttpMethod.Get, endpoint, null, cancellationToken);
+            var response = await SendAuthenticatedRequestAsync<CoinbaseFeeResponse>(HttpMethod.Get, endpoint, null, cancellationToken);
             
             if (response != null && 
-                response.TryGetValue("maker_fee_rate", out var makerFeeToken) &&
-                response.TryGetValue("taker_fee_rate", out var takerFeeToken))
+                !string.IsNullOrEmpty(response.Maker_Fee_Rate) &&
+                !string.IsNullOrEmpty(response.Taker_Fee_Rate))
             {
-                var makerFee = decimal.Parse(makerFeeToken.ToString(), CultureInfo.InvariantCulture);
-                var takerFee = decimal.Parse(takerFeeToken.ToString(), CultureInfo.InvariantCulture);
+                var makerFee = decimal.Parse(response.Maker_Fee_Rate, CultureInfo.InvariantCulture);
+                var takerFee = decimal.Parse(response.Taker_Fee_Rate, CultureInfo.InvariantCulture);
                 
                 return new FeeSchedule(ExchangeId, makerFee, takerFee);
             }
@@ -1050,7 +1155,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             };
             
             var endpoint = "/orders";
-            JObject? response = await SendAuthenticatedRequestAsync<JObject>(HttpMethod.Post, endpoint, orderRequest, cancellationToken);
+            CoinbaseOrderResponse? response = await SendAuthenticatedRequestAsync<CoinbaseOrderResponse>(HttpMethod.Post, endpoint, orderRequest, cancellationToken);
             
             if (response == null)
             {
@@ -1058,9 +1163,9 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 throw new Exception("Failed to place market order on Coinbase");
             }
             
-            var orderId = response["id"]?.ToString() ?? clientOrderId;
-            var price = decimal.Parse(response["price"]?.ToString() ?? "0", CultureInfo.InvariantCulture);
-            var filledSize = decimal.Parse(response["filled_size"]?.ToString() ?? "0", CultureInfo.InvariantCulture);
+            var orderId = response.Id;
+            var price = decimal.Parse(response.Price, CultureInfo.InvariantCulture);
+            var filledSize = decimal.Parse(response.Filled_Size, CultureInfo.InvariantCulture);
             
             Logger.LogInformation("Market order placed on Coinbase: OrderId={OrderId}, Price={Price}, FilledSize={FilledSize}", 
                 orderId, price, filledSize);
@@ -1121,7 +1226,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             };
             
             var endpoint = "/orders";
-            JObject? response = await SendAuthenticatedRequestAsync<JObject>(HttpMethod.Post, endpoint, orderRequest, cancellationToken);
+            CoinbaseOrderResponse? response = await SendAuthenticatedRequestAsync<CoinbaseOrderResponse>(HttpMethod.Post, endpoint, orderRequest, cancellationToken);
             
             if (response == null)
             {
@@ -1129,8 +1234,8 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 return TradeResult.Failure("Failed to place limit order on Coinbase", 0);
             }
             
-            var orderId = response["id"]?.ToString() ?? clientOrderId;
-            var filledSize = decimal.Parse(response["filled_size"]?.ToString() ?? "0", CultureInfo.InvariantCulture);
+            var orderId = response.Id;
+            var filledSize = decimal.Parse(response.Filled_Size, CultureInfo.InvariantCulture);
             
             Logger.LogInformation("Limit order placed on Coinbase: OrderId={OrderId}, FilledSize={FilledSize}", 
                 orderId, filledSize);
@@ -1173,7 +1278,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             Logger.LogInformation("Requesting order status for {OrderId} from Coinbase at endpoint {Endpoint}", 
                 orderId, endpoint);
                 
-            JObject? response = await SendAuthenticatedRequestAsync<JObject>(HttpMethod.Get, endpoint, null, cancellationToken);
+            CoinbaseOrderResponse? response = await SendAuthenticatedRequestAsync<CoinbaseOrderResponse>(HttpMethod.Get, endpoint, null, cancellationToken);
             
             if (response == null)
             {
@@ -1181,13 +1286,13 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 return null;
             }
             
-            var status = response["status"]?.ToString();
-            var filledSize = decimal.Parse(response["filled_size"]?.ToString() ?? "0", CultureInfo.InvariantCulture);
-            var price = decimal.Parse(response["price"]?.ToString() ?? "0", CultureInfo.InvariantCulture);
-            var filledAt = response["filled_at"] != null 
-                ? DateTime.Parse(response["filled_at"]?.ToString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal) 
+            var status = response.Status;
+            var filledSize = decimal.Parse(response.Filled_Size, CultureInfo.InvariantCulture);
+            var price = decimal.Parse(response.Price, CultureInfo.InvariantCulture);
+            var filledAt = !string.IsNullOrEmpty(response.Filled_At)
+                ? DateTime.Parse(response.Filled_At, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal) 
                 : DateTime.UtcNow;
-            var productId = response["product_id"]?.ToString() ?? "";
+            var productId = response.Product_Id;
             
             // Extract base and quote from product ID
             var currencies = productId.Split('-');
@@ -1197,7 +1302,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             
             Logger.LogInformation("Successfully fetched order status for {OrderId} from Coinbase", orderId);
             
-            var side = response["side"]?.ToString()?.ToLower() == "buy" ? OrderSide.Buy : OrderSide.Sell;
+            var side = response.Side?.ToLower() == "buy" ? OrderSide.Buy : OrderSide.Sell;
             
             return new Order(
                 orderId,
@@ -1237,7 +1342,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             Logger.LogInformation("Canceling order {OrderId} on Coinbase at endpoint {Endpoint}", 
                 orderId, endpoint);
                 
-            await SendAuthenticatedRequestAsync<JObject>(HttpMethod.Post, endpoint, null, cancellationToken);
+            await SendAuthenticatedRequestAsync<CoinbaseOrderResponse>(HttpMethod.Post, endpoint, null, cancellationToken);
             
             Logger.LogInformation("Order {OrderId} canceled on Coinbase", orderId);
             
@@ -1259,7 +1364,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     
     // Private helper methods
     
-    private List<OrderBookEntry> ParseOrderBookLevels(JArray levels, OrderSide side)
+    private List<OrderBookEntry> ParseOrderBookLevels(JsonElement[][] levels, OrderSide side)
     {
         var result = new List<OrderBookEntry>();
         
@@ -1267,15 +1372,17 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         {
             try
             {
-                if (level != null && level.Count() >= 2)
+                if (level != null && level.Length >= 2)
                 {
                     // Get the price and size as strings first, then convert to decimal
-                    string priceStr = level[0].ToString();
-                    string sizeStr = level[1].ToString();
+                    string? priceStr = level[0].ValueKind == JsonValueKind.String ? level[0].GetString() : level[0].ToString();
+                    string? sizeStr = level[1].ValueKind == JsonValueKind.String ? level[1].GetString() : level[1].ToString();
                     
-                    if (decimal.TryParse(priceStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var price) &&
+                    if (!string.IsNullOrEmpty(priceStr) && !string.IsNullOrEmpty(sizeStr) &&
+                        decimal.TryParse(priceStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var price) &&
                         decimal.TryParse(sizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var size))
                     {
+                        // Skip zero values
                         if (price > 0 && size > 0)
                         {
                             result.Add(new OrderBookEntry(price, size));
@@ -1286,17 +1393,19 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             catch (Exception ex)
             {
                 // Log but continue processing other levels
-                Logger.LogWarning(ex, "Error parsing order book level: {Level}", level?.ToString() ?? "null");
+                Logger.LogWarning(ex, "Error parsing order book level: {Level}", level != null ? string.Join(",", level.Select(e => e.ToString())) : "null");
             }
         }
         
-        // Sort bids descending, asks ascending
+        // Sort based on side
         if (side == OrderSide.Buy)
         {
+            // Bids should be sorted in descending order (highest price first)
             result = result.OrderByDescending(x => x.Price).ToList();
         }
         else
         {
+            // Asks should be sorted in ascending order (lowest price first)
             result = result.OrderBy(x => x.Price).ToList();
         }
         
@@ -1328,7 +1437,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             string requestBodyString = "";
             if (requestBody != null)
             {
-                requestBodyString = JsonConvert.SerializeObject(requestBody);
+                requestBodyString = System.Text.Json.JsonSerializer.Serialize(requestBody);
                 requestMessage.Content = new StringContent(requestBodyString, Encoding.UTF8, "application/json");
             }
             
@@ -1352,14 +1461,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             // Check for successful response
             if (response.IsSuccessStatusCode)
             {
-                // For Newtonsoft.Json types, use Newtonsoft deserializer instead of System.Text.Json
-                if (typeof(T) == typeof(JObject) || typeof(T) == typeof(JArray) || typeof(T) == typeof(JToken))
-                {
-                    string content = await response.Content.ReadAsStringAsync(cancellationToken);
-                    return JsonConvert.DeserializeObject<T>(content);
-                }
-                
-                // For other types use the standard System.Text.Json deserializer
+                // Use the standard System.Text.Json deserializer
                 return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
             }
             
@@ -1430,27 +1532,74 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             // Log additional diagnostic information
             var reason = root.TryGetProperty("reason", out var reasonElement) ? reasonElement.GetString() : "Unknown reason";
             
+            Logger.LogDebug("Processing error - ErrorMessage: '{ErrorMessage}', Reason: '{Reason}'", errorMessage, reason);
+            
             if (errorMessage != null && errorMessage.Contains("subscribe", StringComparison.OrdinalIgnoreCase))
             {
                 // Extract subscription details for better debugging
                 Logger.LogError("Coinbase subscription failed: {ErrorMessage}, Reason: {Reason}, Raw message: {RawMessage}", 
                     errorMessage, reason, message);
                 
-                // Check which products we tried to subscribe to
-                foreach (var pair in _subscribedPairs)
+                // Check if this is an authentication error (level2 requires authentication)
+                var hasAuthInMessage = errorMessage.Contains("authentication", StringComparison.OrdinalIgnoreCase);
+                var hasRequireAuthInMessage = errorMessage.Contains("require authentication", StringComparison.OrdinalIgnoreCase);
+                var hasAuthInReason = reason.Contains("authentication", StringComparison.OrdinalIgnoreCase);
+                var hasLevel2InReason = reason.Contains("level2", StringComparison.OrdinalIgnoreCase);
+                
+                Logger.LogDebug("Authentication check - HasAuthInMessage: {HasAuthInMessage}, HasRequireAuthInMessage: {HasRequireAuthInMessage}, HasAuthInReason: {HasAuthInReason}, HasLevel2InReason: {HasLevel2InReason}", 
+                    hasAuthInMessage, hasRequireAuthInMessage, hasAuthInReason, hasLevel2InReason);
+                
+                if (hasAuthInMessage || hasRequireAuthInMessage || hasAuthInReason || hasLevel2InReason)
                 {
-                    Logger.LogWarning("Currently attempting to subscribe to: {Symbol} for trading pair {TradingPair}", 
-                        pair.Key, pair.Value);
+                    Logger.LogWarning("Coinbase WebSocket requires authentication for level2 data, starting REST API fallback for all subscribed pairs");
+                    
+                    // Start REST API polling for all currently subscribed pairs
+                    var subscribedPairsSnapshot = new Dictionary<string, TradingPair>(_subscribedPairs);
+                    Logger.LogInformation("Found {Count} subscribed pairs to start fallback for", subscribedPairsSnapshot.Count);
+                    
+                    foreach (var kvp in subscribedPairsSnapshot)
+                    {
+                        var symbol = kvp.Key;
+                        var tradingPair = kvp.Value;
+                        
+                        // Only start fallback if not already using it
+                        if (!_usingRestApiFallback.ContainsKey(tradingPair) || !_usingRestApiFallback[tradingPair])
+                        {
+                            Logger.LogInformation("Starting REST API fallback for {TradingPair} ({Symbol})", tradingPair, symbol);
+                            try
+                            {
+                                await StartRestApiPollingAsync(tradingPair, cancellationToken);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogError(ex, "Failed to start REST API fallback for {TradingPair}", tradingPair);
+                            }
+                        }
+                        else
+                        {
+                            Logger.LogDebug("REST API fallback already active for {TradingPair}", tradingPair);
+                        }
+                    }
+                }
+                else
+                {
+                    // Check which products we tried to subscribe to
+                    foreach (var pair in _subscribedPairs)
+                    {
+                        Logger.LogWarning("Currently attempting to subscribe to: {Symbol} for trading pair {TradingPair}", 
+                            pair.Key, pair.Value);
+                    }
                 }
             }
             
-            // If the error is about authentication, throw an exception
+            // Don't throw an exception for authentication errors anymore since we have fallback
             if (errorMessage != null && (
                 errorMessage.Contains("authentication", StringComparison.OrdinalIgnoreCase) || 
                 errorMessage.Contains("auth", StringComparison.OrdinalIgnoreCase) || 
                 errorMessage.Contains("signature", StringComparison.OrdinalIgnoreCase)))
             {
-                throw new InvalidOperationException($"Coinbase WebSocket authentication failed: {errorMessage}");
+                Logger.LogWarning("Coinbase WebSocket authentication failed, but REST API fallback is available: {ErrorMessage}", errorMessage);
+                return; // Don't throw, let fallback handle it
             }
         }
         else

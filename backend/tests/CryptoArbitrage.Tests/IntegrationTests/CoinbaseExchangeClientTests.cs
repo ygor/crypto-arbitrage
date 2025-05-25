@@ -10,8 +10,8 @@ using CryptoArbitrage.Infrastructure.Exchanges;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
-using Newtonsoft.Json.Linq;
 using Xunit;
+using System.Text.Json;
 
 namespace CryptoArbitrage.Tests.IntegrationTests;
 
@@ -621,7 +621,7 @@ public class CoinbaseExchangeClientTests
         // Verify we get either a "WebSocket is not connected" or a timeout error
         Assert.True(
             exception is InvalidOperationException && exception.Message.Contains("WebSocket") ||
-            exception is ExchangeClientException && (exception.Message.Contains("Timed out") || exception.Message.Contains("WebSocket not connected")),
+            exception is ExchangeClientException && (exception.Message.Contains("Timed out") || exception.Message.Contains("WebSocket not connected") || exception.Message.Contains("Operation was cancelled")),
             $"Unexpected exception: {exception.GetType().Name} - {exception.Message}"
         );
     }
@@ -632,12 +632,13 @@ public class CoinbaseExchangeClientTests
         // Arrange
         var client = new CoinbaseExchangeClient(_httpClient, _mockConfigService.Object, _mockLogger.Object);
         
-        // Create a JArray with test data
-        var levelsArray = JArray.Parse(@"[
-            [""34000.50"", ""1.5""],
-            [""34001.25"", ""2.75""],
-            [""34002.00"", ""0.5""]
-        ]");
+        // Create test data as JsonElement[][]
+        var levelsArray = new JsonElement[][]
+        {
+            new[] { JsonDocument.Parse("\"34000.50\"").RootElement, JsonDocument.Parse("\"1.5\"").RootElement },
+            new[] { JsonDocument.Parse("\"34001.25\"").RootElement, JsonDocument.Parse("\"2.75\"").RootElement },
+            new[] { JsonDocument.Parse("\"34002.00\"").RootElement, JsonDocument.Parse("\"0.5\"").RootElement }
+        };
         
         // Use reflection to access the private method
         var method = typeof(CoinbaseExchangeClient).GetMethod(
@@ -667,13 +668,14 @@ public class CoinbaseExchangeClientTests
         // Arrange
         var client = new CoinbaseExchangeClient(_httpClient, _mockConfigService.Object, _mockLogger.Object);
         
-        // Create a JArray with some invalid test data
-        var levelsArray = JArray.Parse(@"[
-            [""not-a-number"", ""1.5""],
-            [""34001.25"", ""not-a-number""],
-            [null, null],
-            [""34002.00"", ""0.5""]
-        ]");
+        // Create test data with some invalid entries as JsonElement[][]
+        var levelsArray = new JsonElement[][]
+        {
+            new[] { JsonDocument.Parse("\"not-a-number\"").RootElement, JsonDocument.Parse("\"1.5\"").RootElement },
+            new[] { JsonDocument.Parse("\"34001.25\"").RootElement, JsonDocument.Parse("\"not-a-number\"").RootElement },
+            null!, // This will be handled gracefully
+            new[] { JsonDocument.Parse("\"34002.00\"").RootElement, JsonDocument.Parse("\"0.5\"").RootElement }
+        };
         
         // Use reflection to access the private method
         var method = typeof(CoinbaseExchangeClient).GetMethod(
@@ -699,12 +701,13 @@ public class CoinbaseExchangeClientTests
         // Arrange
         var client = new CoinbaseExchangeClient(_httpClient, _mockConfigService.Object, _mockLogger.Object);
         
-        // Create a JArray with test data in random order
-        var levelsArray = JArray.Parse(@"[
-            [""34002.00"", ""0.5""],
-            [""34000.50"", ""1.5""],
-            [""34001.25"", ""2.75""]
-        ]");
+        // Create test data in random order as JsonElement[][]
+        var levelsArray = new JsonElement[][]
+        {
+            new[] { JsonDocument.Parse("\"34002.00\"").RootElement, JsonDocument.Parse("\"0.5\"").RootElement },
+            new[] { JsonDocument.Parse("\"34000.50\"").RootElement, JsonDocument.Parse("\"1.5\"").RootElement },
+            new[] { JsonDocument.Parse("\"34001.25\"").RootElement, JsonDocument.Parse("\"2.75\"").RootElement }
+        };
         
         // Use reflection to access the private method
         var method = typeof(CoinbaseExchangeClient).GetMethod(

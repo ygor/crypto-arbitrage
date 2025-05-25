@@ -6,7 +6,7 @@
 
 set -e
 
-API_BASE_URL="http://localhost:3000"
+API_BASE_URL="http://localhost:5001"
 OPENAPI_SPEC="./api-specs/crypto-arbitrage-api.json"
 
 echo "🔍 Testing backend implementation against OpenAPI specification..."

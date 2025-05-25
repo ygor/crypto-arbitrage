@@ -84,7 +84,7 @@ public class SettingsController : ControllerBase, ISettingsController
             await _settingsRepository.SaveExchangeConfigurationsAsync(domainConfigs, cancellationToken);
             await _arbitrageService.RefreshExchangeConfigurationsAsync(cancellationToken);
             
-            return new ApiModels.SaveResponse { message = "Exchange configurations saved successfully" };
+            return ApiModels.SaveResponse.Success("Exchange configurations saved successfully");
         }
         catch (Exception ex)
         {
@@ -99,11 +99,13 @@ public class SettingsController : ControllerBase, ISettingsController
         try
         {
             var arbitrageConfig = await _settingsRepository.GetArbitrageConfigurationAsync(cancellationToken);
+            var riskProfile = await _settingsRepository.GetRiskProfileAsync(cancellationToken);
+            
             return new ApiModels.ArbitrageConfiguration
             {
-                minimumSpreadPercentage = arbitrageConfig.IsEnabled ? 0.5m : 0m, // Default value
-                minimumTradeAmount = 10m, // Default value
-                maximumTradeAmount = 1000m, // Default value
+                minimumSpreadPercentage = riskProfile.MinimumProfitPercentage,
+                minimumTradeAmount = riskProfile.MinProfitAmount,
+                maximumTradeAmount = riskProfile.MaxTradeAmount,
                 tradingPairs = arbitrageConfig.EnabledTradingPairs?.Select(p => 
                 {
                     var parts = p.Split('/');
@@ -126,10 +128,12 @@ public class SettingsController : ControllerBase, ISettingsController
     }
 
     [HttpPost("arbitrage")]
+    [HttpPut("arbitrage")]
     public async Task<ApiModels.SaveResponse> SaveArbitrageConfigurationAsync([FromBody] ApiModels.ArbitrageConfiguration arbitrageConfig, CancellationToken cancellationToken = default)
     {
         try
         {
+            // Update arbitrage configuration
             var domainConfig = new DomainModels.ArbitrageConfig
             {
                 IsEnabled = true,
@@ -144,9 +148,18 @@ public class SettingsController : ControllerBase, ISettingsController
             };
 
             await _settingsRepository.SaveArbitrageConfigurationAsync(domainConfig, cancellationToken);
-            await _arbitrageService.RefreshArbitrageConfigurationAsync(cancellationToken);
             
-            return new ApiModels.SaveResponse { message = "Arbitrage configuration saved successfully" };
+            // Update risk profile with spread and trade amount settings
+            var currentRiskProfile = await _settingsRepository.GetRiskProfileAsync(cancellationToken);
+            currentRiskProfile.MinimumProfitPercentage = arbitrageConfig.minimumSpreadPercentage;
+            currentRiskProfile.MinProfitAmount = arbitrageConfig.minimumTradeAmount;
+            currentRiskProfile.MaxTradeAmount = arbitrageConfig.maximumTradeAmount;
+            
+            await _settingsRepository.SaveRiskProfileAsync(currentRiskProfile, cancellationToken);
+            await _arbitrageService.RefreshArbitrageConfigurationAsync(cancellationToken);
+            await _arbitrageService.RefreshRiskProfileAsync(cancellationToken);
+            
+            return ApiModels.SaveResponse.Success("Arbitrage configuration saved successfully");
         }
         catch (Exception ex)
         {
@@ -184,6 +197,7 @@ public class SettingsController : ControllerBase, ISettingsController
     }
 
     [HttpPost("risk-profile")]
+    [HttpPut("risk-profile")]
     public async Task<ApiModels.SaveResponse> SaveRiskProfileAsync([FromBody] ApiModels.RiskProfileData riskProfile, CancellationToken cancellationToken = default)
     {
         try
@@ -203,7 +217,7 @@ public class SettingsController : ControllerBase, ISettingsController
             await _settingsRepository.SaveRiskProfileAsync(domainProfile, cancellationToken);
             await _arbitrageService.RefreshRiskProfileAsync(cancellationToken);
             
-            return new ApiModels.SaveResponse { message = "Risk profile saved successfully" };
+            return ApiModels.SaveResponse.Success("Risk profile saved successfully");
         }
         catch (Exception ex)
         {
