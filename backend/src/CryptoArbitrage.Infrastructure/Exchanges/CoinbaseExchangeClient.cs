@@ -27,7 +27,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     // REST API polling fallback fields
     private readonly Dictionary<TradingPair, Timer> _restApiPollingTimers = new();
     private readonly Dictionary<TradingPair, bool> _usingRestApiFallback = new();
-    private readonly TimeSpan _restApiPollingInterval = TimeSpan.FromSeconds(5);
+    private TimeSpan _restApiPollingInterval = TimeSpan.FromSeconds(10); // Default value, will be updated from configuration
     
     private string? _apiKey;
     private string? _apiSecret;
@@ -117,6 +117,15 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             
             // Get exchange configuration to retrieve credentials
             var exchangeConfig = await ConfigurationService.GetExchangeConfigurationAsync(ExchangeId, cancellationToken);
+            
+            // Also get the arbitrage configuration to set the polling interval
+            var arbitrageConfig = await ConfigurationService.GetConfigurationAsync(cancellationToken);
+            if (arbitrageConfig != null)
+            {
+                // Update REST API polling interval from configuration
+                _restApiPollingInterval = TimeSpan.FromMilliseconds(arbitrageConfig.PollingIntervalMs);
+                Logger.LogInformation("Set REST API polling interval to {Interval} seconds", _restApiPollingInterval.TotalSeconds);
+            }
             
             if (exchangeConfig != null)
             {

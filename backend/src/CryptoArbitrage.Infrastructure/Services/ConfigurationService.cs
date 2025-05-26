@@ -233,14 +233,14 @@ public class ConfigurationService : IConfigurationService
             AutoTradeEnabled = false, // Disable auto-trading by default for safety
             TradingPairs = new List<TradingPair>
             {
-                TradingPair.BTCUSDT,
-                TradingPair.ETHUSDT
+                TradingPair.BTCUSD,
+                TradingPair.ETHUSD
             },
             RiskProfile = RiskProfile.CreateConservative(), // Use conservative risk profile by default
             MaxConcurrentArbitrageOperations = 3,
             MinimumProfitPercentage = 0.5m,
             MaxExecutionTimeMs = 3000,
-            PollingIntervalMs = 100
+            PollingIntervalMs = 10000 // Increased from 5000ms to 10000ms (10 seconds) to be very conservative with rate limits
         };
         
         // Initialize default notification configuration
@@ -315,9 +315,9 @@ public class ConfigurationService : IConfigurationService
             WebSocketReconnectIntervalMs = 1000,
             RateLimits = new ExchangeRateLimits
             {
-                RequestsPerMinute = 300, // Coinbase is more conservative with rate limits
-                OrdersPerMinute = 30,
-                MarketDataRequestsPerMinute = 150
+                RequestsPerMinute = 30, // Reduced from 60 to be extremely conservative
+                OrdersPerMinute = 5, // Reduced from 10 to be extremely conservative  
+                MarketDataRequestsPerMinute = 15 // Reduced from 30 to be extremely conservative
             }
         };
         _defaultExchangeConfigs[ExchangeId.Coinbase] = coinbaseConfig;
