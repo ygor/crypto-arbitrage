@@ -613,17 +613,13 @@ public class CoinbaseExchangeClientTests
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         
         // Act & Assert
-        // This will throw either an InvalidOperationException (WebSocket not connected)
-        // or an ExchangeClientException (timeout or WebSocket not connected)
-        var exception = await Assert.ThrowsAnyAsync<Exception>(() => 
+        // With our new implementation, this should throw an ExchangeClientException about WebSocket subscription failure
+        var exception = await Assert.ThrowsAsync<ExchangeClientException>(() => 
             client.GetOrderBookSnapshotAsync(tradingPair, cancellationToken: timeoutCts.Token));
         
-        // Verify we get either a "WebSocket is not connected" or a timeout error
-        Assert.True(
-            exception is InvalidOperationException && exception.Message.Contains("WebSocket") ||
-            exception is ExchangeClientException && (exception.Message.Contains("Timed out") || exception.Message.Contains("WebSocket not connected") || exception.Message.Contains("Operation was cancelled")),
-            $"Unexpected exception: {exception.GetType().Name} - {exception.Message}"
-        );
+        // Verify we get an exception about WebSocket subscription failure and real-time data requirement
+        Assert.Contains("WebSocket", exception.Message);
+        Assert.Contains("Real-time data is required for arbitrage operations", exception.Message);
     }
     
     [Fact]
