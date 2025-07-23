@@ -124,7 +124,6 @@ public static class DependencyInjection
     public static IServiceCollection AddHighPerformanceServices(this IServiceCollection services)
     {
         // Register high-performance services
-        services.AddSingleton<OptimizedArbitrageDetectionService>();
         
         return services;
     }

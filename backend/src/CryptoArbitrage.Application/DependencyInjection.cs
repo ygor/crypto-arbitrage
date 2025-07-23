@@ -16,11 +16,11 @@ public static class DependencyInjection
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // Register services
-        services.AddSingleton<IArbitrageDetectionService, ArbitrageDetectionService>();
+        // Register core services
         services.AddSingleton<IArbitrageService, ArbitrageService>();
         services.AddSingleton<IMarketDataService, MarketDataService>();
         services.AddSingleton<ITradingService, TradingService>();
+        services.AddSingleton<ITradeExecutionService, TradeExecutionService>();
         services.AddSingleton<INotificationService, NotificationService>();
         
         // Add channels for real-time data flow

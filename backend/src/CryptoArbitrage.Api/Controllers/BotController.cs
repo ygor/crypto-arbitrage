@@ -24,17 +24,16 @@ public class BotController : ControllerBase
         _httpClientFactory = httpClientFactory;
     }
 
-    [HttpGet("activity-logs")]
-    public async Task<ActionResult<IEnumerable<ApiModels.ActivityLogEntry>>> GetActivityLogs(
-        [FromQuery] int limit = 50,
-        CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Gets the activity log entries.
+    /// </summary>
+    /// <returns>The activity log entries.</returns>
+    [HttpGet("activity")]
+    public async Task<ActionResult<IEnumerable<ApiModels.ActivityLogEntry>>> GetActivityLogAsync()
     {
         try
         {
-            _logger.LogInformation("Getting activity logs with limit: {Limit}", limit);
-
-            // For now, return sample data
-            // TODO: Implement proper activity log repository
+            // Return sample activity data for now
             var sampleLogs = new List<ApiModels.ActivityLogEntry>
             {
                 new ApiModels.ActivityLogEntry
@@ -44,47 +43,34 @@ public class BotController : ControllerBase
                     type = "Info",
                     message = "Arbitrage service started",
                     relatedEntityType = "System",
-                    relatedEntityId = "arbitrage-service",
-                    details = "Service successfully initialized and began monitoring for opportunities"
+                    relatedEntityId = "arbitrage-service"
                 },
                 new ApiModels.ActivityLogEntry
                 {
                     id = Guid.NewGuid().ToString(),
                     timestamp = DateTime.UtcNow.AddMinutes(-3).ToString("O"),
-                    type = "Success",
-                    message = "Connected to Coinbase exchange",
+                    type = "Info",
+                    message = "Market data subscription established for BTC-USD",
                     relatedEntityType = "Exchange",
-                    relatedEntityId = "coinbase",
-                    details = "WebSocket connection established successfully"
-                },
-                new ApiModels.ActivityLogEntry
-                {
-                    id = Guid.NewGuid().ToString(),
-                    timestamp = DateTime.UtcNow.AddMinutes(-2).ToString("O"),
-                    type = "Success",
-                    message = "Connected to Kraken exchange",
-                    relatedEntityType = "Exchange",
-                    relatedEntityId = "kraken",
-                    details = "WebSocket connection established successfully"
+                    relatedEntityId = "coinbase"
                 },
                 new ApiModels.ActivityLogEntry
                 {
                     id = Guid.NewGuid().ToString(),
                     timestamp = DateTime.UtcNow.AddMinutes(-1).ToString("O"),
-                    type = "Info",
-                    message = "Market data streaming initiated",
-                    relatedEntityType = "System",
-                    relatedEntityId = "market-data-service",
-                    details = "Started receiving real-time price data from all configured exchanges"
+                    type = "Warning",
+                    message = "High latency detected on Kraken connection",
+                    relatedEntityType = "Exchange",
+                    relatedEntityId = "kraken"
                 }
             };
 
-            return Ok(sampleLogs.Take(limit));
+            return Ok(sampleLogs);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting activity logs");
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Error retrieving activity log");
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
