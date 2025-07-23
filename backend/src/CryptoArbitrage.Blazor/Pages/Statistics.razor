@@ -1,8 +1,9 @@
 @page "/statistics"
 @using MudBlazor
-@using CryptoArbitrage.Application.Interfaces
+@using MediatR
 @using CryptoArbitrage.Domain.Models
-@inject IArbitrageService ArbitrageService
+@using CryptoArbitrage.Application.Features.BotControl.Queries.GetStatistics
+@inject IMediator Mediator
 @inject ILogger<Statistics> Logger
 @implements IDisposable
 
@@ -228,7 +229,7 @@ else
             StateHasChanged();
 
             // Direct service call - compile-time type safety!
-            _statistics = await ArbitrageService.GetStatisticsAsync();
+            _statistics = await Mediator.Send(new GetStatisticsQuery());
         }
         catch (Exception ex)
         {

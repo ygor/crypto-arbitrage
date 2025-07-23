@@ -64,10 +64,6 @@ builder.Services.AddSignalR(options =>
     options.EnableDetailedErrors = true;
 });
 
-// Configure options
-builder.Services.Configure<CryptoArbitrage.Api.Services.CryptoArbitrageOptions>(
-    builder.Configuration.GetSection("CryptoArbitrage"));
-
 // Add application and infrastructure services
 builder.Services.AddApplicationServices();
 
@@ -85,9 +81,9 @@ else
     builder.Services.AddInfrastructureServices();
 }
 
-// Add the SignalR broadcast service
-builder.Services.AddHostedService<SignalRBroadcastService>();
-builder.Services.AddHostedService<MarketDataBroadcastService>();
+// Add the SignalR broadcast services
+builder.Services.AddScoped<SignalRBroadcastService>();
+builder.Services.AddScoped<MarketDataBroadcastService>();
 
 var app = builder.Build();
 

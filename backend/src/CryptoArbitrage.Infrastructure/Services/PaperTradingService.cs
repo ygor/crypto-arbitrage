@@ -16,7 +16,6 @@ namespace CryptoArbitrage.Infrastructure.Services;
 public class PaperTradingService : IPaperTradingService
 {
     private readonly IConfigurationService _configurationService;
-    private readonly IMarketDataService _marketDataService;
     private readonly ILogger<PaperTradingService> _logger;
     
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, decimal>> _balances = new();
@@ -38,15 +37,12 @@ public class PaperTradingService : IPaperTradingService
     /// Initializes a new instance of the <see cref="PaperTradingService"/> class.
     /// </summary>
     /// <param name="configurationService">The configuration service.</param>
-    /// <param name="marketDataService">The market data service.</param>
     /// <param name="logger">The logger.</param>
     public PaperTradingService(
         IConfigurationService configurationService,
-        IMarketDataService marketDataService,
         ILogger<PaperTradingService> logger)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
-        _marketDataService = marketDataService ?? throw new ArgumentNullException(nameof(marketDataService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -124,16 +120,8 @@ public class PaperTradingService : IPaperTradingService
             // Normalize exchange ID
             exchangeId = exchangeId.ToLowerInvariant();
             
-            // Get latest price from market data service
-            var orderBook = _marketDataService.GetLatestOrderBook(exchangeId, tradingPair);
-            if (orderBook == null || orderBook.Asks.Count == 0)
-            {
-                _logger.LogError("Could not retrieve order book or no asks available for {Exchange} {TradingPair}", exchangeId, tradingPair);
-                return CreateFailedTradeResult(exchangeId, tradingPair, quantity, "Buy", "Could not retrieve order book or no asks available");
-            }
-            
-            // Calculate the average price we'd get for our quantity (simplified)
-            decimal pricePerUnit = orderBook.Asks.First().Price;
+            // Mock price generation for paper trading
+            decimal pricePerUnit = GetMockPrice(tradingPair);
             
             // Calculate total cost including fees
             decimal fee = GetExchangeFee(exchangeId);
@@ -216,15 +204,8 @@ public class PaperTradingService : IPaperTradingService
             // Normalize exchange ID
             exchangeId = exchangeId.ToLowerInvariant();
             
-            // Get latest price from market data service
-            var orderBook = _marketDataService.GetLatestOrderBook(exchangeId, tradingPair);
-            if (orderBook == null || orderBook.Bids.Count == 0)
-            {
-                return CreateFailedTradeResult(exchangeId, tradingPair, quantity, "Sell", "Could not retrieve order book or no bids available");
-            }
-            
-            // Calculate the average price we'd get for our quantity (simplified)
-            decimal pricePerUnit = orderBook.Bids.First().Price;
+            // Mock price generation for paper trading
+            decimal pricePerUnit = GetMockPrice(tradingPair);
             
             // Check if we have enough base asset (e.g., BTC) balance
             if (!_balances.TryGetValue(exchangeId, out var exchangeBalances))
@@ -351,6 +332,30 @@ public class PaperTradingService : IPaperTradingService
         }
         
         return _exchangeFees["default"];
+    }
+    
+    /// <summary>
+    /// Gets a mock price for paper trading simulation based on the trading pair.
+    /// In a real implementation, this would be replaced with actual market data.
+    /// </summary>
+    /// <param name="tradingPair">The trading pair (e.g., "BTC/USD", "ETH/USDT")</param>
+    /// <returns>A simulated price for the trading pair</returns>
+    private static decimal GetMockPrice(TradingPair tradingPair)
+    {
+        // Add some randomness to simulate price fluctuations
+        var random = new Random();
+        var priceVariation = (decimal)(random.NextDouble() * 0.02 - 0.01); // ±1% variation
+        
+        return tradingPair.ToString().ToUpperInvariant() switch
+        {
+            "BTC/USD" or "BTC/USDT" or "BTC/USDC" => 50000m * (1 + priceVariation),
+            "ETH/USD" or "ETH/USDT" or "ETH/USDC" => 3000m * (1 + priceVariation),
+            "LTC/USD" or "LTC/USDT" or "LTC/USDC" => 100m * (1 + priceVariation),
+            "ADA/USD" or "ADA/USDT" or "ADA/USDC" => 0.5m * (1 + priceVariation),
+            "DOT/USD" or "DOT/USDT" or "DOT/USDC" => 25m * (1 + priceVariation),
+            "LINK/USD" or "LINK/USDT" or "LINK/USDC" => 15m * (1 + priceVariation),
+            _ => 100m * (1 + priceVariation) // Default price for unknown pairs
+        };
     }
     
     private TradeResult CreateFailedTradeResult(string exchangeId, TradingPair tradingPair, decimal quantity, string side, string error)

@@ -1,23 +1,24 @@
-using CryptoArbitrage.Application.Interfaces;
-using CryptoArbitrage.Domain.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
+using MediatR;
+using CryptoArbitrage.Domain.Models;
 
 namespace CryptoArbitrage.Api.Hubs;
 
 /// <summary>
-/// SignalR hub for broadcasting real-time market data including price quotes and best bid/ask information.
+/// SignalR hub for real-time market data updates.
 /// </summary>
 public class MarketDataHub : Hub
 {
     private readonly ILogger<MarketDataHub> _logger;
-    private readonly IMarketDataService _marketDataService;
+    private readonly IMediator _mediator;
 
     public MarketDataHub(
         ILogger<MarketDataHub> logger,
-        IMarketDataService marketDataService)
+        IMediator mediator)
     {
         _logger = logger;
-        _marketDataService = marketDataService;
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
     /// <summary>
@@ -59,16 +60,17 @@ public class MarketDataHub : Hub
             _logger.LogInformation("Client {ConnectionId} subscribed to price quotes for {TradingPair}", 
                 Context.ConnectionId, tradingPair);
             
-            // Send current best bid/ask immediately
-            var currentBestBidAsk = _marketDataService.GetBestBidAskAcrossExchanges(tradingPair);
-            if (currentBestBidAsk.HasValue)
+            // Send current best bid/ask immediately (mock implementation for now)
+            // TODO: Replace with MediatR query to get current market data
+            var currentBestBidAsk = (BestBid: (PriceQuote?)null, BestAsk: (PriceQuote?)null);
+            if (currentBestBidAsk.BestBid != null || currentBestBidAsk.BestAsk != null)
             {
                 await Clients.Caller.SendAsync("BestBidAskUpdate", new
                 {
                     TradingPair = new { baseCurrency, quoteCurrency },
-                    BestBid = currentBestBidAsk.Value.BestBid,
-                    BestAsk = currentBestBidAsk.Value.BestAsk,
-                    Spread = currentBestBidAsk.Value.BestAsk?.BestAskPrice - currentBestBidAsk.Value.BestBid?.BestBidPrice,
+                    BestBid = currentBestBidAsk.BestBid,
+                    BestAsk = currentBestBidAsk.BestAsk,
+                    Spread = currentBestBidAsk.BestAsk?.BestAskPrice - currentBestBidAsk.BestBid?.BestBidPrice,
                     Timestamp = DateTime.UtcNow
                 });
             }

@@ -1,5 +1,10 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using MediatR;
 using CryptoArbitrage.Application.Interfaces;
-using Microsoft.Extensions.Options;
+using CryptoArbitrage.Application.Features.BotControl.Commands.StartArbitrage;
+using CryptoArbitrage.Application.Features.BotControl.Commands.StopArbitrage;
+using CryptoArbitrage.Application.Features.BotControl.Queries.IsArbitrageRunning;
 
 namespace CryptoArbitrage.Worker;
 
@@ -9,7 +14,7 @@ namespace CryptoArbitrage.Worker;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
-    private readonly IArbitrageService _arbitrageService;
+    private readonly IMediator _mediator;
     private readonly IConfigurationService _configurationService;
     private readonly IHostApplicationLifetime _appLifetime;
     private bool _isShuttingDown = false;
@@ -18,17 +23,17 @@ public class Worker : BackgroundService
     /// Initializes a new instance of the <see cref="Worker"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
-    /// <param name="arbitrageService">The arbitrage service.</param>
+    /// <param name="mediator">The mediator for sending commands and queries.</param>
     /// <param name="configurationService">The configuration service.</param>
     /// <param name="appLifetime">The application lifetime.</param>
     public Worker(
         ILogger<Worker> logger,
-        IArbitrageService arbitrageService,
+        IMediator mediator,
         IConfigurationService configurationService,
         IHostApplicationLifetime appLifetime)
     {
         _logger = logger;
-        _arbitrageService = arbitrageService;
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _configurationService = configurationService;
         _appLifetime = appLifetime;
     }
@@ -53,7 +58,7 @@ public class Worker : BackgroundService
             if (config != null && config.IsEnabled)
             {
                 _logger.LogInformation("Auto-start is enabled, starting arbitrage bot...");
-                await _arbitrageService.StartAsync(config.TradingPairs, stoppingToken);
+                await _mediator.Send(new StartArbitrageCommand(config.TradingPairs), stoppingToken);
             }
             else
             {
@@ -64,7 +69,7 @@ public class Worker : BackgroundService
             while (!stoppingToken.IsCancellationRequested && !_isShuttingDown)
             {
                 // Check if the bot is still running
-                bool isRunning = await _arbitrageService.IsRunningAsync();
+                bool isRunning = await _mediator.Send(new IsArbitrageRunningQuery(), stoppingToken);
                 
                 if (isRunning)
                 {
@@ -98,7 +103,7 @@ public class Worker : BackgroundService
         try
         {
             // Ensure the arbitrage service is stopped
-            _arbitrageService.StopAsync().Wait();
+            _mediator.Send(new StopArbitrageCommand(), CancellationToken.None).Wait();
             _logger.LogInformation("Arbitrage service stopped successfully");
         }
         catch (Exception ex)
@@ -115,10 +120,10 @@ public class Worker : BackgroundService
         try
         {
             // Make sure arbitrage service is stopped
-            if (await _arbitrageService.IsRunningAsync())
+            if (await _mediator.Send(new IsArbitrageRunningQuery(), cancellationToken))
             {
                 _logger.LogInformation("Stopping arbitrage service...");
-                await _arbitrageService.StopAsync(cancellationToken);
+                await _mediator.Send(new StopArbitrageCommand(), cancellationToken);
             }
         }
         catch (Exception ex)

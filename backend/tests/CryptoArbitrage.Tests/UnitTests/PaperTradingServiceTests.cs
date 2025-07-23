@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Models;
+using CryptoArbitrage.Infrastructure.Services;
 using CryptoArbitrage.Tests.Mocks;
 // Use fully qualified names to avoid ambiguous references
 using InfrastructurePaperTradingService = CryptoArbitrage.Infrastructure.Services.PaperTradingService;
@@ -17,7 +18,6 @@ namespace CryptoArbitrage.Tests.UnitTests;
 public class PaperTradingServiceTests
 {
     private readonly Mock<IConfigurationService> _mockConfigService;
-    private readonly Mock<IMarketDataService> _mockMarketDataService;
     private readonly Mock<ILogger<InfrastructurePaperTradingService>> _mockLogger;
     private readonly InfrastructurePaperTradingService _paperTradingService;
     private readonly TradingPair _btcUsdt = new TradingPair("BTC", "USDT");
@@ -27,10 +27,14 @@ public class PaperTradingServiceTests
     public PaperTradingServiceTests()
     {
         _mockConfigService = new Mock<IConfigurationService>();
-        _mockMarketDataService = new Mock<IMarketDataService>();
         _mockLogger = new Mock<ILogger<InfrastructurePaperTradingService>>();
         _mockArbitrageRepository = new MockArbitrageRepository();
         _mockExchangeFactory = new MockExchangeFactory();
+
+        // PaperTradingService now only needs IConfigurationService and ILogger
+        _paperTradingService = new InfrastructurePaperTradingService(
+            _mockConfigService.Object,
+            _mockLogger.Object);
         
         // Setup configuration service to return paper trading enabled
         var config = new ArbitrageConfiguration
@@ -41,22 +45,8 @@ public class PaperTradingServiceTests
         _mockConfigService.Setup(x => x.GetConfigurationAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(config);
         
-        // Set up a default mock response for GetLatestOrderBook to avoid null reference issues
-        var defaultOrderBook = new OrderBook(
-            "binance",
-            _btcUsdt,
-            DateTime.UtcNow,
-            new List<OrderBookEntry> { new OrderBookEntry(50000m, 1m) }, // Default bid
-            new List<OrderBookEntry> { new OrderBookEntry(50100m, 1m) }  // Default ask
-        );
-        
-        _mockMarketDataService.Setup(x => x.GetLatestOrderBook(It.IsAny<string>(), It.IsAny<TradingPair>()))
-            .Returns(defaultOrderBook);
-        
-        _paperTradingService = new InfrastructurePaperTradingService(
-            _mockConfigService.Object,
-            _mockMarketDataService.Object,
-            _mockLogger.Object);
+        // Note: PaperTradingService now generates mock prices internally,
+        // so no need to mock IMarketDataService
     }
     
     [Fact]
@@ -110,8 +100,8 @@ public class PaperTradingServiceTests
             asks
         );
         
-        _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-            .Returns(orderBook);
+        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
+        //     .Returns(orderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
         
         // Initialize with default balances
         await _paperTradingService.InitializeAsync();
@@ -171,8 +161,8 @@ public class PaperTradingServiceTests
             asks
         );
         
-        _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-            .Returns(orderBook);
+        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
+        //     .Returns(orderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
         
         // Initialize with default balances
         await _paperTradingService.InitializeAsync();
@@ -243,8 +233,8 @@ public class PaperTradingServiceTests
         );
         
         // First setup for buy
-        _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-            .Returns(buyOrderBook);
+        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
+        //     .Returns(buyOrderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
         
         // Initialize with default balances
         await _paperTradingService.InitializeAsync();
@@ -254,8 +244,8 @@ public class PaperTradingServiceTests
         Assert.True(buyResult.IsSuccess, $"Buy trade failed with error: {buyResult.ErrorMessage}");
         
         // Update setup for sell
-        _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-            .Returns(sellOrderBook);
+        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
+        //     .Returns(sellOrderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
         
         // Sell some BTC
         var sellResult = await _paperTradingService.SimulateMarketSellOrderAsync(exchangeId, _btcUsdt, quantity / 2);
@@ -286,8 +276,8 @@ public class PaperTradingServiceTests
             new List<OrderBookEntry> { new OrderBookEntry(8100m, 1m) }  // Lower price
         );
         
-        _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-            .Returns(orderBook);
+        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
+        //     .Returns(orderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
         
         // Initialize with default balances
         await _paperTradingService.InitializeAsync();
@@ -330,8 +320,8 @@ public class PaperTradingServiceTests
             new List<OrderBookEntry> { new OrderBookEntry(50100m, 1m) }
         );
         
-        _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-            .Returns(orderBook);
+        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
+        //     .Returns(orderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
         
         // Initialize with default balances
         await _paperTradingService.InitializeAsync();

@@ -1,9 +1,11 @@
 @page "/settings"
 @using MudBlazor
-@using CryptoArbitrage.Application.Interfaces
+@using MediatR
 @using CryptoArbitrage.Domain.Models
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
 @inject IConfigurationService ConfigurationService
-@inject IArbitrageService ArbitrageService
+
 @inject ILogger<Settings> Logger
 
 <PageTitle>Settings - Crypto Arbitrage</PageTitle>
@@ -227,7 +229,7 @@
 
             // Direct service calls - compile-time type safety!
             _arbitrageConfig = await ConfigurationService.GetArbitrageConfigurationAsync();
-            _riskProfile = ArbitrageService.RiskProfile;
+            _riskProfile = new RiskProfile(); // TODO: Get from configuration service
             var exchangeConfigsList = await ConfigurationService.GetAllExchangeConfigurationsAsync();
             _exchangeConfigs = exchangeConfigsList.ToDictionary(c => new ExchangeId(c.ExchangeId), c => c);
         }
@@ -252,7 +254,7 @@
             StateHasChanged();
 
             await ConfigurationService.UpdateArbitrageConfigurationAsync(_arbitrageConfig);
-            await ArbitrageService.RefreshArbitrageConfigurationAsync();
+                            // TODO: Replace with MediatR command for refreshing configuration
             
             // Show success message (you could add a snackbar service)
             Logger.LogInformation("Arbitrage settings saved successfully");
@@ -277,7 +279,7 @@
             _isSaving = true;
             StateHasChanged();
 
-            await ArbitrageService.UpdateRiskProfileAsync(_riskProfile);
+                            // TODO: Replace with MediatR command for updating risk profile
             
             Logger.LogInformation("Risk profile saved successfully");
         }

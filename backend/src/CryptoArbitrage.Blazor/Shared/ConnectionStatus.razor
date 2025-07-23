@@ -1,7 +1,7 @@
 @using MudBlazor
-@using CryptoArbitrage.Application.Interfaces
-@using CryptoArbitrage.Domain.Models
-@inject IArbitrageService ArbitrageService
+@using MediatR
+@using CryptoArbitrage.Application.Features.BotControl.Queries.CheckArbitrageServiceStatus
+@inject IMediator Mediator
 @inject ILogger<ConnectionStatus> Logger
 @implements IDisposable
 
@@ -34,7 +34,7 @@
     {
         try
         {
-            var isRunning = await ArbitrageService.IsRunningAsync();
+            var isRunning = await Mediator.Send(new CheckArbitrageServiceStatusQuery());
             
             if (isRunning)
             {

@@ -27,7 +27,6 @@ public class TestFixture : IDisposable
     public Mock<IExchangeFactory> MockExchangeFactory { get; }
     public Mock<IConfigurationService> MockConfigurationService { get; }
     public Mock<IArbitrageRepository> MockArbitrageRepository { get; }
-    public Mock<IArbitrageDetectionService> MockArbitrageDetectionService { get; }
     public Mock<IPaperTradingService> MockPaperTradingService { get; }
     
     // Dictionary to store mock exchange clients
@@ -47,7 +46,6 @@ public class TestFixture : IDisposable
         MockExchangeFactory = new Mock<IExchangeFactory>();
         MockConfigurationService = new Mock<IConfigurationService>();
         MockArbitrageRepository = new Mock<IArbitrageRepository>();
-        MockArbitrageDetectionService = new Mock<IArbitrageDetectionService>();
         MockPaperTradingService = new Mock<IPaperTradingService>();
         MockExchangeClients = new Dictionary<string, Mock<IExchangeClient>>();
         
@@ -72,9 +70,6 @@ public class TestFixture : IDisposable
         
         // Set up arbitrage repository mock
         SetupArbitrageRepositoryMock();
-        
-        // Set up arbitrage detection service mock
-        SetupArbitrageDetectionServiceMock();
         
         // Set up paper trading service mock
         SetupPaperTradingServiceMock();
@@ -242,79 +237,6 @@ public class TestFixture : IDisposable
             .Returns(Task.CompletedTask);
     }
     
-    private void SetupArbitrageDetectionServiceMock()
-    {
-        // Setup IsRunning
-        MockArbitrageDetectionService.Setup(d => d.IsRunning)
-            .Returns(true);
-
-        // Setup RiskProfile
-        MockArbitrageDetectionService.Setup(d => d.RiskProfile)
-            .Returns(TestRiskProfile);
-
-        // Setup GetOpportunitiesAsync
-        MockArbitrageDetectionService
-            .Setup(d => d.GetOpportunitiesAsync(It.IsAny<CancellationToken>()))
-            .Returns((CancellationToken ct) => GetEmptyOpportunitySequence(ct));
-
-        // Setup GetTradeResultsAsync
-        MockArbitrageDetectionService
-            .Setup(d => d.GetTradeResultsAsync(It.IsAny<CancellationToken>()))
-            .Returns((CancellationToken ct) => GetTradeResultsFromChannel(ct));
-
-        // Setup PublishTradeResultAsync
-        MockArbitrageDetectionService
-            .Setup(d => d.PublishTradeResultAsync(It.IsAny<ArbitrageTradeResult>(), It.IsAny<CancellationToken>()))
-            .Returns((ArbitrageTradeResult result, CancellationToken ct) => 
-            {
-                Console.WriteLine($"Publishing trade result: {result.IsSuccess}, BuyTradeId: {result.BuyResult?.OrderId}, SellTradeId: {result.SellResult?.OrderId}");
-                return TradeResultsChannel.Writer.WriteAsync(result, ct).AsTask();
-            });
-
-        // Setup UpdateRiskProfile
-        MockArbitrageDetectionService.Setup(d => d.UpdateRiskProfile(It.IsAny<RiskProfile>()));
-
-        // Setup StartAsync
-        MockArbitrageDetectionService.Setup(d => d.StartAsync(It.IsAny<IEnumerable<TradingPair>>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        // Setup StopAsync
-        MockArbitrageDetectionService.Setup(d => d.StopAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        // Setup AddTradingPairAsync
-        MockArbitrageDetectionService.Setup(d => d.AddTradingPairAsync(It.IsAny<TradingPair>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        // Setup RemoveTradingPairAsync
-        MockArbitrageDetectionService.Setup(d => d.RemoveTradingPairAsync(It.IsAny<TradingPair>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        // Setup GetActiveTradingPairs
-        MockArbitrageDetectionService.Setup(d => d.GetActiveTradingPairs())
-            .Returns(TestTradingPairs);
-    }
-
-    // Helper methods to create empty IAsyncEnumerable sequences
-    private static async IAsyncEnumerable<ArbitrageOpportunity> GetEmptyOpportunitySequence([EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        if (cancellationToken.IsCancellationRequested)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-        }
-        await Task.CompletedTask;
-        yield break;
-    }
-
-    // Helper method to create an IAsyncEnumerable from the channel
-    private async IAsyncEnumerable<ArbitrageTradeResult> GetTradeResultsFromChannel([EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        await foreach (var result in TradeResultsChannel.Reader.ReadAllAsync(cancellationToken))
-        {
-            yield return result;
-        }
-    }
-
     private void SetupPaperTradingServiceMock()
     {
         // Setup IsPaperTradingEnabled
@@ -441,14 +363,13 @@ public class TestFixture : IDisposable
         services.AddSingleton(MockExchangeFactory.Object);
         services.AddSingleton(MockConfigurationService.Object);
         services.AddSingleton(MockArbitrageRepository.Object);
-        services.AddSingleton(MockArbitrageDetectionService.Object);
         services.AddSingleton(MockPaperTradingService.Object);
         
-        // Register real services
-        services.AddSingleton<IMarketDataService, MarketDataService>();
-        services.AddSingleton<ITradingService, TradingService>();
-        services.AddSingleton<IArbitrageService, ArbitrageService>();
+        // Register real services that still exist
         services.AddSingleton<INotificationService, NotificationService>();
+        
+        // TODO: Add MediatR and new vertical slice architecture services
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CryptoArbitrage.Application.DependencyInjection).Assembly));
     }
 
     public void Dispose()

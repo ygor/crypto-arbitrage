@@ -1,10 +1,14 @@
 @page "/"
 @using MudBlazor
-@using CryptoArbitrage.Application.Interfaces
+@using MediatR
 @using CryptoArbitrage.Domain.Models
 @using CryptoArbitrage.Blazor.ViewModels
 @using CryptoArbitrage.Blazor.Services
-@inject IArbitrageService ArbitrageService
+@using CryptoArbitrage.Application.Features.BotControl.Queries.GetStatistics
+@using CryptoArbitrage.Application.Features.BotControl.Queries.IsRunning
+@using CryptoArbitrage.Application.Features.BotControl.Commands.Start
+@using CryptoArbitrage.Application.Features.BotControl.Commands.Stop
+@inject IMediator Mediator
 @inject IBlazorModelService BlazorModelService
 @inject ILogger<Dashboard> Logger
 @implements IDisposable
@@ -176,9 +180,9 @@
         try
         {
             // Direct service calls with ViewModel mapping for Blazor UI optimization
-            _statistics = await ArbitrageService.GetStatisticsAsync();
+            _statistics = await Mediator.Send(new GetStatisticsQuery());
             _recentOpportunities = await BlazorModelService.GetOpportunitiesAsync(10);
-            _isRunning = await ArbitrageService.IsRunningAsync();
+            _isRunning = await Mediator.Send(new IsRunningQuery());
         }
         catch (Exception ex)
         {
@@ -197,11 +201,11 @@
         {
             if (_isRunning)
             {
-                await ArbitrageService.StopAsync();
+                await Mediator.Send(new StopCommand());
             }
             else
             {
-                await ArbitrageService.StartAsync();
+                await Mediator.Send(new StartCommand());
             }
             
             _isRunning = !_isRunning;

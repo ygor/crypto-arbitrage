@@ -1,11 +1,14 @@
+using System.Reflection;
+using FluentValidation;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Application.Services;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace CryptoArbitrage.Application;
 
 /// <summary>
-/// Contains extension methods for configuring dependency injection.
+/// Dependency injection extensions for the Application layer.
 /// </summary>
 public static class DependencyInjection
 {
@@ -16,22 +19,15 @@ public static class DependencyInjection
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // Register core services
-        services.AddSingleton<IArbitrageService, ArbitrageService>();
-        services.AddSingleton<IMarketDataService, MarketDataService>();
-        services.AddSingleton<ITradingService, TradingService>();
-        services.AddSingleton<ITradeExecutionService, TradeExecutionService>();
+        // Register MediatR and handlers from current assembly
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+
+        // Register FluentValidation validators
+        services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Register remaining application services 
         services.AddSingleton<INotificationService, NotificationService>();
-        
-        // Add channels for real-time data flow
-        services.AddSingleton<System.Threading.Channels.Channel<CryptoArbitrage.Domain.Models.ArbitrageOpportunity>>(
-            provider => System.Threading.Channels.Channel.CreateUnbounded<CryptoArbitrage.Domain.Models.ArbitrageOpportunity>(
-                new System.Threading.Channels.UnboundedChannelOptions { SingleReader = false, SingleWriter = false }));
-        
-        services.AddSingleton<System.Threading.Channels.Channel<CryptoArbitrage.Domain.Models.ArbitrageTradeResult>>(
-            provider => System.Threading.Channels.Channel.CreateUnbounded<CryptoArbitrage.Domain.Models.ArbitrageTradeResult>(
-                new System.Threading.Channels.UnboundedChannelOptions { SingleReader = false, SingleWriter = false }));
-        
+
         return services;
     }
 } 

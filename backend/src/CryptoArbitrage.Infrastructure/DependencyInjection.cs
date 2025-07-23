@@ -52,11 +52,7 @@ public static class DependencyInjection
         services.AddSingleton<WebSocketConnectionPool>();
         services.AddSingleton<OrderBookPool>();
         
-        // Register application services
-        services.AddSingleton<IMarketDataService, MarketDataService>();
-        services.AddSingleton<ITradingService, TradingService>();
-        services.AddSingleton<IArbitrageDetectionService, ArbitrageDetectionService>();
-        services.AddSingleton<IArbitrageService, ArbitrageService>();
+        // Register remaining infrastructure services
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IPaperTradingService, CryptoArbitrage.Infrastructure.Services.PaperTradingService>();
         
