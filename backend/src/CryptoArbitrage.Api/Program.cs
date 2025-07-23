@@ -2,7 +2,9 @@ using CryptoArbitrage.Api.Hubs;
 using CryptoArbitrage.Api.Services;
 using CryptoArbitrage.Application;
 using CryptoArbitrage.Infrastructure;
-using Microsoft.AspNetCore.Mvc;
+using CryptoArbitrage.Infrastructure.Database;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
@@ -68,7 +70,20 @@ builder.Services.Configure<CryptoArbitrage.Api.Services.CryptoArbitrageOptions>(
 
 // Add application and infrastructure services
 builder.Services.AddApplicationServices();
-builder.Services.AddInfrastructureServices();
+
+// Check if MongoDB should be used instead of file storage
+var useMongoDb = builder.Configuration.GetValue<bool>("Database:UseMongoDb", false);
+if (useMongoDb)
+{
+    builder.Services.AddInfrastructureServices(builder.Configuration, useMongoDb: true);
+    builder.Services.AddHealthChecks()
+        .AddTypeActivatedCheck<MongoDbHealthCheck>("mongodb", 
+            args: new object[] { builder.Configuration });
+}
+else
+{
+    builder.Services.AddInfrastructureServices();
+}
 
 // Add the SignalR broadcast service
 builder.Services.AddHostedService<SignalRBroadcastService>();
@@ -139,13 +154,46 @@ using (var scope = app.Services.CreateScope())
 {
     try
     {
+        // Initialize MongoDB if enabled
+        if (useMongoDb)
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<CryptoArbitrage.Infrastructure.Database.CryptoArbitrageDbContext>();
+            await dbContext.InitializeAsync();
+            Log.Information("MongoDB database initialized successfully");
+
+            // Check if data migration should be performed
+            var shouldMigrate = builder.Configuration.GetValue<bool>("Database:MigrateFromFiles", false);
+            if (shouldMigrate)
+            {
+                var migrationService = scope.ServiceProvider.GetRequiredService<CryptoArbitrage.Infrastructure.Database.DataMigrationService>();
+                
+                // Create backup before migration
+                var backupCreated = await migrationService.CreateBackupAsync();
+                if (backupCreated)
+                {
+                    Log.Information("Created backup of existing data before migration");
+                }
+
+                // Perform migration
+                var migrationResult = await migrationService.MigrateAllDataAsync();
+                if (migrationResult.Success)
+                {
+                    Log.Information("Data migration completed successfully: {Message}", migrationResult.Message);
+                }
+                else
+                {
+                    Log.Warning("Data migration completed with issues: {Message}", migrationResult.Message);
+                }
+            }
+        }
+
         var configService = scope.ServiceProvider.GetRequiredService<CryptoArbitrage.Application.Interfaces.IConfigurationService>();
         await configService.LoadConfigurationAsync();
         Log.Information("Configuration loaded successfully");
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "An error occurred while initializing configuration");
+        Log.Error(ex, "An error occurred while initializing database and configuration");
     }
 }
 

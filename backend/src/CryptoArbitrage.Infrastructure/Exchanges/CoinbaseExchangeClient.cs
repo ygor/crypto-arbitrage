@@ -146,19 +146,10 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 }
             }
             
-            // Initialize WebSocket client
-            WebSocketClient = new ClientWebSocket();
-            _webSocketCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            // Use the enhanced WebSocket connection management from base class
+            await base.ConnectAsync(cancellationToken);
             
-            // Connect to WebSocket
-            await WebSocketClient.ConnectAsync(new Uri(_wsUrl), _webSocketCts.Token);
-            
-            // Start processing WebSocket messages
-            _isProcessingMessages = true;
-            _webSocketProcessingTask = Task.Run(() => ProcessWebSocketMessagesAsync(_webSocketCts.Token), _webSocketCts.Token);
-            
-            _isConnected = true;
-            Logger.LogInformation("Connected to {ExchangeId} WebSocket at {WebSocketUrl}", ExchangeId, _wsUrl);
+            Logger.LogInformation("Connected to {ExchangeId} with enhanced WebSocket management", ExchangeId);
         }
         catch (Exception ex)
         {
@@ -443,7 +434,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             var messageJson = System.Text.Json.JsonSerializer.Serialize(subscribeMessage);
             
             // Send subscription message
-            if (WebSocketClient?.State == WebSocketState.Open)
+            if (ManagedConnection?.IsConnected == true)
             {
                 Logger.LogInformation("Attempting subscription to public channels for {Symbol} with message: {Message}", symbol, messageJson);
                 await SendWebSocketMessageAsync(messageJson, cancellationToken);
@@ -512,7 +503,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     /// <inheritdoc />
     public override async Task UnsubscribeFromOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
     {
-        if (!_isConnected || WebSocketClient == null)
+        if (!_isConnected || ManagedConnection == null)
         {
             Logger.LogWarning("Cannot unsubscribe - client for {ExchangeId} is not connected", ExchangeId);
             CleanupOrderBookResources(tradingPair);
@@ -526,7 +517,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         try
         {
             // Check if we need to send an unsubscribe message
-            if (_subscribedPairs.Remove(symbol) && WebSocketClient.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+            if (_subscribedPairs.Remove(symbol) && ManagedConnection.IsConnected && !cancellationToken.IsCancellationRequested)
             {
                 try
                 {

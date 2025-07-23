@@ -242,7 +242,7 @@ else
 
     private decimal GetSuccessRate()
     {
-        if (_statistics?.TotalTradesExecuted == 0) return 0;
+        if (_statistics?.TotalTradesExecuted == 0 || _statistics == null) return 0;
         return (_statistics.SuccessfulTrades / (decimal)_statistics.TotalTradesExecuted) * 100;
     }
 

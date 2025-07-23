@@ -10,6 +10,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Models;
+using CryptoArbitrage.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 
 namespace CryptoArbitrage.Infrastructure.Exchanges;
@@ -17,7 +18,7 @@ namespace CryptoArbitrage.Infrastructure.Exchanges;
 /// <summary>
 /// Base implementation of <see cref="IExchangeClient"/>.
 /// </summary>
-public abstract class BaseExchangeClient : IExchangeClient
+public abstract class BaseExchangeClient : IExchangeClient, IDisposable
 {
     /// <summary>
     /// Gets the configuration service.
@@ -40,9 +41,14 @@ public abstract class BaseExchangeClient : IExchangeClient
     protected readonly Dictionary<string, Balance> Balances = new();
     
     /// <summary>
-    /// Gets or sets the WebSocket client.
+    /// Gets or sets the managed WebSocket connection.
     /// </summary>
-    protected ClientWebSocket? WebSocketClient;
+    protected ManagedWebSocketConnection? ManagedConnection;
+    
+    /// <summary>
+    /// Gets or sets the WebSocket connection manager.
+    /// </summary>
+    protected WebSocketConnectionManager? ConnectionManager;
     
     /// <summary>
     /// Gets or sets the order book channels.
@@ -58,16 +64,6 @@ public abstract class BaseExchangeClient : IExchangeClient
     /// Gets or sets a value indicating whether the client is authenticated.
     /// </summary>
     protected bool _isAuthenticated;
-    
-    /// <summary>
-    /// Gets or sets a value indicating whether the WebSocket is processing messages.
-    /// </summary>
-    protected bool _isProcessingMessages;
-    
-    /// <summary>
-    /// Gets or sets the WebSocket processing task.
-    /// </summary>
-    protected Task? _webSocketProcessingTask;
     
     /// <summary>
     /// Gets or sets the WebSocket URL.
@@ -93,6 +89,27 @@ public abstract class BaseExchangeClient : IExchangeClient
         ExchangeId = exchangeId;
         ConfigurationService = configurationService;
         Logger = logger;
+        
+        // Initialize WebSocket connection manager with enhanced options
+        var connectionManagerLogger = logger is ILogger<WebSocketConnectionManager> 
+            ? (ILogger<WebSocketConnectionManager>)logger 
+            : new LoggerAdapter<WebSocketConnectionManager>(logger);
+            
+        var options = new WebSocketConnectionManagerOptions
+        {
+            HealthCheckIntervalSeconds = 30,
+            MaxReconnectionAttempts = 10,
+            InitialReconnectionDelayMs = 1000,
+            MaxReconnectionDelayMs = 30000,
+            JitterFactor = 0.1,
+            ConnectionTimeoutMs = 10000,
+            SendTimeoutMs = 5000,
+            HeartbeatIntervalSeconds = 30,
+            MaxIdleTimeSeconds = 120,
+            CircuitBreakerRecoveryTimeSeconds = 300
+        };
+        
+        ConnectionManager = new WebSocketConnectionManager(connectionManagerLogger, options);
     }
     
     /// <inheritdoc />
@@ -116,31 +133,111 @@ public abstract class BaseExchangeClient : IExchangeClient
         {
             // Load exchange configuration to get WebSocket URL
             var config = await ConfigurationService.GetExchangeConfigurationAsync(ExchangeId, cancellationToken);
-            if (config?.WebSocketUrl != null)
+            if (config?.WebSocketUrl != null && ConnectionManager != null)
             {
                 WebSocketUrl = config.WebSocketUrl;
-                
-                // Initialize WebSocket client
-                WebSocketClient = new ClientWebSocket();
                 _webSocketCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 
-                // Connect to WebSocket
-                await WebSocketClient.ConnectAsync(new Uri(WebSocketUrl), _webSocketCts.Token);
+                // Get managed WebSocket connection
+                ManagedConnection = await ConnectionManager.GetConnectionAsync(
+                    ExchangeId, 
+                    WebSocketUrl, 
+                    ConfigureWebSocketOptions,
+                    cancellationToken);
                 
-                // Start processing WebSocket messages
-                _isProcessingMessages = true;
-                _webSocketProcessingTask = Task.Run(() => ProcessWebSocketMessagesAsync(_webSocketCts.Token), _webSocketCts.Token);
+                // Set up event handlers
+                ManagedConnection.OnMessageReceived += OnWebSocketMessageReceived;
+                ManagedConnection.OnError += OnWebSocketError;
+                ManagedConnection.OnConnected += OnWebSocketConnected;
+                ManagedConnection.OnDisconnected += OnWebSocketDisconnected;
                 
-                Logger.LogInformation("WebSocket connected to {ExchangeId} at {WebSocketUrl}", ExchangeId, WebSocketUrl);
+                Logger.LogInformation("Enhanced WebSocket connected to {ExchangeId} at {WebSocketUrl}", ExchangeId, WebSocketUrl);
             }
             
             _isConnected = true;
-            Logger.LogInformation("Connected to {ExchangeId}", ExchangeId);
+            Logger.LogInformation("Connected to {ExchangeId} with enhanced WebSocket management", ExchangeId);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error connecting to {ExchangeId}", ExchangeId);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Configures WebSocket options for the exchange.
+    /// </summary>
+    /// <param name="options">The WebSocket options to configure.</param>
+    protected virtual void ConfigureWebSocketOptions(ClientWebSocketOptions options)
+    {
+        // Default implementation - derived classes can override
+        options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    }
+
+    /// <summary>
+    /// Handles WebSocket message received events.
+    /// </summary>
+    protected virtual async Task OnWebSocketMessageReceived(string message, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ProcessWebSocketMessageAsync(message, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing WebSocket message for {ExchangeId}: {Message}", ExchangeId, message);
+        }
+    }
+
+    /// <summary>
+    /// Handles WebSocket error events.
+    /// </summary>
+    protected virtual async Task OnWebSocketError(Exception exception, CancellationToken cancellationToken)
+    {
+        Logger.LogWarning(exception, "WebSocket error for {ExchangeId}: {Error}", ExchangeId, exception.Message);
+        
+        // Derived classes can override to handle specific errors
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles WebSocket connected events.
+    /// </summary>
+    protected virtual async Task OnWebSocketConnected(CancellationToken cancellationToken)
+    {
+        Logger.LogInformation("WebSocket connection established for {ExchangeId}", ExchangeId);
+        
+        // Resubscribe to existing subscriptions if any
+        await ResubscribeToExistingChannels(cancellationToken);
+    }
+
+    /// <summary>
+    /// Handles WebSocket disconnected events.
+    /// </summary>
+    protected virtual async Task OnWebSocketDisconnected(CancellationToken cancellationToken)
+    {
+        Logger.LogWarning("WebSocket connection lost for {ExchangeId}", ExchangeId);
+        
+        // Derived classes can override to handle disconnection
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Resubscribes to existing channels after reconnection.
+    /// </summary>
+    protected virtual async Task ResubscribeToExistingChannels(CancellationToken cancellationToken)
+    {
+        try
+        {
+            foreach (var tradingPair in OrderBookChannels.Keys.ToList())
+            {
+                Logger.LogInformation("Resubscribing to {TradingPair} for {ExchangeId}", tradingPair, ExchangeId);
+                await SubscribeToOrderBookAsync(tradingPair, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error resubscribing to channels for {ExchangeId}", ExchangeId);
         }
     }
 
@@ -173,49 +270,22 @@ public abstract class BaseExchangeClient : IExchangeClient
                 }
             }
             
-            // Cancel WebSocket processing
-            if (_webSocketCts != null && !_webSocketCts.IsCancellationRequested)
+            // Cancel operations
+            _webSocketCts?.Cancel();
+            
+            // Unsubscribe from managed connection events
+            if (ManagedConnection != null)
             {
-                _webSocketCts.Cancel();
+                ManagedConnection.OnMessageReceived -= OnWebSocketMessageReceived;
+                ManagedConnection.OnError -= OnWebSocketError;
+                ManagedConnection.OnConnected -= OnWebSocketConnected;
+                ManagedConnection.OnDisconnected -= OnWebSocketDisconnected;
             }
             
-            // Close WebSocket connection
-            if (WebSocketClient != null && WebSocketClient.State == WebSocketState.Open)
+            // Remove connection from manager (this will dispose the connection)
+            if (ConnectionManager != null)
             {
-                try
-                {
-                    await WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disconnecting", cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    // Just log the error and continue with disconnection
-                    Logger.LogWarning(ex, "Error closing WebSocket for {ExchangeId}", ExchangeId);
-                }
-            }
-            
-            // Wait for WebSocket processing task to complete
-            if (_webSocketProcessingTask != null)
-            {
-                try
-                {
-                    // Use a short timeout to avoid hanging during shutdown
-                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                        timeoutCts.Token, cancellationToken);
-                    
-                    await _webSocketProcessingTask.WaitAsync(linkedCts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Expected when cancellation is requested
-                    Logger.LogDebug("Cancelled waiting for WebSocket processing task to complete for {ExchangeId}", ExchangeId);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Error waiting for WebSocket processing task to complete for {ExchangeId}", ExchangeId);
-                }
-                
-                _webSocketProcessingTask = null;
+                await ConnectionManager.RemoveConnectionAsync(ExchangeId);
             }
             
             // Clean up all channels
@@ -233,18 +303,7 @@ public abstract class BaseExchangeClient : IExchangeClient
             
             OrderBookChannels.Clear();
             
-            // Dispose WebSocket resources
-            try
-            {
-                WebSocketClient?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Error disposing WebSocket for {ExchangeId}", ExchangeId);
-            }
-            
-            WebSocketClient = null;
-            
+            // Dispose resources
             try
             {
                 _webSocketCts?.Dispose();
@@ -255,11 +314,11 @@ public abstract class BaseExchangeClient : IExchangeClient
             }
             
             _webSocketCts = null;
+            ManagedConnection = null;
             
-            _isProcessingMessages = false;
             _isConnected = false;
             
-            Logger.LogInformation("Disconnected from {ExchangeId}", ExchangeId);
+            Logger.LogInformation("Disconnected from {ExchangeId} with enhanced WebSocket management", ExchangeId);
         }
         catch (Exception ex)
         {
@@ -267,7 +326,6 @@ public abstract class BaseExchangeClient : IExchangeClient
             Logger.LogError(ex, "Error during disconnect for {ExchangeId}", ExchangeId);
             
             // Make sure we set disconnected state even if there were errors
-            _isProcessingMessages = false;
             _isConnected = false;
         }
     }
@@ -484,85 +542,20 @@ public abstract class BaseExchangeClient : IExchangeClient
     }
     
     /// <summary>
-    /// Processes WebSocket messages.
+    /// Legacy method for WebSocket message processing.
+    /// This method is deprecated - message processing is now handled automatically 
+    /// by the ManagedWebSocketConnection through event handlers.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
+    [Obsolete("This method is deprecated. WebSocket messages are now processed automatically through ManagedWebSocketConnection events.")]
     protected virtual async Task ProcessWebSocketMessagesAsync(CancellationToken cancellationToken)
     {
-        if (WebSocketClient == null)
-        {
-            Logger.LogError("WebSocket client is null");
-            return;
-        }
+        Logger.LogInformation("Legacy ProcessWebSocketMessagesAsync called for {ExchangeId}. " +
+                             "WebSocket messages are now processed automatically through managed connections.", ExchangeId);
         
-        var buffer = new byte[16384]; // 16 KB buffer
-        var messageBuilder = new StringBuilder();
-        
-        try
-        {
-            while (WebSocketClient.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
-            {
-                WebSocketReceiveResult result;
-                messageBuilder.Clear();
-                
-                do
-                {
-                    result = await WebSocketClient.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                    
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", cancellationToken);
-                        break;
-                    }
-                    
-                    var messageChunk = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    messageBuilder.Append(messageChunk);
-                }
-                while (!result.EndOfMessage);
-                
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    break;
-                }
-                
-                var message = messageBuilder.ToString();
-                
-                try
-                {
-                    // Process the message - derived classes should override this
-                    await ProcessWebSocketMessageAsync(message, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Error processing WebSocket message: {Message}", message);
-                }
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // Expected when cancellation is requested
-            Logger.LogInformation("WebSocket processing cancelled for {ExchangeId}", ExchangeId);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error processing WebSocket messages for {ExchangeId}", ExchangeId);
-            
-            // Try to reconnect
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                Logger.LogInformation("Attempting to reconnect WebSocket for {ExchangeId}", ExchangeId);
-                
-                try
-                {
-                    await ReconnectWebSocketAsync(cancellationToken);
-                }
-                catch (Exception reconnectEx)
-                {
-                    Logger.LogError(reconnectEx, "Error reconnecting WebSocket for {ExchangeId}", ExchangeId);
-                }
-            }
-        }
+        // Keep the method for backward compatibility but it doesn't do anything
+        await Task.CompletedTask;
     }
     
     /// <summary>
@@ -579,24 +572,24 @@ public abstract class BaseExchangeClient : IExchangeClient
     }
     
     /// <summary>
-    /// Sends a WebSocket message.
+    /// Sends a WebSocket message through the managed connection.
     /// </summary>
     /// <param name="message">The message to send.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected virtual async Task SendWebSocketMessageAsync(string message, CancellationToken cancellationToken)
     {
-        if (WebSocketClient == null)
+        if (ManagedConnection == null)
         {
-            Logger.LogWarning("Cannot send WebSocket message - WebSocketClient is null");
-            return; // Return instead of throwing exception
+            Logger.LogWarning("Cannot send WebSocket message - ManagedConnection is null");
+            return;
         }
         
-        if (WebSocketClient.State != WebSocketState.Open)
+        if (!ManagedConnection.IsConnected)
         {
             Logger.LogWarning("Cannot send WebSocket message - connection is not open (current state: {State})", 
-                WebSocketClient.State);
-            return; // Return instead of throwing exception
+                ManagedConnection.State);
+            return;
         }
         
         // Check for cancellation before trying to send
@@ -608,19 +601,7 @@ public abstract class BaseExchangeClient : IExchangeClient
         
         try
         {
-            var messageBytes = Encoding.UTF8.GetBytes(message);
-            
-            // Create a linked cancellation token that will time out after 3 seconds
-            // This prevents hanging during shutdown
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
-            
-            await WebSocketClient.SendAsync(
-                new ArraySegment<byte>(messageBytes), 
-                WebSocketMessageType.Text, 
-                true, 
-                linkedCts.Token);
-            
+            await ManagedConnection.SendMessageAsync(message, cancellationToken);
             Logger.LogTrace("Sent WebSocket message: {Message}", message);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -628,15 +609,10 @@ public abstract class BaseExchangeClient : IExchangeClient
             // Expected during shutdown, log at debug level
             Logger.LogDebug("WebSocket message send canceled - shutdown in progress");
         }
-        catch (WebSocketException ex)
+        catch (InvalidOperationException ex)
         {
-            // Log and return gracefully - don't throw exceptions for WebSocket issues
-            Logger.LogWarning(ex, "WebSocket error while sending message: {Message}", ex.Message);
-        }
-        catch (ObjectDisposedException ex)
-        {
-            // WebSocket may be disposed during shutdown
-            Logger.LogWarning(ex, "WebSocket was disposed while trying to send message");
+            // Connection not available - log gracefully
+            Logger.LogWarning(ex, "WebSocket connection not available while sending message: {Message}", ex.Message);
         }
         catch (Exception ex)
         {
@@ -646,46 +622,45 @@ public abstract class BaseExchangeClient : IExchangeClient
     }
     
     /// <summary>
-    /// Reconnects the WebSocket connection.
+    /// Triggers a manual reconnection of the managed WebSocket connection.
+    /// Note: Reconnection is normally handled automatically by the ManagedWebSocketConnection.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected virtual async Task ReconnectWebSocketAsync(CancellationToken cancellationToken)
     {
-        if (WebSocketUrl == null)
+        if (WebSocketUrl == null || ConnectionManager == null)
         {
-            Logger.LogError("WebSocketUrl is null, cannot reconnect");
+            Logger.LogError("WebSocketUrl or ConnectionManager is null, cannot reconnect for {ExchangeId}", ExchangeId);
             return;
         }
         
-        // Disconnect the existing WebSocket
+        Logger.LogInformation("Manually triggering WebSocket reconnection for {ExchangeId}", ExchangeId);
+        
         try
         {
-            if (WebSocketClient != null && WebSocketClient.State == WebSocketState.Open)
-            {
-                await WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Reconnecting", cancellationToken);
-            }
+            // Remove the current connection (forces reconnection)
+            await ConnectionManager.RemoveConnectionAsync(ExchangeId);
+            
+            // Get a new managed connection
+            ManagedConnection = await ConnectionManager.GetConnectionAsync(
+                ExchangeId, 
+                WebSocketUrl, 
+                ConfigureWebSocketOptions,
+                cancellationToken);
+            
+            // Set up event handlers again
+            ManagedConnection.OnMessageReceived += OnWebSocketMessageReceived;
+            ManagedConnection.OnError += OnWebSocketError;
+            ManagedConnection.OnConnected += OnWebSocketConnected;
+            ManagedConnection.OnDisconnected += OnWebSocketDisconnected;
+            
+            Logger.LogInformation("WebSocket reconnected for {ExchangeId} with enhanced management", ExchangeId);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error closing existing WebSocket connection for {ExchangeId}", ExchangeId);
-        }
-        
-        // Dispose the old WebSocket
-        WebSocketClient?.Dispose();
-        
-        // Create a new WebSocket
-        WebSocketClient = new ClientWebSocket();
-        
-        // Connect to WebSocket
-        await WebSocketClient.ConnectAsync(new Uri(WebSocketUrl), cancellationToken);
-        
-        Logger.LogInformation("WebSocket reconnected to {ExchangeId} at {WebSocketUrl}", ExchangeId, WebSocketUrl);
-        
-        // Resubscribe to existing order books
-        foreach (var tradingPair in OrderBookChannels.Keys.ToList())
-        {
-            await SubscribeToOrderBookAsync(tradingPair, cancellationToken);
+            Logger.LogError(ex, "Error during manual WebSocket reconnection for {ExchangeId}", ExchangeId);
+            throw;
         }
     }
     
@@ -754,4 +729,54 @@ public abstract class BaseExchangeClient : IExchangeClient
         // Return the taker fee rate as a default
         return feeSchedule.TakerFeeRate;
     }
+
+    #region IDisposable
+
+    private bool _disposed;
+
+    /// <summary>
+    /// Disposes the exchange client and all managed resources.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes the exchange client resources.
+    /// </summary>
+    /// <param name="disposing">True if disposing managed resources.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed && disposing)
+        {
+            try
+            {
+                // Disconnect gracefully
+                if (_isConnected)
+                {
+                    DisconnectAsync().GetAwaiter().GetResult();
+                }
+                
+                // Dispose connection manager
+                ConnectionManager?.Dispose();
+                
+                // Dispose cancellation token source
+                _webSocketCts?.Dispose();
+                
+                Logger.LogInformation("Disposed exchange client for {ExchangeId}", ExchangeId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error disposing exchange client for {ExchangeId}", ExchangeId);
+            }
+            finally
+            {
+                _disposed = true;
+            }
+        }
+    }
+
+    #endregion
 } 

@@ -35,7 +35,17 @@ builder.Services.AddMudServices();
 
 // Add application and infrastructure services (Direct RPC access)
 builder.Services.AddApplicationServices();
-builder.Services.AddInfrastructureServices();
+
+// Check if MongoDB should be used instead of file storage
+var useMongoDb = builder.Configuration.GetValue<bool>("Database:UseMongoDb", false);
+if (useMongoDb)
+{
+    builder.Services.AddInfrastructureServices(builder.Configuration, useMongoDb: true);
+}
+else
+{
+    builder.Services.AddInfrastructureServices();
+}
 
 // Add Blazor-specific services (ViewModels and AutoMapper)
 builder.Services.AddBlazorServices();

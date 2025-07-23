@@ -78,7 +78,7 @@
         await Task.WhenAll(tasks);
     }
 
-    private async Task CheckExchangeStatusAsync(string exchangeId)
+    private Task CheckExchangeStatusAsync(string exchangeId)
     {
         try
         {
@@ -97,6 +97,8 @@
             Logger.LogWarning(ex, "Failed to check status for exchange {ExchangeId}", exchangeId);
             _exchangeStatuses[exchangeId] = ExchangeConnectionStatus.Error;
         }
+        
+        return Task.CompletedTask;
     }
 
     private string GetExchangeName(string exchangeId)

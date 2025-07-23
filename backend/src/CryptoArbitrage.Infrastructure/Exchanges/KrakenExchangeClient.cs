@@ -95,19 +95,10 @@ public class KrakenExchangeClient : BaseExchangeClient
                 }
             }
             
-            // Initialize WebSocket client
-            WebSocketClient = new ClientWebSocket();
-            _webSocketCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            // Use the enhanced WebSocket connection management from base class
+            await base.ConnectAsync(cancellationToken);
             
-            // Connect to WebSocket
-            await WebSocketClient.ConnectAsync(new Uri(_wsUrl), _webSocketCts.Token);
-            
-            // Start processing WebSocket messages
-            _isProcessingMessages = true;
-            _webSocketProcessingTask = Task.Run(() => ProcessWebSocketMessagesAsync(_webSocketCts.Token), _webSocketCts.Token);
-            
-            _isConnected = true;
-            Logger.LogInformation("Connected to {ExchangeId} WebSocket at {WebSocketUrl}", ExchangeId, _wsUrl);
+            Logger.LogInformation("Connected to {ExchangeId} with enhanced WebSocket management", ExchangeId);
         }
         catch (Exception ex)
         {
@@ -824,7 +815,7 @@ public class KrakenExchangeClient : BaseExchangeClient
     /// <inheritdoc />
     public override async Task UnsubscribeFromOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
     {
-        if (!_isConnected || WebSocketClient == null)
+        if (!_isConnected || ManagedConnection == null)
         {
             Logger.LogWarning("Cannot unsubscribe - client for {ExchangeId} is not connected", ExchangeId);
             CleanupOrderBookResources(tradingPair);
@@ -851,7 +842,7 @@ public class KrakenExchangeClient : BaseExchangeClient
         try
         {
             // Only attempt to send the unsubscribe message if the WebSocket is still open and not canceled
-            if (_subscribedPairs.Remove(symbol) && WebSocketClient.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+            if (_subscribedPairs.Remove(symbol) && ManagedConnection.IsConnected && !cancellationToken.IsCancellationRequested)
             {
                 try
                 {

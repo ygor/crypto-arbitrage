@@ -1,9 +1,11 @@
 using System.Net.Http.Headers;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Application.Services;
+using CryptoArbitrage.Infrastructure.Database;
 using CryptoArbitrage.Infrastructure.Exchanges;
 using CryptoArbitrage.Infrastructure.Repositories;
 using CryptoArbitrage.Infrastructure.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -18,12 +20,28 @@ public static class DependencyInjection
     /// Adds infrastructure services to the service collection.
     /// </summary>
     /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <param name="useMongoDb">Whether to use MongoDB instead of file-based storage.</param>
     /// <returns>The service collection.</returns>
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(
+        this IServiceCollection services, 
+        IConfiguration? configuration = null, 
+        bool useMongoDb = false)
     {
-        // Register repositories
+        // Register repositories based on configuration
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
-        services.AddSingleton<IArbitrageRepository, ArbitrageRepository>();
+        
+        if (useMongoDb && configuration != null)
+        {
+            // Add MongoDB services
+            services.AddMongoDbServices(configuration);
+            services.AddSingleton<IArbitrageRepository, MongoDbArbitrageRepository>();
+        }
+        else
+        {
+            // Use file-based repository
+            services.AddSingleton<IArbitrageRepository, ArbitrageRepository>();
+        }
         
         // Register configuration services
         services.AddSingleton<IConfigurationService, ConfigurationService>();
@@ -59,6 +77,41 @@ public static class DependencyInjection
         
         // Register performance monitoring
         services.AddSingleton<PerformanceMetricsService>();
+        
+        return services;
+    }
+    
+    /// <summary>
+    /// Adds MongoDB services to the service collection.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <returns>The service collection.</returns>
+    public static IServiceCollection AddMongoDbServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Configure MongoDB settings
+        services.Configure<MongoDbConfiguration>(options =>
+        {
+            var connectionString = configuration.GetConnectionString("MongoDb");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("MongoDB connection string 'MongoDb' is not configured");
+            }
+            
+            options.ConnectionString = connectionString;
+            options.DatabaseName = configuration.GetValue<string>("MongoDb:DatabaseName") ?? "CryptoArbitrage";
+            options.MaxConnectionPoolSize = configuration.GetValue<int>("MongoDb:MaxConnectionPoolSize", 100);
+            options.ConnectionTimeoutMs = configuration.GetValue<int>("MongoDb:ConnectionTimeoutMs", 30000);
+            options.SocketTimeoutMs = configuration.GetValue<int>("MongoDb:SocketTimeoutMs", 30000);
+            options.ServerSelectionTimeoutMs = configuration.GetValue<int>("MongoDb:ServerSelectionTimeoutMs", 30000);
+            options.UseSsl = configuration.GetValue<bool>("MongoDb:UseSsl", false);
+        });
+        
+        // Register MongoDB context
+        services.AddSingleton<CryptoArbitrageDbContext>();
+        
+        // Register migration service
+        services.AddTransient<DataMigrationService>();
         
         return services;
     }

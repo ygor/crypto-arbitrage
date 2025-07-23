@@ -174,7 +174,7 @@
                                         </MudText>
                                         
                                         <MudText Typo="Typo.body2" Class="mb-2">
-                                            <strong>Supported Pairs:</strong> @exchange.Value.SupportedTradingPairs.Count
+                                            <strong>Supported Pairs:</strong> @(exchange.Value.SupportedTradingPairs?.Count ?? 0)
                                         </MudText>
                                         
                                         <MudText Typo="Typo.body2">
