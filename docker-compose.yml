@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MongoDB for storing arbitrage data and configurations
   mongodb:
@@ -74,18 +72,27 @@ services:
     networks:
       - crypto-arbitrage-network
 
-  # Frontend service
-  frontend:
+  # Blazor application with direct RPC access
+  blazor:
     build:
-      context: ./frontend
-    container_name: crypto-arbitrage-frontend
+      context: ./backend
+      target: blazor
+    container_name: crypto-arbitrage-blazor
     ports:
-      - "3000:80"
+      - "7001:7001"
     depends_on:
-      - api
+      - mongodb
+      - redis
     environment:
-      - REACT_APP_API_URL=http://localhost:3000/api
-      - REACT_APP_SIGNALR_URL=http://localhost:3000/hubs
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MongoDb=mongodb://admin:password@mongodb:27017
+      - ConnectionStrings__Redis=redis:6379
+      - CryptoArbitrage__PaperTradingEnabled=true
+      - CryptoArbitrage__IsEnabled=true
+      - CryptoArbitrage__MinimumProfitPercentage=0.5
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    volumes:
+      - ./appsettings.json:/app/appsettings.json:ro
     networks:
       - crypto-arbitrage-network
 

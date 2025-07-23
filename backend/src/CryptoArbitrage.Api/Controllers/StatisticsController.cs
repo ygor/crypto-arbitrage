@@ -1,6 +1,5 @@
 using CryptoArbitrage.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using CryptoArbitrage.Api.Controllers.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
@@ -12,7 +11,7 @@ namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
 [Route("api/statistics")]
-public class StatisticsController : ControllerBase, IStatisticsController
+public class StatisticsController : ControllerBase
 {
     private readonly IArbitrageRepository _arbitrageRepository;
     private readonly ILogger<StatisticsController> _logger;

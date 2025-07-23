@@ -11,8 +11,8 @@ echo -e "${BLUE}Crypto Arbitrage Application Starter${NC}"
 echo "=============================================="
 echo ""
 echo -e "Choose a startup method:"
-echo "1) Start with Docker Compose"
-echo "2) Start with .NET directly"
+echo "1) Start with Docker Compose (includes Blazor)"
+echo "2) Start Blazor Frontend with .NET (RPC Mode)"
 echo "3) Exit"
 
 read -p "Enter your choice (1-3): " choice
@@ -23,7 +23,7 @@ case $choice in
     docker-compose up --build
     if [ $? -eq 0 ]; then
       echo -e "${GREEN}Services started successfully.${NC}"
-      echo -e "Access the application at: http://localhost:3000"
+      echo -e "Access the Blazor application at: http://localhost:7001"
       echo -e "API available at: http://localhost:5001/api"
       echo -e "Swagger UI: http://localhost:5001/swagger"
     else
@@ -32,7 +32,7 @@ case $choice in
     fi
     ;;
   2)
-    echo -e "${GREEN}Starting with .NET...${NC}"
+    echo -e "${GREEN}Starting Blazor Frontend with RPC...${NC}"
     
     # Check if .NET is installed
     if ! command -v dotnet &> /dev/null; then
@@ -48,40 +48,44 @@ case $choice in
       exit 1
     fi
 
-    # Kill any existing processes using port 5001
-    echo -e "${YELLOW}Stopping any existing processes on port 5001...${NC}"
-    lsof -i :5001 | awk 'NR!=1 {print $2}' | xargs kill -9 2>/dev/null || true
+    # Kill any existing processes using ports
+    echo -e "${YELLOW}Stopping any existing processes on ports 7001...${NC}"
+    lsof -i :7001 | awk 'NR!=1 {print $2}' | xargs kill -9 2>/dev/null || true
 
     # Create logs directory if it doesn't exist
     mkdir -p logs
 
-    # Start the API service
-    echo -e "${GREEN}Starting API service...${NC}"
-    cd backend/src/CryptoArbitrage.Api
+    # Start the Blazor service (includes direct RPC access to services)
+    echo -e "${GREEN}Starting Blazor Frontend with direct RPC access...${NC}"
+    cd backend/src/CryptoArbitrage.Blazor
     dotnet build
-    dotnet run --no-build &
-    API_PID=$!
+    dotnet run --no-build > ../../../logs/blazor.log 2>&1 &
+    BLAZOR_PID=$!
 
-    # Wait a moment for the API to start
-    echo -e "${YELLOW}Waiting for API to start...${NC}"
+    # Wait a moment for Blazor to start
+    echo -e "${YELLOW}Waiting for Blazor to start...${NC}"
     sleep 5
 
     # Start the Worker service
     echo -e "${GREEN}Starting Worker service...${NC}"
     cd ../CryptoArbitrage.Worker
     dotnet build
-    dotnet run --no-build &
+    dotnet run --no-build > ../../../logs/worker.log 2>&1 &
     WORKER_PID=$!
+    cd ../../..
 
     echo ""
-    echo -e "${GREEN}Services started:${NC}"
-    echo -e "- API: Running on http://localhost:5001"
-    echo -e "- Worker: Running in background"
+    echo -e "${GREEN}🚀 Blazor application started successfully!${NC}"
+    echo "=============================================="
+    echo -e "🌐 Blazor Frontend: ${BLUE}http://localhost:7001${NC}"
+    echo -e "🔧 Direct RPC: Services injected directly (no HTTP API calls)"
+    echo -e "🛡️ Compile-time Safety: Full type checking between frontend and backend"
+    echo -e "📋 Logs: Check ./logs/ directory"
     echo ""
     echo -e "${YELLOW}Press Ctrl+C to stop all services...${NC}"
 
     # Wait for Ctrl+C
-    trap "kill $API_PID $WORKER_PID 2>/dev/null || true; echo -e '${GREEN}Services stopped.${NC}'; exit 0" INT
+    trap "echo -e '${YELLOW}Stopping all services...${NC}'; kill $BLAZOR_PID $WORKER_PID 2>/dev/null || true; echo -e '${GREEN}All services stopped.${NC}'; exit 0" INT
     wait
     ;;
   3)

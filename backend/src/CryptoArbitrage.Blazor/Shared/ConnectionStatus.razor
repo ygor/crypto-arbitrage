@@ -1,0 +1,65 @@
+@using MudBlazor
+@using CryptoArbitrage.Application.Interfaces
+@using CryptoArbitrage.Domain.Models
+@inject IArbitrageService ArbitrageService
+@inject ILogger<ConnectionStatus> Logger
+@implements IDisposable
+
+<MudChip T="string" Icon="@_statusIcon" Color="@_statusColor" Size="Size.Small" Variant="Variant.Filled">
+    @_statusText
+</MudChip>
+
+@code {
+    private string _statusText = "Checking...";
+    private string _statusIcon = Icons.Material.Filled.HourglassEmpty;
+    private Color _statusColor = Color.Warning;
+    private Timer? _statusCheckTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpdateStatus();
+        
+        // Start periodic status updates
+        _statusCheckTimer = new Timer(async _ => 
+        {
+            await InvokeAsync(async () => 
+            {
+                await UpdateStatus();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+    }
+
+    private async Task UpdateStatus()
+    {
+        try
+        {
+            var isRunning = await ArbitrageService.IsRunningAsync();
+            
+            if (isRunning)
+            {
+                _statusText = "Connected";
+                _statusIcon = Icons.Material.Filled.CheckCircle;
+                _statusColor = Color.Success;
+            }
+            else
+            {
+                _statusText = "Stopped";
+                _statusIcon = Icons.Material.Filled.PauseCircle;
+                _statusColor = Color.Warning;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking arbitrage service status");
+            _statusText = "Error";
+            _statusIcon = Icons.Material.Filled.Error;
+            _statusColor = Color.Error;
+        }
+    }
+
+    public void Dispose()
+    {
+        _statusCheckTimer?.Dispose();
+    }
+} 

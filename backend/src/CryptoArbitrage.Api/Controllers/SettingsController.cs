@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
-using CryptoArbitrage.Api.Controllers.Interfaces;
 using ApiModels = CryptoArbitrage.Api.Models;
 using DomainModels = CryptoArbitrage.Domain.Models;
 
@@ -13,7 +12,7 @@ namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
 [Route("api/settings")]
-public class SettingsController : ControllerBase, ISettingsController
+public class SettingsController : ControllerBase
 {
     private readonly IArbitrageService _arbitrageService;
     private readonly ISettingsRepository _settingsRepository;

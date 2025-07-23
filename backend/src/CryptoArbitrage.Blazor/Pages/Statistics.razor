@@ -1,0 +1,266 @@
+@page "/statistics"
+@using MudBlazor
+@using CryptoArbitrage.Application.Interfaces
+@using CryptoArbitrage.Domain.Models
+@inject IArbitrageService ArbitrageService
+@inject ILogger<Statistics> Logger
+@implements IDisposable
+
+<PageTitle>Statistics - Crypto Arbitrage</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Performance Statistics</MudText>
+
+@if (_statistics != null)
+{
+    <MudGrid>
+        <!-- Summary Cards Row 1 -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.TrendingUp" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Total Profit</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Primary">$@_statistics.TotalProfit.ToString("F2")</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.AttachMoney" Color="Color.Info" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Total Volume</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Info">$@_statistics.TotalVolume.ToString("F2")</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.Receipt" Color="Color.Warning" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Total Fees</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Warning">$@_statistics.TotalFees.ToString("F2")</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.Percent" Color="Color.Success" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Profit Factor</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Success">@_statistics.ProfitFactor.ToString("F2")</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Summary Cards Row 2 -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.Search" Color="Color.Secondary" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Opportunities</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Secondary">@_statistics.TotalOpportunitiesDetected</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.SwapHoriz" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Trades Executed</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Primary">@_statistics.TotalTradesExecuted</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Success Rate</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Success">
+                                @($"{GetSuccessRate():F1}%")
+                            </MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="2" Class="pa-4">
+                <MudCardContent>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="Icons.Material.Filled.Speed" Color="Color.Info" Size="Size.Large" Class="mr-3" />
+                        <div>
+                            <MudText Typo="Typo.h6">Avg Execution</MudText>
+                            <MudText Typo="Typo.h4" Color="Color.Info">@_statistics.AverageExecutionTimeMs ms</MudText>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Detailed Statistics -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Profit Breakdown</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><MudText Typo="Typo.body2">Highest Profit</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Success">$@_statistics.HighestProfit.ToString("F2")</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2">Lowest Profit</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="@(_statistics.LowestProfit >= 0 ? Color.Success : Color.Error)">$@_statistics.LowestProfit.ToString("F2")</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2">Average Profit</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Primary">$@_statistics.AverageProfit.ToString("F2")</MudText></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Trade Performance</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><MudText Typo="Typo.body2">Successful Trades</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Success">@_statistics.SuccessfulTrades</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2">Failed Trades</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Error">@_statistics.FailedTrades</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2">Session Duration</MudText></td>
+                                <td><MudText Typo="Typo.body2">@GetSessionDuration()</MudText></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+else if (_isLoading)
+{
+    <div class="d-flex justify-center pa-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudAlert Severity="Severity.Info">
+        <MudText>No statistics available. Start the arbitrage bot to begin collecting data.</MudText>
+    </MudAlert>
+}
+
+@code {
+    private ArbitrageStatistics? _statistics;
+    private bool _isLoading = true;
+    private Timer? _updateTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatisticsAsync();
+        
+        // Start periodic updates
+        _updateTimer = new Timer(async _ => 
+        {
+            await InvokeAsync(async () => 
+            {
+                await LoadStatisticsAsync();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadStatisticsAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            // Direct service call - compile-time type safety!
+            _statistics = await ArbitrageService.GetStatisticsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading statistics");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private decimal GetSuccessRate()
+    {
+        if (_statistics?.TotalTradesExecuted == 0) return 0;
+        return (_statistics.SuccessfulTrades / (decimal)_statistics.TotalTradesExecuted) * 100;
+    }
+
+    private string GetSessionDuration()
+    {
+        if (_statistics == null) return "N/A";
+        
+        var start = DateTime.Parse(_statistics.StartTime);
+        var end = DateTime.Parse(_statistics.EndTime);
+        var duration = end - start;
+        
+        return duration.TotalDays >= 1 
+            ? $"{duration.Days}d {duration.Hours}h {duration.Minutes}m"
+            : $"{duration.Hours}h {duration.Minutes}m {duration.Seconds}s";
+    }
+
+    public void Dispose()
+    {
+        _updateTimer?.Dispose();
+    }
+} 

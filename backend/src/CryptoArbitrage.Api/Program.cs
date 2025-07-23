@@ -4,8 +4,6 @@ using CryptoArbitrage.Application;
 using CryptoArbitrage.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
-using NJsonSchema;
-using NSwag.AspNetCore;
 using Serilog;
 using Serilog.Events;
 using System.Reflection;
@@ -64,12 +62,17 @@ builder.Services.AddSignalR(options =>
     options.EnableDetailedErrors = true;
 });
 
+// Configure options
+builder.Services.Configure<CryptoArbitrage.Api.Services.CryptoArbitrageOptions>(
+    builder.Configuration.GetSection("CryptoArbitrage"));
+
 // Add application and infrastructure services
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices();
 
 // Add the SignalR broadcast service
 builder.Services.AddHostedService<SignalRBroadcastService>();
+builder.Services.AddHostedService<MarketDataBroadcastService>();
 
 var app = builder.Build();
 
@@ -129,6 +132,7 @@ app.MapHub<ArbitrageHub>("/hubs/arbitrage").RequireCors("AllowFrontend");
 app.MapHub<TradeHub>("/hubs/trades").RequireCors("AllowFrontend");
 app.MapHub<ActivityHub>("/hubs/activity").RequireCors("AllowFrontend");
 app.MapHub<ExchangeStatusHub>("/hubs/exchanges").RequireCors("AllowFrontend");
+app.MapHub<MarketDataHub>("/hubs/market-data").RequireCors("AllowFrontend");
 
 // Ensure database and configurations are initialized
 using (var scope = app.Services.CreateScope())

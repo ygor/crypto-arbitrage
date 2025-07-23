@@ -187,8 +187,20 @@ public class ArbitrageDetectionService : IArbitrageDetectionService
     public async IAsyncEnumerable<ArbitrageOpportunity> GetOpportunitiesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (_opportunitiesChannel?.Reader == null)
+        {
+            _logger.LogWarning("Opportunities channel reader is null");
+            yield break;
+        }
+        
         await foreach (var opportunity in _opportunitiesChannel.Reader.ReadAllAsync(cancellationToken))
         {
+            if (opportunity == null)
+            {
+                _logger.LogWarning("Received null opportunity from channel");
+                continue;
+            }
+            
             yield return opportunity;
         }
     }

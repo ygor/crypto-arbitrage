@@ -1,0 +1,156 @@
+@page "/opportunities"
+@using MudBlazor
+@using CryptoArbitrage.Application.Interfaces
+@using CryptoArbitrage.Domain.Models
+@inject IArbitrageRepository ArbitrageRepository
+@inject ILogger<Opportunities> Logger
+@implements IDisposable
+
+<PageTitle>Opportunities - Crypto Arbitrage</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Arbitrage Opportunities</MudText>
+
+<MudCard Elevation="2">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Recent Opportunities</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="Icons.Material.Filled.Refresh" 
+                         Color="Color.Primary" 
+                         OnClick="RefreshDataAsync" 
+                         Disabled="_isLoading" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center pa-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else if (_opportunities?.Any() == true)
+        {
+            <MudDataGrid Items="@_opportunities" 
+                       Dense="true" 
+                       Hover="true" 
+                       Striped="true"
+                       SortMode="SortMode.Single">
+                <Columns>
+                    <PropertyColumn Property="x => x.TradingPair.Symbol" Title="Trading Pair" />
+                    <PropertyColumn Property="x => x.BuyExchange" Title="Buy Exchange" />
+                    <PropertyColumn Property="x => x.SellExchange" Title="Sell Exchange" />
+                    <TemplateColumn Title="Buy Price">
+                        <CellTemplate>
+                            $@context.Item.BuyPrice.ToString("F4")
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Sell Price">
+                        <CellTemplate>
+                            $@context.Item.SellPrice.ToString("F4")
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Profit %">
+                        <CellTemplate>
+                            <MudChip Color="@GetProfitColor(context.Item.ProfitPercentage)" 
+                                   Size="Size.Small" 
+                                   Variant="Variant.Filled">
+                                @($"{context.Item.ProfitPercentage:F2}%")
+                            </MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Potential Profit">
+                        <CellTemplate>
+                            <MudText Color="Color.Success">
+                                $@context.Item.PotentialProfit.ToString("F2")
+                            </MudText>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Volume">
+                        <CellTemplate>
+                            @context.Item.Volume.ToString("F4")
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Detected At">
+                        <CellTemplate>
+                            <MudText Typo="Typo.caption">
+                                @context.Item.DetectedAt.ToString("HH:mm:ss")
+                            </MudText>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+        else
+        {
+            <div class="d-flex flex-column align-center pa-8">
+                <MudIcon Icon="Icons.Material.Filled.SearchOff" 
+                       Size="Size.Large" 
+                       Color="Color.Tertiary" />
+                <MudText Typo="Typo.h6" Color="Color.Tertiary" Class="mt-4">
+                    No opportunities found
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Tertiary">
+                    Start the arbitrage bot to begin detecting opportunities
+                </MudText>
+            </div>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private ICollection<ArbitrageOpportunity>? _opportunities;
+    private bool _isLoading = true;
+    private Timer? _autoRefreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshDataAsync();
+        
+        // Auto-refresh every 10 seconds
+        _autoRefreshTimer = new Timer(async _ => 
+        {
+            await InvokeAsync(async () => 
+            {
+                await RefreshDataAsync();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            // Direct service call - compile-time type safety!
+            _opportunities = await ArbitrageRepository.GetRecentOpportunitiesAsync(100);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading opportunities");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private Color GetProfitColor(decimal profitPercentage)
+    {
+        return profitPercentage switch
+        {
+            >= 2.0m => Color.Success,
+            >= 1.0m => Color.Info,
+            >= 0.5m => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    public void Dispose()
+    {
+        _autoRefreshTimer?.Dispose();
+    }
+} 

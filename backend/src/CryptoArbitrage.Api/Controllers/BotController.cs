@@ -52,9 +52,9 @@ public class BotController : ControllerBase
                     id = Guid.NewGuid().ToString(),
                     timestamp = DateTime.UtcNow.AddMinutes(-3).ToString("O"),
                     type = "Success",
-                    message = "Connected to Binance exchange",
+                    message = "Connected to Coinbase exchange",
                     relatedEntityType = "Exchange",
-                    relatedEntityId = "binance",
+                    relatedEntityId = "coinbase",
                     details = "WebSocket connection established successfully"
                 },
                 new ApiModels.ActivityLogEntry
@@ -62,9 +62,9 @@ public class BotController : ControllerBase
                     id = Guid.NewGuid().ToString(),
                     timestamp = DateTime.UtcNow.AddMinutes(-2).ToString("O"),
                     type = "Success",
-                    message = "Connected to Coinbase exchange",
+                    message = "Connected to Kraken exchange",
                     relatedEntityType = "Exchange",
-                    relatedEntityId = "coinbase",
+                    relatedEntityId = "kraken",
                     details = "WebSocket connection established successfully"
                 },
                 new ApiModels.ActivityLogEntry

@@ -2,7 +2,6 @@ using CryptoArbitrage.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Reflection;
-using CryptoArbitrage.Api.Controllers.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
 using System;

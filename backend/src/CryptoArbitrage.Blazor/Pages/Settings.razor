@@ -1,0 +1,293 @@
+@page "/settings"
+@using MudBlazor
+@using CryptoArbitrage.Application.Interfaces
+@using CryptoArbitrage.Domain.Models
+@inject IConfigurationService ConfigurationService
+@inject IArbitrageService ArbitrageService
+@inject ILogger<Settings> Logger
+
+<PageTitle>Settings - Crypto Arbitrage</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Settings</MudText>
+
+<MudGrid>
+    <!-- Arbitrage Settings -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Arbitrage Configuration</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton Icon="Icons.Material.Filled.Save" 
+                                 Color="Color.Primary" 
+                                 OnClick="SaveArbitrageSettingsAsync" 
+                                 Disabled="_isSaving" />
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_arbitrageConfig != null)
+                {
+                    <MudStack Spacing="3">
+                        <MudSwitch T="bool" @bind-Checked="_arbitrageConfig.IsEnabled" 
+                                 Label="Enable Arbitrage Bot" 
+                                 Color="Color.Primary" />
+                        
+                        <MudSwitch T="bool" @bind-Checked="_arbitrageConfig.PaperTradingEnabled" 
+                                 Label="Paper Trading Mode" 
+                                 Color="Color.Secondary" />
+                        
+                        <MudSwitch T="bool" @bind-Checked="_arbitrageConfig.AutoTradeEnabled" 
+                                 Label="Auto-Execute Trades" 
+                                 Color="Color.Warning" />
+                        
+                        <MudNumericField @bind-Value="_arbitrageConfig.MinimumProfitPercentage" 
+                                       Label="Minimum Profit %" 
+                                       Format="F2"
+                                       Step="0.1m"
+                                       Min="0"
+                                       Max="10" />
+                        
+                        <MudNumericField @bind-Value="_arbitrageConfig.MaxConcurrentOperations" 
+                                       Label="Max Concurrent Operations" 
+                                       Min="1"
+                                       Max="20" />
+                        
+                        <MudNumericField @bind-Value="_arbitrageConfig.PollingIntervalMs" 
+                                       Label="Polling Interval (ms)" 
+                                       Min="100"
+                                       Max="10000"
+                                       Step="100" />
+                    </MudStack>
+                }
+                else
+                {
+                    <MudSkeleton Height="300px" />
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Risk Profile Settings -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Risk Profile</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton Icon="Icons.Material.Filled.Save" 
+                                 Color="Color.Primary" 
+                                 OnClick="SaveRiskProfileAsync" 
+                                 Disabled="_isSaving" />
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_riskProfile != null)
+                {
+                    <MudStack Spacing="3">
+                        <MudSelect @bind-Value="_riskProfile.Type" Label="Risk Type">
+                            <MudSelectItem Value="@("Conservative")">Conservative</MudSelectItem>
+                            <MudSelectItem Value="@("Balanced")">Balanced</MudSelectItem>
+                            <MudSelectItem Value="@("Aggressive")">Aggressive</MudSelectItem>
+                        </MudSelect>
+                        
+                        <MudNumericField @bind-Value="_riskProfile.MaxCapitalPerTradePercent" 
+                                       Label="Max Capital Per Trade %" 
+                                       Format="F1"
+                                       Step="1.0m"
+                                       Min="1"
+                                       Max="50" />
+                        
+                        <MudNumericField @bind-Value="_riskProfile.MaxCapitalPerAssetPercent" 
+                                       Label="Max Capital Per Asset %" 
+                                       Format="F1"
+                                       Step="1.0m"
+                                       Min="5"
+                                       Max="100" />
+                        
+                        <MudNumericField @bind-Value="_riskProfile.MaxSlippagePercentage" 
+                                       Label="Max Slippage %" 
+                                       Format="F2"
+                                       Step="0.1m"
+                                       Min="0.1m"
+                                       Max="5" />
+                        
+                        <MudNumericField @bind-Value="_riskProfile.StopLossPercentage" 
+                                       Label="Stop Loss %" 
+                                       Format="F2"
+                                       Step="0.1m"
+                                       Min="0.5m"
+                                       Max="10" />
+                        
+                        <MudNumericField @bind-Value="_riskProfile.MaxRetryAttempts" 
+                                       Label="Max Retry Attempts" 
+                                       Min="1"
+                                       Max="10" />
+                    </MudStack>
+                }
+                else
+                {
+                    <MudSkeleton Height="300px" />
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Exchange Configuration -->
+    <MudItem xs="12">
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Exchange Configuration</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton Icon="Icons.Material.Filled.Refresh" 
+                                 Color="Color.Secondary" 
+                                 OnClick="LoadSettingsAsync" 
+                                 Disabled="_isLoading" />
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_exchangeConfigs != null && _exchangeConfigs.Any())
+                {
+                    <MudGrid>
+                        @foreach (var exchange in _exchangeConfigs)
+                        {
+                            <MudItem xs="12" md="6" lg="4">
+                                <MudCard Elevation="1">
+                                    <MudCardContent Class="pa-4">
+                                        <div class="d-flex align-center mb-3">
+                                            <MudText Typo="Typo.h6">@exchange.Value.ExchangeId</MudText>
+                                            <MudSpacer />
+                                            <MudSwitch T="bool" @bind-Checked="exchange.Value.IsEnabled" 
+                                                     Color="Color.Primary" 
+                                                     Size="Size.Small" />
+                                        </div>
+                                        
+                                        <MudText Typo="Typo.body2" Class="mb-2">
+                                            <strong>API URL:</strong> @exchange.Value.ApiUrl
+                                        </MudText>
+                                        
+                                        <MudText Typo="Typo.body2" Class="mb-2">
+                                            <strong>Timeout:</strong> @exchange.Value.ApiTimeoutMs ms
+                                        </MudText>
+                                        
+                                        <MudText Typo="Typo.body2" Class="mb-2">
+                                            <strong>Supported Pairs:</strong> @exchange.Value.SupportedTradingPairs.Count
+                                        </MudText>
+                                        
+                                        <MudText Typo="Typo.body2">
+                                            <strong>Status:</strong> 
+                                            <MudChip T="string" Size="Size.Small" 
+                                                   Color="@(exchange.Value.IsEnabled ? Color.Success : Color.Warning)">
+                                                @(exchange.Value.IsEnabled ? "Enabled" : "Disabled")
+                                            </MudChip>
+                                        </MudText>
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudSkeleton Height="200px" />
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@if (_isSaving)
+{
+    <MudOverlay Visible="true" DarkBackground="true" Absolute="true">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </MudOverlay>
+}
+
+@code {
+    private ArbitrageConfiguration? _arbitrageConfig;
+    private RiskProfile? _riskProfile;
+    private Dictionary<ExchangeId, ExchangeConfiguration>? _exchangeConfigs;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            // Direct service calls - compile-time type safety!
+            _arbitrageConfig = await ConfigurationService.GetArbitrageConfigurationAsync();
+            _riskProfile = ArbitrageService.RiskProfile;
+            _exchangeConfigs = await ConfigurationService.GetAllExchangeConfigurationsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading settings");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveArbitrageSettingsAsync()
+    {
+        if (_arbitrageConfig == null) return;
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            await ConfigurationService.UpdateArbitrageConfigurationAsync(_arbitrageConfig);
+            await ArbitrageService.RefreshArbitrageConfigurationAsync();
+            
+            // Show success message (you could add a snackbar service)
+            Logger.LogInformation("Arbitrage settings saved successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving arbitrage settings");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveRiskProfileAsync()
+    {
+        if (_riskProfile == null) return;
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            await ArbitrageService.UpdateRiskProfileAsync(_riskProfile);
+            
+            Logger.LogInformation("Risk profile saved successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving risk profile");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+} 

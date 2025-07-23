@@ -1,3 +1,0 @@
-- Crtically assess the performance of the arbitrage algorithm and find novel ways to improve it.
-- Find ways to reduce the frontrunning risk of the arbitrage algorithm.
-- Could making the application more reactive improve the performance of the arbitrage algorithm?

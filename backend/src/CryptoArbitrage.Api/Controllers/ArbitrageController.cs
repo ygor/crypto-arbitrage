@@ -1,6 +1,5 @@
 using CryptoArbitrage.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using CryptoArbitrage.Api.Controllers.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -14,7 +13,7 @@ namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
 [Route("api/arbitrage")]
-public class ArbitrageController : ControllerBase, IArbitrageController
+public class ArbitrageController : ControllerBase
 {
     private readonly IArbitrageService _arbitrageService;
     private readonly IArbitrageRepository _arbitrageRepository;
@@ -136,7 +135,7 @@ public class ArbitrageController : ControllerBase, IArbitrageController
 
 [ApiController]
 [Route("api/opportunities")]
-public class OpportunitiesController : ControllerBase, IOpportunitiesController
+public class OpportunitiesController : ControllerBase
 {
     private readonly IArbitrageRepository _arbitrageRepository;
     private readonly ILogger<OpportunitiesController> _logger;

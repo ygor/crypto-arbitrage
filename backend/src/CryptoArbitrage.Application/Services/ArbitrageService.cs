@@ -340,11 +340,24 @@ public class ArbitrageService : IArbitrageService
         
         try
         {
-            await foreach (var opportunity in _detectionService.GetOpportunitiesAsync(cancellationToken))
+            var opportunitiesStream = _detectionService.GetOpportunitiesAsync(cancellationToken);
+            if (opportunitiesStream == null)
+            {
+                _logger.LogWarning("Detection service returned null opportunities stream");
+                return;
+            }
+            
+            await foreach (var opportunity in opportunitiesStream)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     break;
+                }
+                
+                if (opportunity == null)
+                {
+                    _logger.LogWarning("Received null opportunity from detection service");
+                    continue;
                 }
                 
                 try

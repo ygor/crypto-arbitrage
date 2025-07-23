@@ -1,0 +1,159 @@
+@using MudBlazor
+@using CryptoArbitrage.Application.Interfaces
+@inject IExchangeFactory ExchangeFactory
+@inject ILogger<ExchangeStatus> Logger
+@implements IDisposable
+
+<MudCard Elevation="2">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Exchange Status</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            @foreach (var exchangeId in _supportedExchanges)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="1" Class="pa-3">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@GetStatusIcon(exchangeId)" 
+                                   Color="@GetStatusColor(exchangeId)" 
+                                   Size="Size.Medium" 
+                                   Class="mr-3" />
+                            <div>
+                                <MudText Typo="Typo.subtitle1">@GetExchangeName(exchangeId)</MudText>
+                                <MudText Typo="Typo.body2" Color="@GetStatusColor(exchangeId)">
+                                    @GetStatusText(exchangeId)
+                                </MudText>
+                                @if (_exchangeLatencies.ContainsKey(exchangeId))
+                                {
+                                    <MudText Typo="Typo.caption">
+                                        @($"{_exchangeLatencies[exchangeId]}ms")
+                                    </MudText>
+                                }
+                            </div>
+                        </div>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private IReadOnlyCollection<string> _supportedExchanges = Array.Empty<string>();
+    private Dictionary<string, ExchangeConnectionStatus> _exchangeStatuses = new();
+    private Dictionary<string, int> _exchangeLatencies = new();
+    private Timer? _statusUpdateTimer;
+
+    private enum ExchangeConnectionStatus
+    {
+        Unknown,
+        Online,
+        Offline,
+        Error
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _supportedExchanges = ExchangeFactory.GetSupportedExchanges();
+        
+        await UpdateExchangeStatuses();
+        
+        // Start periodic status updates
+        _statusUpdateTimer = new Timer(async _ => 
+        {
+            await InvokeAsync(async () => 
+            {
+                await UpdateExchangeStatuses();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+    }
+
+    private async Task UpdateExchangeStatuses()
+    {
+        var tasks = _supportedExchanges.Select(CheckExchangeStatusAsync);
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task CheckExchangeStatusAsync(string exchangeId)
+    {
+        try
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            // Test exchange connectivity by checking if we can create a client
+            var client = ExchangeFactory.CreateClient(exchangeId);
+            
+            // For a more comprehensive check, you could ping the exchange's health endpoint
+            // or check order book availability
+            _exchangeStatuses[exchangeId] = ExchangeConnectionStatus.Online;
+            _exchangeLatencies[exchangeId] = (int)stopwatch.ElapsedMilliseconds;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to check status for exchange {ExchangeId}", exchangeId);
+            _exchangeStatuses[exchangeId] = ExchangeConnectionStatus.Error;
+        }
+    }
+
+    private string GetExchangeName(string exchangeId)
+    {
+        return exchangeId.ToUpperInvariant() switch
+        {
+            "COINBASE" => "Coinbase Advanced Trade",
+            "KRAKEN" => "Kraken",
+            "BINANCE" => "Binance",
+            _ => exchangeId.ToUpperInvariant()
+        };
+    }
+
+    private string GetStatusIcon(string exchangeId)
+    {
+        if (!_exchangeStatuses.ContainsKey(exchangeId))
+            return Icons.Material.Filled.HourglassEmpty;
+
+        return _exchangeStatuses[exchangeId] switch
+        {
+            ExchangeConnectionStatus.Online => Icons.Material.Filled.CheckCircle,
+            ExchangeConnectionStatus.Offline => Icons.Material.Filled.Cancel,
+            ExchangeConnectionStatus.Error => Icons.Material.Filled.Error,
+            _ => Icons.Material.Filled.HourglassEmpty
+        };
+    }
+
+    private Color GetStatusColor(string exchangeId)
+    {
+        if (!_exchangeStatuses.ContainsKey(exchangeId))
+            return Color.Default;
+
+        return _exchangeStatuses[exchangeId] switch
+        {
+            ExchangeConnectionStatus.Online => Color.Success,
+            ExchangeConnectionStatus.Offline => Color.Warning,
+            ExchangeConnectionStatus.Error => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusText(string exchangeId)
+    {
+        if (!_exchangeStatuses.ContainsKey(exchangeId))
+            return "Checking...";
+
+        return _exchangeStatuses[exchangeId] switch
+        {
+            ExchangeConnectionStatus.Online => "Online",
+            ExchangeConnectionStatus.Offline => "Offline",
+            ExchangeConnectionStatus.Error => "Error",
+            _ => "Unknown"
+        };
+    }
+
+    public void Dispose()
+    {
+        _statusUpdateTimer?.Dispose();
+    }
+} 

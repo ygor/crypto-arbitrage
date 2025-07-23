@@ -1,6 +1,5 @@
 using CryptoArbitrage.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using CryptoArbitrage.Api.Controllers.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -14,7 +13,7 @@ namespace CryptoArbitrage.Api.Controllers;
 
 [ApiController]
 [Route("api/trades")]
-public class TradesController : ControllerBase, ITradesController
+public class TradesController : ControllerBase
 {
     private readonly IArbitrageRepository _arbitrageRepository;
     private readonly ILogger<TradesController> _logger;

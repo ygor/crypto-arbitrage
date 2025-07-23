@@ -1,0 +1,222 @@
+@page "/"
+@using MudBlazor
+@using CryptoArbitrage.Application.Interfaces
+@using CryptoArbitrage.Domain.Models
+@inject IArbitrageService ArbitrageService
+@inject IArbitrageRepository ArbitrageRepository
+@inject ILogger<Dashboard> Logger
+@implements IDisposable
+
+<PageTitle>Dashboard - Crypto Arbitrage</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Dashboard</MudText>
+
+<MudGrid>
+    <!-- Statistics Cards -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.TrendingUp" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6">Total Profit</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Primary">@($"${_statistics?.TotalProfit:F2}" ?? "Loading...")</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.Search" Color="Color.Secondary" Size="Size.Large" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6">Opportunities</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Secondary">@(_statistics?.TotalOpportunitiesDetected ?? 0)</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.SwapHoriz" Color="Color.Success" Size="Size.Large" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6">Successful Trades</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Success">@(_statistics?.SuccessfulTrades ?? 0)</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="pa-4">
+            <MudCardContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="Icons.Material.Filled.AttachMoney" Color="Color.Info" Size="Size.Large" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6">Volume</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Info">@($"${_statistics?.TotalVolume:F2}" ?? "Loading...")</MudText>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Bot Controls -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Bot Control</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudButton 
+                        Variant="Variant.Filled" 
+                        Color="@(_isRunning ? Color.Error : Color.Success)"
+                        StartIcon="@(_isRunning ? Icons.Material.Filled.Stop : Icons.Material.Filled.PlayArrow)"
+                        OnClick="ToggleBotAsync"
+                        Disabled="_isToggling">
+                        @if (_isToggling)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                            <MudText Class="ml-2">@(_isRunning ? "Stopping..." : "Starting...")</MudText>
+                        }
+                        else
+                        {
+                            <MudText>@(_isRunning ? "Stop Bot" : "Start Bot")</MudText>
+                        }
+                    </MudButton>
+                    
+                    <MudChip T="string" Color="@(_isRunning ? Color.Success : Color.Warning)" 
+                             Icon="@(_isRunning ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.PauseCircle)">
+                        @(_isRunning ? "Running" : "Stopped")
+                    </MudChip>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Recent Opportunities -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Recent Opportunities</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_recentOpportunities?.Any() == true)
+                {
+                    <MudList T="string" Dense="true">
+                        @foreach (var opportunity in _recentOpportunities.Take(5))
+                        {
+                            <MudListItem T="string">
+                                <div class="d-flex justify-space-between align-center">
+                                    <div>
+                                        <MudText Typo="Typo.body2">@opportunity.TradingPair.Symbol</MudText>
+                                        <MudText Typo="Typo.caption">@opportunity.BuyExchange → @opportunity.SellExchange</MudText>
+                                    </div>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">
+                                        @($"{opportunity.ProfitPercentage:F2}%")
+                                    </MudChip>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Tertiary">No recent opportunities</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Exchange Status -->
+    <MudItem xs="12">
+        <ExchangeStatus />
+    </MudItem>
+</MudGrid>
+
+@code {
+    private ArbitrageStatistics? _statistics;
+    private ICollection<ArbitrageOpportunity>? _recentOpportunities;
+    private bool _isRunning;
+    private bool _isToggling;
+    private Timer? _updateTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+        
+        // Start periodic updates
+        _updateTimer = new Timer(async _ => 
+        {
+            await InvokeAsync(async () => 
+            {
+                await LoadDataAsync();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            // Direct service calls instead of HTTP requests - compile-time type safety!
+            _statistics = await ArbitrageService.GetStatisticsAsync();
+            _recentOpportunities = await ArbitrageRepository.GetRecentOpportunitiesAsync(10);
+            _isRunning = await ArbitrageService.IsRunningAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading dashboard data");
+        }
+    }
+
+    private async Task ToggleBotAsync()
+    {
+        if (_isToggling) return;
+        
+        _isToggling = true;
+        StateHasChanged();
+
+        try
+        {
+            if (_isRunning)
+            {
+                await ArbitrageService.StopAsync();
+            }
+            else
+            {
+                await ArbitrageService.StartAsync();
+            }
+            
+            _isRunning = !_isRunning;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling bot state");
+        }
+        finally
+        {
+            _isToggling = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        _updateTimer?.Dispose();
+    }
+} 

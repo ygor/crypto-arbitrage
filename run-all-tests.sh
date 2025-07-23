@@ -46,7 +46,7 @@ show_help() {
     echo "                          (Warning: This will modify test files but restore them after)"
     echo ""
     echo "Examples:"
-    echo "  ./run-all-tests.sh                     # Run all tests"
+    echo "  ./run-all-tests.sh                     # Run all backend tests"
     echo "  ./run-all-tests.sh --include-skipped   # Run all tests including skipped ones"
     echo ""
 }
@@ -82,7 +82,6 @@ start_time=$(date +%s)
 # Get root directory
 ROOT_DIR="$(pwd)"
 BACKEND_RESULT=0
-FRONTEND_RESULT=0
 
 # Run backend tests
 print_section "Running Backend Tests"
@@ -94,18 +93,6 @@ if [ $BACKEND_RESULT -eq 0 ]; then
     print_success "Backend tests completed successfully"
 else
     print_error "Backend tests failed"
-fi
-
-# Run frontend tests
-print_section "Running Frontend Tests"
-cd "$ROOT_DIR/frontend"
-npm test -- --watchAll=false
-FRONTEND_RESULT=$?
-
-if [ $FRONTEND_RESULT -eq 0 ]; then
-    print_success "Frontend tests completed successfully"
-else
-    print_error "Frontend tests failed"
 fi
 
 # Calculate execution time
@@ -127,17 +114,11 @@ else
     print_error "Backend: FAILED"
 fi
 
-if [ $FRONTEND_RESULT -eq 0 ]; then
-    print_success "Frontend: PASSED"
-else
-    print_error "Frontend: FAILED"
-fi
-
-# Exit with failure if any test suite failed
-if [ $BACKEND_RESULT -ne 0 ] || [ $FRONTEND_RESULT -ne 0 ]; then
-    print_error "One or more test suites failed"
+# Exit with failure if backend tests failed
+if [ $BACKEND_RESULT -ne 0 ]; then
+    print_error "Backend tests failed"
     exit 1
 else
-    print_success "All test suites passed"
+    print_success "All tests passed"
     exit 0
 fi 
