@@ -84,4 +84,19 @@ public interface IConfigurationService
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateNotificationConfigurationAsync(NotificationConfiguration configuration, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Gets the arbitrage configuration (alias for GetConfigurationAsync).
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The arbitrage configuration.</returns>
+    Task<ArbitrageConfiguration?> GetArbitrageConfigurationAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Updates the arbitrage configuration (alias for UpdateConfigurationAsync).
+    /// </summary>
+    /// <param name="configuration">The new arbitrage configuration.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task UpdateArbitrageConfigurationAsync(ArbitrageConfiguration configuration, CancellationToken cancellationToken = default);
 } 

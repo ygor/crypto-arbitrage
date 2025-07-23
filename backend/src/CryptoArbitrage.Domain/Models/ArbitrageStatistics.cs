@@ -109,6 +109,11 @@ public class ArbitrageStatistics
     /// </summary>
     public decimal SuccessRate { get; set; }
     
+    /// <summary>
+    /// Gets the profit factor (total profit / total fees).
+    /// </summary>
+    public decimal ProfitFactor => TotalFeesAmount > 0 ? TotalProfitAmount / TotalFeesAmount : 0;
+    
     // Time-based metrics
     /// <summary>
     /// Gets or sets the opportunities per hour.

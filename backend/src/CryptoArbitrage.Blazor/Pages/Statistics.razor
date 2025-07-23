@@ -250,8 +250,8 @@ else
     {
         if (_statistics == null) return "N/A";
         
-        var start = DateTime.Parse(_statistics.StartTime);
-        var end = DateTime.Parse(_statistics.EndTime);
+        var start = _statistics.StartTime.DateTime;
+        var end = _statistics.EndTime.DateTime;
         var duration = end - start;
         
         return duration.TotalDays >= 1 

@@ -1,5 +1,6 @@
 using CryptoArbitrage.Application;
 using CryptoArbitrage.Infrastructure;
+using CryptoArbitrage.Blazor.Extensions;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using MudBlazor.Services;
 using Serilog;
@@ -36,8 +37,11 @@ builder.Services.AddMudServices();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices();
 
+// Add Blazor-specific services (ViewModels and AutoMapper)
+builder.Services.AddBlazorServices();
+
 // Configure options from appsettings
-builder.Services.Configure<CryptoArbitrage.Infrastructure.Services.CryptoArbitrageOptions>(
+builder.Services.Configure<CryptoArbitrage.Blazor.Services.CryptoArbitrageOptions>(
     builder.Configuration.GetSection("CryptoArbitrage"));
 
 var app = builder.Build();

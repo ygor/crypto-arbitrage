@@ -357,4 +357,25 @@ public class ConfigurationService : IConfigurationService
     {
         return _defaultExchangeConfigs.Keys.Select(k => k.Value).ToList();
     }
+    
+    /// <summary>
+    /// Gets the arbitrage configuration (alias for GetConfigurationAsync).
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The arbitrage configuration.</returns>
+    public Task<ArbitrageConfiguration?> GetArbitrageConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        return GetConfigurationAsync(cancellationToken);
+    }
+    
+    /// <summary>
+    /// Updates the arbitrage configuration (alias for UpdateConfigurationAsync).
+    /// </summary>
+    /// <param name="configuration">The new arbitrage configuration.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public Task UpdateArbitrageConfigurationAsync(ArbitrageConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        return UpdateConfigurationAsync(configuration, cancellationToken);
+    }
 } 

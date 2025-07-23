@@ -51,6 +51,15 @@ public class ArbitrageConfiguration
     /// Gets or sets the maximum number of concurrent arbitrage operations.
     /// </summary>
     public int MaxConcurrentArbitrageOperations { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the maximum number of concurrent operations (alias for MaxConcurrentArbitrageOperations).
+    /// </summary>
+    public int MaxConcurrentOperations 
+    { 
+        get => MaxConcurrentArbitrageOperations; 
+        set => MaxConcurrentArbitrageOperations = value; 
+    }
 
     /// <summary>
     /// Gets or sets the maximum number of concurrent executions.

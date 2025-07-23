@@ -2,7 +2,9 @@
 @using MudBlazor
 @using CryptoArbitrage.Application.Interfaces
 @using CryptoArbitrage.Domain.Models
-@inject IArbitrageRepository ArbitrageRepository
+@using CryptoArbitrage.Blazor.ViewModels
+@using CryptoArbitrage.Blazor.Services
+@inject IBlazorModelService BlazorModelService
 @inject ILogger<Opportunities> Logger
 @implements IDisposable
 
@@ -37,7 +39,7 @@
                        Striped="true"
                        SortMode="SortMode.Single">
                 <Columns>
-                    <PropertyColumn Property="x => x.TradingPair.Symbol" Title="Trading Pair" />
+                    <PropertyColumn Property="x => x.TradingPair" Title="Trading Pair" />
                     <PropertyColumn Property="x => x.BuyExchange" Title="Buy Exchange" />
                     <PropertyColumn Property="x => x.SellExchange" Title="Sell Exchange" />
                     <TemplateColumn Title="Buy Price">
@@ -99,7 +101,7 @@
 </MudCard>
 
 @code {
-    private ICollection<ArbitrageOpportunity>? _opportunities;
+    private ICollection<ArbitrageOpportunityViewModel>? _opportunities;
     private bool _isLoading = true;
     private Timer? _autoRefreshTimer;
 
@@ -125,8 +127,8 @@
             _isLoading = true;
             StateHasChanged();
 
-            // Direct service call - compile-time type safety!
-            _opportunities = await ArbitrageRepository.GetRecentOpportunitiesAsync(100);
+            // Service call with ViewModel mapping for Blazor UI optimization
+            _opportunities = await BlazorModelService.GetOpportunitiesAsync(100);
         }
         catch (Exception ex)
         {

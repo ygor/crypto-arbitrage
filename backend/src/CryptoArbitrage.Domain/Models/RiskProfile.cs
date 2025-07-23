@@ -8,6 +8,11 @@ public class RiskProfile
     public string Name { get; set; } = "Default";
     public bool IsActive { get; set; } = true;
     
+    /// <summary>
+    /// Gets or sets the risk type (Conservative, Balanced, Aggressive).
+    /// </summary>
+    public string Type { get; set; } = "Balanced";
+    
     // Profit Settings
     public decimal MinProfitPercentage { get; set; } = 0.5m;
     public decimal MinProfitAmount { get; set; } = 10;

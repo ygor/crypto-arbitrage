@@ -228,7 +228,8 @@
             // Direct service calls - compile-time type safety!
             _arbitrageConfig = await ConfigurationService.GetArbitrageConfigurationAsync();
             _riskProfile = ArbitrageService.RiskProfile;
-            _exchangeConfigs = await ConfigurationService.GetAllExchangeConfigurationsAsync();
+            var exchangeConfigsList = await ConfigurationService.GetAllExchangeConfigurationsAsync();
+            _exchangeConfigs = exchangeConfigsList.ToDictionary(c => new ExchangeId(c.ExchangeId), c => c);
         }
         catch (Exception ex)
         {

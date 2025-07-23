@@ -2,8 +2,10 @@
 @using MudBlazor
 @using CryptoArbitrage.Application.Interfaces
 @using CryptoArbitrage.Domain.Models
+@using CryptoArbitrage.Blazor.ViewModels
+@using CryptoArbitrage.Blazor.Services
 @inject IArbitrageService ArbitrageService
-@inject IArbitrageRepository ArbitrageRepository
+@inject IBlazorModelService BlazorModelService
 @inject ILogger<Dashboard> Logger
 @implements IDisposable
 
@@ -122,7 +124,7 @@
                             <MudListItem T="string">
                                 <div class="d-flex justify-space-between align-center">
                                     <div>
-                                        <MudText Typo="Typo.body2">@opportunity.TradingPair.Symbol</MudText>
+                                        <MudText Typo="Typo.body2">@opportunity.TradingPair</MudText>
                                         <MudText Typo="Typo.caption">@opportunity.BuyExchange → @opportunity.SellExchange</MudText>
                                     </div>
                                     <MudChip T="string" Size="Size.Small" Color="Color.Success">
@@ -149,7 +151,7 @@
 
 @code {
     private ArbitrageStatistics? _statistics;
-    private ICollection<ArbitrageOpportunity>? _recentOpportunities;
+    private ICollection<ArbitrageOpportunityViewModel>? _recentOpportunities;
     private bool _isRunning;
     private bool _isToggling;
     private Timer? _updateTimer;
@@ -173,9 +175,9 @@
     {
         try
         {
-            // Direct service calls instead of HTTP requests - compile-time type safety!
+            // Direct service calls with ViewModel mapping for Blazor UI optimization
             _statistics = await ArbitrageService.GetStatisticsAsync();
-            _recentOpportunities = await ArbitrageRepository.GetRecentOpportunitiesAsync(10);
+            _recentOpportunities = await BlazorModelService.GetOpportunitiesAsync(10);
             _isRunning = await ArbitrageService.IsRunningAsync();
         }
         catch (Exception ex)
