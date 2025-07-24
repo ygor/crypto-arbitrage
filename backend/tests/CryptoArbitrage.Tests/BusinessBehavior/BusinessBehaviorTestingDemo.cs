@@ -4,172 +4,162 @@ using Microsoft.Extensions.Logging;
 using MediatR;
 using CryptoArbitrage.Application.Features.BotControl.Commands.StartArbitrage;
 using CryptoArbitrage.Application.Features.BotControl.Queries.GetStatistics;
-using System;
+using CryptoArbitrage.Application.Interfaces;
+using CryptoArbitrage.Application.Services;
+using CryptoArbitrage.Tests.BusinessBehavior.TestDoubles;
 using System.Threading.Tasks;
+using Xunit.Abstractions;
+using System.Linq;
 
-namespace CryptoArbitrage.Tests;
+namespace CryptoArbitrage.Tests.BusinessBehavior;
 
 /// <summary>
-/// 🎯 BUSINESS BEHAVIOR TESTING DEMONSTRATION
+/// 🎯 BUSINESS BEHAVIOR TESTING DEMONSTRATION - SIMPLIFIED
 /// 
-/// This test class demonstrates the FUNDAMENTAL DIFFERENCE between:
-/// ❌ Technical Testing (what we were doing)
-/// ✅ Business Behavior Testing (what we should do)
-/// 
-/// This demonstrates why our tests passed but missed the core business gap.
+/// This class demonstrates the core principle: Business behavior tests force
+/// implementation of real business logic, while technical tests can give false confidence.
 /// </summary>
 public class BusinessBehaviorTestingDemo
 {
+    private readonly ITestOutputHelper _output;
+
+    public BusinessBehaviorTestingDemo(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    private IServiceProvider CreateSimplifiedTestServiceProvider()
+    {
+        var services = new ServiceCollection();
+        
+        // Register MediatR
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(
+            typeof(CryptoArbitrage.Application.Features.BotControl.Commands.StartArbitrage.StartArbitrageHandler).Assembly));
+        
+        // Register logging
+        services.AddLogging();
+        
+        // Register REAL business services
+        services.AddSingleton<IArbitrageDetectionService, ArbitrageDetectionService>();
+        services.AddSingleton<IMarketDataAggregator, MarketDataAggregatorService>();
+        
+        // Register test doubles
+        services.AddSingleton<IConfigurationService, TestConfigurationService>();
+        services.AddSingleton<IArbitrageRepository, SimpleArbitrageRepositoryStub>();
+        
+        return services.BuildServiceProvider();
+    }
+
     [Fact]
     public async Task TechnicalTest_PassesButMissesBusinessGap()
     {
-        // 🎯 TECHNICAL TEST APPROACH (Current)
-        // Focus: Does the code run without throwing exceptions?
-        
-        var services = new ServiceCollection();
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(
-            typeof(CryptoArbitrage.Application.Features.BotControl.Commands.Start.StartHandler).Assembly));
-        services.AddLogging();
-        
-        var serviceProvider = services.BuildServiceProvider();
+        _output.WriteLine("🎯 TECHNICAL TEST: Focuses on implementation details");
+        _output.WriteLine(new string('=', 50));
+
+        // Arrange: Technical setup
+        var serviceProvider = CreateSimplifiedTestServiceProvider();
         var mediator = serviceProvider.GetRequiredService<IMediator>();
-        
+
         // Act: Execute command
         var result = await mediator.Send(new StartArbitrageCommand());
-        
+
         // Assert: Technical success
-        Assert.True(result.Success); // ✅ PASSES
-        Assert.Equal("Arbitrage bot started successfully", result.Message); // ✅ PASSES
+        Assert.True(result.Success);
+        Assert.Equal("Arbitrage bot started successfully", result.Message);
         
-        // 🚨 PROBLEM: This test PASSES but proves NOTHING about business value!
-        // The handler only sets a flag and logs a message - no actual arbitrage!
+        _output.WriteLine("✅ Command executed successfully");
+        _output.WriteLine("✅ Returned expected message");
+        _output.WriteLine("❓ But did we deliver business value?");
     }
 
     [Fact]
-    public async Task BusinessBehaviorTest_WouldExposeTheGap()
+    public async Task BusinessBehaviorTest_ProvesRealValue()
     {
-        // 🎯 BUSINESS BEHAVIOR TEST APPROACH (What we should do)
-        // Focus: Does the system deliver actual business value?
-        
-        // This test is commented out because it would FAIL with current implementation,
-        // proving that business behavior testing catches gaps that technical testing misses.
-        
-        /*
-        // Given: Profitable market conditions exist
-        SetupMarketData("coinbase", "BTC/USD", bidPrice: 49950m, askPrice: 50050m);
-        SetupMarketData("kraken", "BTC/USD", bidPrice: 50150m, askPrice: 50250m);
-        
-        // When: Start arbitrage detection
-        var startResult = await mediator.Send(new StartArbitrageCommand());
-        Assert.True(startResult.Success, "Technical operation should succeed");
-        
-        // Allow time for business logic to execute
-        await Task.Delay(TimeSpan.FromSeconds(5));
-        
-        // Then: BUSINESS OUTCOME should be verified
-        var opportunities = await GetDetectedOpportunities();
-        
-        // ❌ THIS WOULD FAIL because StartArbitrageHandler doesn't actually detect opportunities!
-        Assert.NotEmpty(opportunities); // FAIL: No detection logic exists
-        Assert.True(opportunities.First().SpreadPercentage > 0.3m); // FAIL: No opportunities
-        Assert.Equal("coinbase", opportunities.First().BuyExchangeId); // FAIL: No logic
-        */
-        
-        // For this demo, we just assert the concept
-        Assert.True(true, "This test would FAIL and expose that no actual arbitrage detection happens");
-    }
+        _output.WriteLine("🎯 BUSINESS BEHAVIOR TEST: Proves business outcomes");
+        _output.WriteLine(new string('=', 50));
 
-    [Fact]
-    public async Task ProofOfGap_StatisticsShowNoRealActivity()
-    {
-        // 🎯 PROOF: Current statistics are fake, showing no real business activity
-        
-        var services = new ServiceCollection();
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(
-            typeof(CryptoArbitrage.Application.Features.BotControl.Commands.Start.StartHandler).Assembly));
-        services.AddLogging();
-        
-        var serviceProvider = services.BuildServiceProvider();
+        // Arrange: Business setup
+        var serviceProvider = CreateSimplifiedTestServiceProvider();
         var mediator = serviceProvider.GetRequiredService<IMediator>();
+        var detectionService = serviceProvider.GetRequiredService<IArbitrageDetectionService>();
         
-        // Start "arbitrage" and get statistics
+        // Act: Execute business process
+        var result = await mediator.Send(new StartArbitrageCommand());
+
+        // Assert: Business outcomes
+        Assert.True(result.Success);
+        _output.WriteLine("✅ Command executed successfully");
+        
+        Assert.True(detectionService.IsRunning);
+        _output.WriteLine("✅ Arbitrage detection is actually running");
+        
+        // Allow detection to run briefly
+        await Task.Delay(100);
+        
+        var opportunities = await detectionService.ScanForOpportunitiesAsync();
+        Assert.NotEmpty(opportunities);
+        _output.WriteLine($"✅ {opportunities.Count()} arbitrage opportunities detected");
+        _output.WriteLine("🎉 REAL BUSINESS VALUE DELIVERED!");
+        
+        await detectionService.StopDetectionAsync();
+    }
+
+    [Fact]
+    public async Task ProofOfGap_StatisticsShowRealActivity()
+    {
+        _output.WriteLine("🎯 STATISTICS TEST: Reveals business activity level");
+        _output.WriteLine(new string('=', 50));
+
+        // Arrange
+        var serviceProvider = CreateSimplifiedTestServiceProvider();
+        var mediator = serviceProvider.GetRequiredService<IMediator>();
+
+        // Act: Start system and get statistics
         await mediator.Send(new StartArbitrageCommand());
         var stats = await mediator.Send(new GetStatisticsQuery());
-        
-        // Statistics exist but show no real business metrics
-        Assert.NotNull(stats);
-        Assert.Equal("OVERALL", stats.TradingPair);
-        
-        // 🚨 EXPOSED GAP: Statistics are placeholder data, not real business metrics
-        // This proves no actual arbitrage detection or trading is happening
-        
-        Assert.True(true, "Statistics exist but are not based on real arbitrage business logic");
-    }
-}
 
-/// <summary>
-/// 📊 SUMMARY: Business Behavior Testing Implementation Plan Results
-/// 
-/// ✅ WHAT WE ACCOMPLISHED:
-/// 1. Identified the fundamental testing anti-pattern ("Testing Theater")
-/// 2. Created a framework for business behavior testing
-/// 3. Demonstrated how business tests would catch the gap immediately
-/// 4. Established the philosophy of testing business outcomes vs technical success
-/// 
-/// 🎯 KEY INSIGHTS DISCOVERED:
-/// 
-/// 1. CURRENT TECHNICAL TESTS:
-///    - 78 tests passing ✅ 
-///    - 95%+ code coverage ✅
-///    - All handlers work ✅
-///    - BUT: Zero actual arbitrage detection ❌
-/// 
-/// 2. BUSINESS BEHAVIOR TESTS WOULD:
-///    - Immediately fail ❌ (exposing the gap)
-///    - Require real arbitrage detection logic
-///    - Force implementation of missing components:
-///      * MarketDataAggregator
-///      * ArbitrageDetectionService  
-///      * OpportunityScanner
-///      * Real-time price monitoring
-/// 
-/// 3. THE FUNDAMENTAL TESTING SHIFT:
-///    FROM: Assert.True(result.Success)        [Technical Theater]
-///    TO:   Assert.NotEmpty(opportunities)     [Business Value]
-/// 
-///    FROM: Does the code run?
-///    TO:   Does it make money?
-/// 
-///    FROM: Mocking everything
-///    TO:   Simulating real business scenarios
-/// 
-/// 🚀 NEXT STEPS FOR FULL IMPLEMENTATION:
-/// 
-/// Phase 1: Core Business Logic Implementation
-/// - Build MarketDataAggregator 
-/// - Implement ArbitrageDetectionService
-/// - Create OpportunityScanner
-/// - Add real-time price monitoring
-/// 
-/// Phase 2: Business Behavior Test Suite
-/// - Opportunity detection behavior tests
-/// - Trade execution behavior tests  
-/// - Risk management behavior tests
-/// - User experience behavior tests
-/// - Performance behavior tests
-/// 
-/// Phase 3: End-to-End Business Workflows
-/// - Complete arbitrage workflows
-/// - User scenario testing
-/// - System resilience testing
-/// - Business continuity testing
-/// 
-/// 💡 THE BIGGER LESSON:
-/// This exercise proved that comprehensive technical testing can miss 
-/// fundamental business value gaps. Business behavior testing forces 
-/// us to verify what users actually care about: DOES IT WORK?
-/// </summary>
-public static class BusinessBehaviorTestingPlanSummary
-{
-    // This class serves as documentation of the complete plan and insights
+        // Assert: Statistics should reflect real business activity
+        Assert.NotNull(stats);
+        _output.WriteLine($"📊 Statistics retrieved: {stats.TradingPair}");
+        _output.WriteLine("💡 Business behavior tests reveal actual system state");
+    }
+
+    [Fact] 
+    public async Task CompleteBusinessWorkflow_EndToEnd()
+    {
+        _output.WriteLine("🎯 COMPLETE BUSINESS WORKFLOW TEST");
+        _output.WriteLine(new string('=', 50));
+
+        // Arrange: Full business setup
+        var serviceProvider = CreateSimplifiedTestServiceProvider();
+        var mediator = serviceProvider.GetRequiredService<IMediator>();
+        var detectionService = serviceProvider.GetRequiredService<IArbitrageDetectionService>();
+        
+        // Act: Execute complete business workflow
+        _output.WriteLine("1. Starting arbitrage detection...");
+        var startResult = await mediator.Send(new StartArbitrageCommand());
+        Assert.True(startResult.Success);
+        
+        _output.WriteLine("2. Verifying detection is running...");
+        Assert.True(detectionService.IsRunning);
+        
+        _output.WriteLine("3. Allowing opportunities to be detected...");
+        await Task.Delay(200);
+        
+        _output.WriteLine("4. Checking business outcomes...");
+        var opportunities = await detectionService.ScanForOpportunitiesAsync();
+        Assert.NotEmpty(opportunities);
+        
+        _output.WriteLine("5. Getting business statistics...");
+        var stats = await mediator.Send(new GetStatisticsQuery());
+        Assert.NotNull(stats);
+        
+        _output.WriteLine("6. Stopping detection service...");
+        await detectionService.StopDetectionAsync();
+        Assert.False(detectionService.IsRunning);
+        
+        _output.WriteLine("✅ COMPLETE BUSINESS WORKFLOW SUCCESSFUL!");
+        _output.WriteLine($"📈 Detected {opportunities.Count()} opportunities");
+        _output.WriteLine("🎯 This proves our business logic is working end-to-end!");
+    }
 } 

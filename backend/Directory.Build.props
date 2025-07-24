@@ -1,12 +1,4 @@
 <Project>
   <PropertyGroup>
-    <!-- Suppress async method warnings -->
-    <NoWarn>$(NoWarn);CS1998</NoWarn>
-    
-    <!-- Suppress null reference warnings -->
-    <NoWarn>$(NoWarn);CS8602;CS8601;CS8604;CS8619</NoWarn>
-    
-    <!-- Suppress unused member warnings -->
-    <NoWarn>$(NoWarn);CS0067;CS0169</NoWarn>
   </PropertyGroup>
 </Project> 

@@ -1,5 +1,7 @@
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Models;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CryptoArbitrage.Tests.BusinessBehavior.TestDoubles;
@@ -16,23 +18,21 @@ public class TestConfigurationService : IConfigurationService
         // Setup realistic test configuration
         _configuration = new ArbitrageConfiguration
         {
-            Id = Guid.NewGuid(),
             RiskProfile = new RiskProfile
             {
                 MaxTradeAmount = 1000m,           // $1000 max per trade
                 DailyLossLimitPercent = 5.0m,     // 5% daily loss limit
                 MinProfitThresholdPercent = 0.5m, // 0.5% minimum profit
-                MaxPositionSizePercent = 10.0m    // 10% max position size
+                MaxCapitalPerTradePercent = 10.0m // 10% max position size
             },
-            TradingPairs = new[]
+            TradingPairs = new List<TradingPair>
             {
                 TradingPair.Parse("BTC/USD"),
                 TradingPair.Parse("ETH/USD"),
                 TradingPair.Parse("ADA/USD")
             },
-            EnabledExchanges = new[] { "coinbase", "kraken", "binance" },
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            EnabledExchanges = new List<string> { "coinbase", "kraken", "binance" },
+            IsEnabled = true
         };
     }
     
@@ -48,7 +48,8 @@ public class TestConfigurationService : IConfigurationService
     }
 
     // Complete implementation of all IConfigurationService methods
-    public Task LoadConfigurationAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<ArbitrageConfiguration> LoadConfigurationAsync(CancellationToken cancellationToken = default) => 
+        Task.FromResult(_configuration);
     
     public Task<ArbitrageConfiguration?> GetConfigurationAsync(CancellationToken cancellationToken = default) => 
         Task.FromResult<ArbitrageConfiguration?>(_configuration);

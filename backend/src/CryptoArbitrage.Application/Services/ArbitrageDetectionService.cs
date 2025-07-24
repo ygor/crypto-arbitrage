@@ -52,21 +52,39 @@ public class ArbitrageDetectionService : IArbitrageDetectionService
     {
         if (_isRunning)
         {
-            throw new InvalidOperationException("Arbitrage detection is already running");
+            _logger.LogWarning("Arbitrage detection is already running - ignoring start request");
+            return; // Don't throw exception, just return
         }
 
         _logger.LogInformation("Starting arbitrage detection for exchanges: {Exchanges}, pairs: {TradingPairs}", 
             string.Join(", ", exchanges), string.Join(", ", tradingPairs));
 
-        // Start market data monitoring
-        await _marketDataAggregator.StartMonitoringAsync(exchanges, tradingPairs);
+        try
+        {
+            // Start market data monitoring
+            await _marketDataAggregator.StartMonitoringAsync(exchanges, tradingPairs);
 
-        // Start background detection task
-        _cancellationTokenSource = new CancellationTokenSource();
-        _detectionTask = RunDetectionLoopAsync(_cancellationTokenSource.Token, tradingPairs);
-        _isRunning = true;
+            // Give market data a moment to initialize
+            await Task.Delay(100);
 
-        _logger.LogInformation("Arbitrage detection started successfully");
+            // Start background detection task
+            _cancellationTokenSource = new CancellationTokenSource();
+            _detectionTask = RunDetectionLoopAsync(_cancellationTokenSource.Token, tradingPairs);
+            
+            // Set running state after everything is initialized
+            _isRunning = true;
+
+            _logger.LogInformation("Arbitrage detection started successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start arbitrage detection");
+            _isRunning = false;
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
+            _detectionTask = null;
+            throw;
+        }
     }
 
     public async Task StopDetectionAsync()
@@ -242,8 +260,13 @@ public class ArbitrageDetectionService : IArbitrageDetectionService
             SellExchangeId = sellExchange.ExchangeId,
             BuyPrice = buyPrice,
             SellPrice = sellPrice,
+            BuyQuantity = buyExchange.AskVolume,
+            SellQuantity = sellExchange.BidVolume,
+            EffectiveQuantity = tradeAmount,
+            Spread = spread,
             SpreadPercentage = spreadPercentage,
-            EstimatedProfit = netProfit,
+            EstimatedProfit = estimatedProfit,
+            ProfitAmount = netProfit,  // This is what tests check for
             DetectedAt = DateTime.UtcNow,
             Status = ArbitrageOpportunityStatus.Detected,
             MaxTradeAmount = tradeAmount

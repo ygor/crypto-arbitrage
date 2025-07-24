@@ -430,7 +430,8 @@ public class CoinbaseExchangeClientTests
             {
                 ExchangeId = "coinbase",
                 ApiKey = "",  // Empty API key
-                ApiSecret = "secret"
+                ApiSecret = "secret",
+                WebSocketUrl = "wss://ws-feed.exchange.coinbase.com"
             });
         
         var mockLogger = new Mock<ILogger<CoinbaseExchangeClient>>();
@@ -463,6 +464,7 @@ public class CoinbaseExchangeClientTests
                 ExchangeId = "coinbase",
                 ApiKey = "key",
                 ApiSecret = "", // Empty API secret
+                WebSocketUrl = "wss://ws-feed.exchange.coinbase.com"
             });
         
         var mockLogger = new Mock<ILogger<CoinbaseExchangeClient>>();
@@ -495,6 +497,7 @@ public class CoinbaseExchangeClientTests
                 ExchangeId = "coinbase",
                 ApiKey = "key",
                 ApiSecret = "secret",
+                WebSocketUrl = "wss://ws-feed.exchange.coinbase.com",
                 AdditionalAuthParams = new Dictionary<string, string>() // No passphrase
             });
         
@@ -528,6 +531,7 @@ public class CoinbaseExchangeClientTests
                 ExchangeId = "coinbase",
                 ApiKey = "key",
                 ApiSecret = "secret",
+                WebSocketUrl = "wss://ws-feed.exchange.coinbase.com",
                 AdditionalAuthParams = new Dictionary<string, string> 
                 { 
                     { "passphrase", "" } // Empty passphrase

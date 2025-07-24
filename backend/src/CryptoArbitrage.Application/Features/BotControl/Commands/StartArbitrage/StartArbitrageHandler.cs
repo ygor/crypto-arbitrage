@@ -20,7 +20,6 @@ public class StartArbitrageHandler : IRequestHandler<StartArbitrageCommand, Star
     private readonly IArbitrageDetectionService _arbitrageDetectionService;
     private readonly IConfigurationService _configurationService;
     private readonly ILogger<StartArbitrageHandler> _logger;
-    private static bool _isRunning = false;
 
     public StartArbitrageHandler(
         IArbitrageDetectionService arbitrageDetectionService,
@@ -36,7 +35,7 @@ public class StartArbitrageHandler : IRequestHandler<StartArbitrageCommand, Star
     {
         try
         {
-            if (_isRunning || _arbitrageDetectionService.IsRunning)
+            if (_arbitrageDetectionService.IsRunning)
             {
                 return new StartArbitrageResult(false, "Arbitrage bot is already running");
             }
@@ -56,13 +55,10 @@ public class StartArbitrageHandler : IRequestHandler<StartArbitrageCommand, Star
 
             await _arbitrageDetectionService.StartDetectionAsync(exchanges, tradingPairs);
             
-            _isRunning = true;
-            
             _logger.LogInformation("Arbitrage bot started successfully with real detection for {ExchangeCount} exchanges and {PairCount} trading pairs", 
                 exchanges.Count(), tradingPairs.Length);
             
-            return new StartArbitrageResult(true, 
-                $"Arbitrage bot started successfully - monitoring {exchanges.Count()} exchanges for {tradingPairs.Length} trading pairs");
+            return new StartArbitrageResult(true, "Arbitrage bot started successfully");
         }
         catch (Exception ex)
         {

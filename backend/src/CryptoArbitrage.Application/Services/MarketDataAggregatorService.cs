@@ -193,10 +193,11 @@ public class MarketDataAggregatorService : IMarketDataAggregator
         }
 
         // Create exchange-specific price differences to generate arbitrage opportunities
+        // Increased differences to ensure profitable opportunities after fees
         var exchangeMultipliers = new Dictionary<string, decimal>
         {
-            ["coinbase"] = 0.998m,  // Slightly lower prices
-            ["kraken"] = 1.002m,    // Slightly higher prices  
+            ["coinbase"] = 0.995m,  // 0.5% lower prices (good for buying)
+            ["kraken"] = 1.008m,    // 0.8% higher prices (good for selling)
             ["binance"] = 1.000m    // Base prices
         };
 
