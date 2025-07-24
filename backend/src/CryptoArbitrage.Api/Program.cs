@@ -64,8 +64,11 @@ builder.Services.AddSignalR(options =>
     options.EnableDetailedErrors = true;
 });
 
-// Add application and infrastructure services
-builder.Services.AddApplicationServices();
+// Add application services using the newer version with business logic services
+CryptoArbitrage.Application.ServiceCollectionExtensions.AddApplicationServices(builder.Services);
+
+// Also register additional services from DependencyInjection class
+CryptoArbitrage.Application.DependencyInjection.AddApplicationServices(builder.Services);
 
 // Check if MongoDB should be used instead of file storage
 var useMongoDb = builder.Configuration.GetValue<bool>("Database:UseMongoDb", false);

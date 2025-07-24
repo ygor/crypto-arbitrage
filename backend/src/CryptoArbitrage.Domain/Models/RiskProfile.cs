@@ -18,6 +18,15 @@ public class RiskProfile
     public decimal MinProfitAmount { get; set; } = 10;
     public decimal MinimumProfitPercentage { get; set; } = 0.5m;
     
+    /// <summary>
+    /// Gets or sets the minimum profit threshold percentage (alias for MinimumProfitPercentage).
+    /// </summary>
+    public decimal MinProfitThresholdPercent 
+    { 
+        get => MinimumProfitPercentage; 
+        set => MinimumProfitPercentage = value; 
+    }
+    
     // Risk Settings
     public decimal MaxSlippagePercentage { get; set; } = 0.5m;
     public decimal RiskTolerance { get; set; } = 0.5m; // 0 = Low risk, 1 = High risk

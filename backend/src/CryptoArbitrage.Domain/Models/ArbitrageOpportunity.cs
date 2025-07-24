@@ -55,44 +55,56 @@ public class ArbitrageOpportunity
     }
 
     /// <summary>
+    /// Parameterless constructor for object initialization.
+    /// </summary>
+    public ArbitrageOpportunity()
+    {
+        TradingPair = new TradingPair("BTC", "USD");
+        BuyExchangeId = string.Empty;
+        SellExchangeId = string.Empty;
+        DetectedAt = DateTime.UtcNow;
+        Status = ArbitrageOpportunityStatus.Detected;
+    }
+
+    /// <summary>
     /// Gets the trading pair.
     /// </summary>
-    public TradingPair TradingPair { get; }
+    public TradingPair TradingPair { get; set; }
 
     /// <summary>
     /// Gets the exchange identifier to buy from.
     /// </summary>
-    public string BuyExchangeId { get; }
+    public string BuyExchangeId { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets the price to buy at.
     /// </summary>
-    public decimal BuyPrice { get; }
+    public decimal BuyPrice { get; set; }
 
     /// <summary>
     /// Gets the quantity available to buy.
     /// </summary>
-    public decimal BuyQuantity { get; }
+    public decimal BuyQuantity { get; set; }
 
     /// <summary>
     /// Gets the exchange identifier to sell to.
     /// </summary>
-    public string SellExchangeId { get; }
+    public string SellExchangeId { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets the price to sell at.
     /// </summary>
-    public decimal SellPrice { get; }
+    public decimal SellPrice { get; set; }
 
     /// <summary>
     /// Gets the quantity available to sell.
     /// </summary>
-    public decimal SellQuantity { get; }
+    public decimal SellQuantity { get; set; }
 
     /// <summary>
     /// Gets the effective quantity for the arbitrage (minimum of buy and sell quantities).
     /// </summary>
-    public decimal EffectiveQuantity { get; }
+    public decimal EffectiveQuantity { get; set; }
 
     /// <summary>
     /// Gets the maximum quantity that can be traded for this opportunity (alias for EffectiveQuantity).
@@ -102,12 +114,12 @@ public class ArbitrageOpportunity
     /// <summary>
     /// Gets the spread between sell and buy prices.
     /// </summary>
-    public decimal Spread { get; }
+    public decimal Spread { get; set; }
 
     /// <summary>
     /// Gets the spread as a percentage of the buy price.
     /// </summary>
-    public decimal SpreadPercentage { get; }
+    public decimal SpreadPercentage { get; set; }
 
     /// <summary>
     /// Gets the return on investment percentage (alias for SpreadPercentage).
@@ -117,12 +129,12 @@ public class ArbitrageOpportunity
     /// <summary>
     /// Gets the estimated profit before fees.
     /// </summary>
-    public decimal EstimatedProfit { get; }
+    public decimal EstimatedProfit { get; set; }
 
     /// <summary>
     /// Gets the time when the opportunity was detected.
     /// </summary>
-    public DateTime DetectedAt { get; }
+    public DateTime DetectedAt { get; set; }
 
     /// <summary>
     /// Gets the timestamp of this opportunity (alias for DetectedAt).
@@ -132,7 +144,7 @@ public class ArbitrageOpportunity
     /// <summary>
     /// Gets the status of the arbitrage opportunity.
     /// </summary>
-    public ArbitrageOpportunityStatus Status { get; private set; }
+    public ArbitrageOpportunityStatus Status { get; set; }
 
     /// <summary>
     /// Gets or sets the time when the opportunity was executed, if applicable.
@@ -188,6 +200,11 @@ public class ArbitrageOpportunity
     public bool IsQualified { get; set; }
     public string? DisqualificationReason { get; set; }
     public Dictionary<string, object>? AdditionalData { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the maximum trade amount for this opportunity.
+    /// </summary>
+    public decimal MaxTradeAmount { get; set; }
     
     // Risk/reward metrics
     public decimal RiskScore { get; set; }

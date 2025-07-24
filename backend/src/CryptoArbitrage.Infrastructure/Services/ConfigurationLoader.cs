@@ -155,7 +155,7 @@ public class ConfigurationLoader
                     IsEnabled = bool.Parse(exchange["Enabled"] ?? "false"),
                     ApiKey = exchange["ApiKey"] ?? string.Empty,
                     ApiSecret = exchange["ApiSecret"] ?? string.Empty,
-                    AdditionalApiParams = exchange["AdditionalApiParams"] ?? string.Empty,
+                    AdditionalApiParams = new Dictionary<string, string>(),
                     BaseUrl = exchange["BaseUrl"] ?? string.Empty,
                     ApiUrl = exchange["ApiUrl"] ?? string.Empty,
                     WebSocketUrl = exchange["WebSocketUrl"] ?? string.Empty,

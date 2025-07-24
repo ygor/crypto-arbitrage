@@ -85,23 +85,9 @@ public class PaperTradingServiceTests
     public async Task SimulateMarketBuyOrderAsync_ShouldUpdateBalances()
     {
         // Arrange
-        const string exchangeId = "coinbase";
-        const decimal quantity = 0.1m; // Buy 0.1 BTC instead of 0.5 BTC
-        const decimal btcPrice = 10000m; // BTC price at $10,000 instead of $50,000
-        
-        // Setup mock order book specifically for this test
-        var asks = new List<OrderBookEntry> { new OrderBookEntry(btcPrice, 1m) };
-        var bids = new List<OrderBookEntry> { new OrderBookEntry(btcPrice - 100, 1m) };
-        var orderBook = new OrderBook(
-            exchangeId,
-            _btcUsdt,
-            DateTime.UtcNow,
-            bids,
-            asks
-        );
-        
-        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-        //     .Returns(orderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
+        const string exchangeId = "coinbase"; // Use supported exchange
+        const decimal quantity = 0.1m;
+        // Remove hardcoded price - let PaperTradingService generate realistic price
         
         // Initialize with default balances
         await _paperTradingService.InitializeAsync();
@@ -122,7 +108,10 @@ public class PaperTradingServiceTests
         // Assert
         Assert.True(tradeResult.IsSuccess, $"Trade failed with error: {tradeResult.ErrorMessage}");
         Assert.Equal(quantity, tradeResult.ExecutedQuantity);
-        Assert.Equal(btcPrice, tradeResult.ExecutedPrice);
+        
+        // Price should be realistic (between $20k-$100k for BTC)
+        Assert.True(tradeResult.ExecutedPrice > 20000m && tradeResult.ExecutedPrice < 100000m, 
+            $"BTC price {tradeResult.ExecutedPrice} should be realistic");
         
         // Check that balances were updated correctly
         var updatedBtcBalance = await _paperTradingService.GetBalanceAsync(exchangeId, "BTC");
@@ -137,8 +126,8 @@ public class PaperTradingServiceTests
         // BTC balance should increase by the quantity bought
         Assert.Equal(initialBtcAmount + quantity, updatedBtcAmount);
         
-        // USDT balance should decrease by the quantity * price + fees
-        decimal expectedUsdtSpent = quantity * btcPrice * (1 + tradeResult.Fee / tradeResult.TotalValue);
+        // USDT balance should decrease by the quantity * actual executed price + fees
+        decimal expectedUsdtSpent = quantity * tradeResult.ExecutedPrice * (1 + tradeResult.Fee / tradeResult.TotalValue);
         Assert.Equal(initialUsdtAmount - expectedUsdtSpent, updatedUsdtAmount, 4); // Allow some rounding error
     }
     
@@ -148,21 +137,7 @@ public class PaperTradingServiceTests
         // Arrange
         const string exchangeId = "coinbase";
         const decimal quantity = 0.1m; // Sell 0.1 BTC instead of 0.5 BTC
-        const decimal btcPrice = 10000m; // BTC price at $10,000 instead of $50,000
-        
-        // Setup mock order book
-        var asks = new List<OrderBookEntry> { new OrderBookEntry(btcPrice + 100, 1m) };
-        var bids = new List<OrderBookEntry> { new OrderBookEntry(btcPrice, 1m) };
-        var orderBook = new OrderBook(
-            exchangeId,
-            _btcUsdt,
-            DateTime.UtcNow,
-            bids,
-            asks
-        );
-        
-        // _mockMarketDataService.Setup(x => x.GetLatestOrderBook(exchangeId, _btcUsdt))
-        //     .Returns(orderBook); // This line is removed as PaperTradingService no longer uses IMarketDataService
+        // Remove hardcoded price - let PaperTradingService generate realistic price
         
         // Initialize with default balances
         await _paperTradingService.InitializeAsync();
@@ -183,7 +158,10 @@ public class PaperTradingServiceTests
         // Assert
         Assert.True(tradeResult.IsSuccess, $"Trade failed with error: {tradeResult.ErrorMessage}");
         Assert.Equal(quantity, tradeResult.ExecutedQuantity);
-        Assert.Equal(btcPrice, tradeResult.ExecutedPrice);
+        
+        // Price should be realistic (between $20k-$100k for BTC)
+        Assert.True(tradeResult.ExecutedPrice > 20000m && tradeResult.ExecutedPrice < 100000m, 
+            $"BTC price {tradeResult.ExecutedPrice} should be realistic");
         
         // Check that balances were updated correctly
         var updatedBtcBalance = await _paperTradingService.GetBalanceAsync(exchangeId, "BTC");
@@ -198,8 +176,8 @@ public class PaperTradingServiceTests
         // BTC balance should decrease by the quantity sold
         Assert.Equal(initialBtcAmount - quantity, updatedBtcAmount);
         
-        // USDT balance should increase by the quantity * price - fees
-        decimal expectedUsdtReceived = quantity * btcPrice * (1 - tradeResult.Fee / tradeResult.TotalValue);
+        // USDT balance should increase by the quantity * actual executed price - fees
+        decimal expectedUsdtReceived = quantity * tradeResult.ExecutedPrice * (1 - tradeResult.Fee / tradeResult.TotalValue);
         Assert.Equal(initialUsdtAmount + expectedUsdtReceived, updatedUsdtAmount, 4); // Allow some rounding error
     }
     

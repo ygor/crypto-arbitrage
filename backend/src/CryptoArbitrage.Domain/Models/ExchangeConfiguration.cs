@@ -1,79 +1,74 @@
+using System;
+using System.Collections.Generic;
+
 namespace CryptoArbitrage.Domain.Models;
 
 /// <summary>
-/// Represents the configuration for a cryptocurrency exchange.
+/// Configuration settings for a specific exchange
 /// </summary>
 public class ExchangeConfiguration
 {
     /// <summary>
-    /// Gets or sets the exchange identifier.
+    /// Unique identifier for the exchange configuration
+    /// </summary>
+    public Guid Id { get; set; }
+    
+    /// <summary>
+    /// Exchange identifier (e.g., "coinbase", "kraken", "binance")
     /// </summary>
     public string ExchangeId { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets or sets a value indicating whether the exchange is enabled.
+    /// Whether this exchange is enabled for trading
     /// </summary>
     public bool IsEnabled { get; set; }
     
     /// <summary>
-    /// Gets or sets the API key for the exchange.
+    /// API key for the exchange (encrypted)
     /// </summary>
     public string ApiKey { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets or sets the API secret for the exchange.
+    /// API secret for the exchange (encrypted)
     /// </summary>
     public string ApiSecret { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets or sets the additional API parameters for the exchange.
+    /// Whether to use the sandbox/testnet environment
     /// </summary>
-    public string? AdditionalApiParams { get; set; }
+    public bool UseSandbox { get; set; }
     
     /// <summary>
-    /// Gets or sets the additional authentication parameters for the exchange.
+    /// Maximum trade amount for this exchange
     /// </summary>
-    public Dictionary<string, string>? AdditionalAuthParams { get; set; }
+    public decimal MaxTradeAmount { get; set; }
     
     /// <summary>
-    /// Gets or sets the maximum number of requests per second allowed.
+    /// Trading fee percentage for this exchange
     /// </summary>
+    public decimal TradingFeePercent { get; set; }
+    
+    // Additional properties required by GetConfigurationHandler
     public int MaxRequestsPerSecond { get; set; } = 10;
-    
-    /// <summary>
-    /// Gets or sets the base URL for the API.
-    /// </summary>
-    public string? BaseUrl { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the API URL.
-    /// </summary>
-    public string? ApiUrl { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the WebSocket URL.
-    /// </summary>
-    public string? WebSocketUrl { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the supported trading pairs.
-    /// </summary>
-    public List<TradingPair>? SupportedTradingPairs { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the rate limits.
-    /// </summary>
-    public ExchangeRateLimits? RateLimits { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the API timeout in milliseconds.
-    /// </summary>
-    public int ApiTimeoutMs { get; set; } = 30000;
-    
-    /// <summary>
-    /// Gets or sets the WebSocket reconnect interval in milliseconds.
-    /// </summary>
+    public string BaseUrl { get; set; } = string.Empty;
+    public string ApiUrl { get; set; } = string.Empty;
+    public string WebSocketUrl { get; set; } = string.Empty;
+    public List<TradingPair> SupportedTradingPairs { get; set; } = new List<TradingPair>();
+    public ExchangeRateLimits RateLimits { get; set; } = new ExchangeRateLimits();
+    public int ApiTimeoutMs { get; set; } = 5000;
     public int WebSocketReconnectIntervalMs { get; set; } = 5000;
+    public Dictionary<string, string> AdditionalApiParams { get; set; } = new Dictionary<string, string>();
+    public Dictionary<string, string> AdditionalAuthParams { get; set; } = new Dictionary<string, string>();
+    
+    /// <summary>
+    /// When this configuration was created
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+    
+    /// <summary>
+    /// When this configuration was last updated
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
 }
 
 /// <summary>

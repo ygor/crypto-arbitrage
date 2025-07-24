@@ -115,4 +115,9 @@ public class ArbitrageConfiguration
     /// Gets or sets the list of trading pairs to monitor.
     /// </summary>
     public List<TradingPair> TradingPairs { get; set; } = new List<TradingPair>();
+
+    /// <summary>
+    /// Gets or sets the list of enabled exchanges.
+    /// </summary>
+    public List<string> EnabledExchanges { get; set; } = new List<string> { "coinbase", "kraken", "binance" };
 } 

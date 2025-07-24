@@ -67,6 +67,28 @@ public readonly struct PriceQuote
     /// Gets the best ask (sell) quantity available.
     /// </summary>
     public decimal BestAskQuantity { get; }
+
+    // Alias properties for compatibility with ArbitrageDetectionService
+    
+    /// <summary>
+    /// Gets the ask price (alias for BestAskPrice).
+    /// </summary>
+    public decimal AskPrice => BestAskPrice;
+    
+    /// <summary>
+    /// Gets the bid price (alias for BestBidPrice).
+    /// </summary>
+    public decimal BidPrice => BestBidPrice;
+    
+    /// <summary>
+    /// Gets the ask volume (alias for BestAskQuantity).
+    /// </summary>
+    public decimal AskVolume => BestAskQuantity;
+    
+    /// <summary>
+    /// Gets the bid volume (alias for BestBidQuantity).
+    /// </summary>
+    public decimal BidVolume => BestBidQuantity;
     
     /// <summary>
     /// Gets the spread between the best ask and best bid prices.

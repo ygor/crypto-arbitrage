@@ -356,20 +356,23 @@ public class TestFixture : IDisposable
         services.AddLogging(builder =>
         {
             builder.AddDebug();
-            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.SetMinimumLevel(LogLevel.Warning); // Reduce noise in tests
         });
         
-        // Register mocks
+        // Register MediatR with vertical slice architecture handlers
+        services.AddMediatR(cfg => 
+        {
+            cfg.RegisterServicesFromAssembly(typeof(CryptoArbitrage.Application.Features.BotControl.Commands.Start.StartHandler).Assembly);
+        });
+        
+        // Register mocked dependencies for vertical slice handlers
         services.AddSingleton(MockExchangeFactory.Object);
         services.AddSingleton(MockConfigurationService.Object);
         services.AddSingleton(MockArbitrageRepository.Object);
         services.AddSingleton(MockPaperTradingService.Object);
         
-        // Register real services that still exist
+        // Register additional dependencies that handlers might need
         services.AddSingleton<INotificationService, NotificationService>();
-        
-        // TODO: Add MediatR and new vertical slice architecture services
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CryptoArbitrage.Application.DependencyInjection).Assembly));
     }
 
     public void Dispose()

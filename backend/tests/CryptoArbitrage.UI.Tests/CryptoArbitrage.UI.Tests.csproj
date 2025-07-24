@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core testing packages -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="xunit" Version="2.7.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.7">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
+    <!-- Blazor component testing -->
+    <PackageReference Include="bunit" Version="1.24.10" />
+    <PackageReference Include="bunit.web" Version="1.24.10" />
+    
+    <!-- Browser automation testing -->
+    <PackageReference Include="Microsoft.Playwright" Version="1.40.0" />
+    
+    <!-- ASP.NET Core testing -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+    
+    <!-- Additional testing utilities -->
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Project references -->
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Blazor\CryptoArbitrage.Blazor.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Application\CryptoArbitrage.Application.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Domain\CryptoArbitrage.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CryptoArbitrage.Infrastructure\CryptoArbitrage.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

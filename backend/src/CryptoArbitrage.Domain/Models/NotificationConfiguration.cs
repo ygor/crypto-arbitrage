@@ -1,155 +1,116 @@
+using System;
+
 namespace CryptoArbitrage.Domain.Models;
 
 /// <summary>
-/// Represents the configuration for notifications.
+/// Configuration settings for notifications
 /// </summary>
 public class NotificationConfiguration
 {
     /// <summary>
-    /// Gets or sets a value indicating whether email notifications are enabled.
+    /// Unique identifier for the notification configuration
+    /// </summary>
+    public Guid Id { get; set; }
+    
+    /// <summary>
+    /// Whether email notifications are enabled
     /// </summary>
     public bool EmailEnabled { get; set; }
     
     /// <summary>
-    /// Gets or sets the email configuration.
+    /// Email address for notifications
     /// </summary>
-    public EmailConfiguration Email { get; set; } = new EmailConfiguration();
+    public string EmailAddress { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets or sets a value indicating whether SMS notifications are enabled.
+    /// Whether SMS notifications are enabled
     /// </summary>
     public bool SmsEnabled { get; set; }
     
     /// <summary>
-    /// Gets or sets the SMS configuration.
+    /// Phone number for SMS notifications
     /// </summary>
-    public SmsConfiguration Sms { get; set; } = new SmsConfiguration();
+    public string PhoneNumber { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets or sets a value indicating whether webhook notifications are enabled.
+    /// Whether webhook notifications are enabled
     /// </summary>
     public bool WebhookEnabled { get; set; }
     
     /// <summary>
-    /// Gets or sets the webhook configuration.
+    /// Webhook URL for notifications
     /// </summary>
-    public WebhookConfiguration Webhook { get; set; } = new WebhookConfiguration();
+    public string WebhookUrl { get; set; } = string.Empty;
     
     /// <summary>
-    /// Gets or sets the minimum error severity level for notifications.
+    /// Minimum profit threshold to trigger notifications
     /// </summary>
-    public ErrorSeverity MinimumErrorSeverityForNotification { get; set; } = ErrorSeverity.Medium;
+    public decimal MinProfitThreshold { get; set; }
     
     /// <summary>
-    /// Gets or sets a value indicating whether to notify on arbitrage opportunities.
+    /// Whether to notify on arbitrage opportunities detected
+    /// </summary>
+    public bool NotifyOnOpportunityDetected { get; set; }
+    
+    /// <summary>
+    /// Whether to notify on trades executed
+    /// </summary>
+    public bool NotifyOnTradeExecuted { get; set; }
+    
+    /// <summary>
+    /// Whether to notify on errors
+    /// </summary>
+    public bool NotifyOnError { get; set; }
+    
+    // New properties required by the application
+    
+    /// <summary>
+    /// Whether to notify on arbitrage opportunities
     /// </summary>
     public bool NotifyOnArbitrageOpportunities { get; set; } = true;
     
     /// <summary>
-    /// Gets or sets a value indicating whether to notify on completed trades.
+    /// Whether to notify on completed trades
     /// </summary>
     public bool NotifyOnCompletedTrades { get; set; } = true;
     
     /// <summary>
-    /// Gets or sets a value indicating whether to notify on failed trades.
+    /// Whether to notify on failed trades
     /// </summary>
     public bool NotifyOnFailedTrades { get; set; } = true;
     
     /// <summary>
-    /// Gets or sets a value indicating whether to send daily statistics.
+    /// Minimum error severity for notifications
     /// </summary>
-    public bool SendDailyStatistics { get; set; } = true;
-}
-
-/// <summary>
-/// Represents the configuration for email notifications.
-/// </summary>
-public class EmailConfiguration
-{
-    /// <summary>
-    /// Gets or sets the SMTP server.
-    /// </summary>
-    public string SmtpServer { get; set; } = string.Empty;
+    public ErrorSeverity MinimumErrorSeverityForNotification { get; set; } = ErrorSeverity.Warning;
     
     /// <summary>
-    /// Gets or sets the SMTP port.
+    /// Whether to send daily statistics
     /// </summary>
-    public int SmtpPort { get; set; } = 587;
+    public bool SendDailyStatistics { get; set; } = false;
     
     /// <summary>
-    /// Gets or sets a value indicating whether to use SSL.
+    /// Email configuration details
     /// </summary>
-    public bool UseSsl { get; set; } = true;
+    public EmailConfiguration Email { get; set; } = new EmailConfiguration();
     
     /// <summary>
-    /// Gets or sets the username.
+    /// SMS configuration details
     /// </summary>
-    public string Username { get; set; } = string.Empty;
+    public SmsConfiguration Sms { get; set; } = new SmsConfiguration();
     
     /// <summary>
-    /// Gets or sets the password.
+    /// Webhook configuration details
     /// </summary>
-    public string Password { get; set; } = string.Empty;
+    public WebhookConfiguration Webhook { get; set; } = new WebhookConfiguration();
     
     /// <summary>
-    /// Gets or sets the from address.
+    /// When this configuration was created
     /// </summary>
-    public string FromAddress { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
     
     /// <summary>
-    /// Gets or sets the recipient addresses.
+    /// When this configuration was last updated
     /// </summary>
-    public List<string> ToAddresses { get; set; } = new List<string>();
-}
-
-/// <summary>
-/// Represents the configuration for SMS notifications.
-/// </summary>
-public class SmsConfiguration
-{
-    /// <summary>
-    /// Gets or sets the provider (e.g., Twilio, SendGrid).
-    /// </summary>
-    public string Provider { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets the account SID or ID.
-    /// </summary>
-    public string AccountId { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets the auth token or API key.
-    /// </summary>
-    public string AuthToken { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets the from phone number.
-    /// </summary>
-    public string FromNumber { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets the recipient phone numbers.
-    /// </summary>
-    public List<string> ToNumbers { get; set; } = new List<string>();
-}
-
-/// <summary>
-/// Represents the configuration for webhook notifications.
-/// </summary>
-public class WebhookConfiguration
-{
-    /// <summary>
-    /// Gets or sets the webhook URL.
-    /// </summary>
-    public string Url { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets the authentication token.
-    /// </summary>
-    public string AuthToken { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets additional HTTP headers.
-    /// </summary>
-    public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
+    public DateTime UpdatedAt { get; set; }
 } 

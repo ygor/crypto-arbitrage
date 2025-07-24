@@ -40,8 +40,11 @@ try
     // Add health checks
     builder.Services.AddHealthChecks();
 
-    // Add application services
-    builder.Services.AddApplicationServices();
+    // Add application services using the newer version with business logic services
+    CryptoArbitrage.Application.ServiceCollectionExtensions.AddApplicationServices(builder.Services);
+
+    // Also register additional services from DependencyInjection class
+    CryptoArbitrage.Application.DependencyInjection.AddApplicationServices(builder.Services);
 
     // Add infrastructure services
     builder.Services.AddInfrastructureServices();

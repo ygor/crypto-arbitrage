@@ -24,17 +24,18 @@ builder.Services.AddHealthChecks();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor(options =>
 {
-    options.DetailedErrors = builder.Environment.IsDevelopment();
-    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(3);
-    options.DisconnectedCircuitMaxRetained = 100;
+    options.DetailedErrors = true;
     options.JSInteropDefaultCallTimeout = TimeSpan.FromMinutes(1);
 });
 
 // Add MudBlazor
 builder.Services.AddMudServices();
 
-// Add application and infrastructure services (Direct RPC access)
-builder.Services.AddApplicationServices();
+// Add application services using the newer version with business logic services
+CryptoArbitrage.Application.ServiceCollectionExtensions.AddApplicationServices(builder.Services);
+
+// Also register additional services from DependencyInjection class
+CryptoArbitrage.Application.DependencyInjection.AddApplicationServices(builder.Services);
 
 // Check if MongoDB should be used instead of file storage
 var useMongoDb = builder.Configuration.GetValue<bool>("Database:UseMongoDb", false);
