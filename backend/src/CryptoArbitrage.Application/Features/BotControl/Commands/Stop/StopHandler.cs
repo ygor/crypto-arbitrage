@@ -16,18 +16,18 @@ public class StopHandler : IRequestHandler<StopCommand, StopResult>
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<StopResult> Handle(StopCommand request, CancellationToken cancellationToken)
+    public Task<StopResult> Handle(StopCommand request, CancellationToken cancellationToken)
     {
         try
         {
             IsRunningHandler.SetRunning(false);
             _logger.LogInformation("Bot stopped successfully");
-            return new StopResult(true, "Bot stopped successfully");
+            return Task.FromResult(new StopResult(true, "Bot stopped successfully"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to stop bot");
-            return new StopResult(false, $"Failed to stop bot: {ex.Message}");
+            return Task.FromResult(new StopResult(false, $"Failed to stop bot: {ex.Message}"));
         }
     }
 } 

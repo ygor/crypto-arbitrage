@@ -1,6 +1,9 @@
+#pragma warning disable CS8601 // Possible null reference assignment.
+
+using Microsoft.Extensions.Logging;
 using MediatR;
 using CryptoArbitrage.Application.Interfaces;
-using Microsoft.Extensions.Logging;
+using CryptoArbitrage.Domain.Models;
 using System.Diagnostics;
 
 namespace CryptoArbitrage.Application.Features.Configuration.Queries.GetConfiguration;

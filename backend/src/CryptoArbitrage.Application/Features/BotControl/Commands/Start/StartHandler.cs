@@ -16,18 +16,18 @@ public class StartHandler : IRequestHandler<StartCommand, StartResult>
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<StartResult> Handle(StartCommand request, CancellationToken cancellationToken)
+    public Task<StartResult> Handle(StartCommand request, CancellationToken cancellationToken)
     {
         try
         {
             IsRunningHandler.SetRunning(true);
             _logger.LogInformation("Bot started successfully");
-            return new StartResult(true, "Bot started successfully");
+            return Task.FromResult(new StartResult(true, "Bot started successfully"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start bot");
-            return new StartResult(false, $"Failed to start bot: {ex.Message}");
+            return Task.FromResult(new StartResult(false, $"Failed to start bot: {ex.Message}"));
         }
     }
 } 

@@ -133,19 +133,14 @@ public interface IArbitrageService
 /// </summary>
 public class FakeArbitrageService : IArbitrageService
 {
-    private bool _isRunning = false;
-    
     public Task<ArbitrageResult> StartArbitrageAsync()
     {
-        _isRunning = true;
-        
         // ❌ FAKE: Just returns success, no actual arbitrage detection
         return Task.FromResult(new ArbitrageResult(true, "Arbitrage started successfully"));
     }
     
     public Task<ArbitrageResult> StopArbitrageAsync()
     {
-        _isRunning = false;
         return Task.FromResult(new ArbitrageResult(true, "Arbitrage stopped successfully"));
     }
     
@@ -165,7 +160,6 @@ public class RealArbitrageService : IArbitrageService
 {
     private readonly Dictionary<string, Dictionary<string, decimal>> _marketPrices = new();
     private readonly List<ArbitrageOpportunity> _detectedOpportunities = new();
-    private bool _isRunning = false;
     
     public void SetMarketPrice(string exchange, string symbol, decimal price)
     {
@@ -177,8 +171,6 @@ public class RealArbitrageService : IArbitrageService
     
     public async Task<ArbitrageResult> StartArbitrageAsync()
     {
-        _isRunning = true;
-        
         // ✅ REAL BUSINESS LOGIC: Actually detect arbitrage opportunities
         await DetectArbitrageOpportunitiesAsync();
         
@@ -187,7 +179,6 @@ public class RealArbitrageService : IArbitrageService
     
     public Task<ArbitrageResult> StopArbitrageAsync()
     {
-        _isRunning = false;
         return Task.FromResult(new ArbitrageResult(true, "Arbitrage stopped successfully"));
     }
     

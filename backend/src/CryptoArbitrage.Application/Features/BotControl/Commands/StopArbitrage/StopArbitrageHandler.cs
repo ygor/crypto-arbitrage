@@ -15,17 +15,17 @@ public class StopArbitrageHandler : IRequestHandler<StopArbitrageCommand, StopAr
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<StopArbitrageResult> Handle(StopArbitrageCommand request, CancellationToken cancellationToken)
+    public Task<StopArbitrageResult> Handle(StopArbitrageCommand request, CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Arbitrage bot stopped successfully");
-            return new StopArbitrageResult(true, "Arbitrage bot stopped successfully");
+            return Task.FromResult(new StopArbitrageResult(true, "Arbitrage bot stopped successfully"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to stop arbitrage bot");
-            return new StopArbitrageResult(false, $"Failed to stop arbitrage bot: {ex.Message}");
+            return Task.FromResult(new StopArbitrageResult(false, $"Failed to stop arbitrage bot: {ex.Message}"));
         }
     }
 } 

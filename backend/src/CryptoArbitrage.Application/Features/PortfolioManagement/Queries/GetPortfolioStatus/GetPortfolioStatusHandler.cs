@@ -183,7 +183,7 @@ public class GetPortfolioStatusHandler : IRequestHandler<GetPortfolioStatusQuery
         };
     }
 
-    private async Task<PortfolioRiskMetrics> CalculateRiskMetricsAsync(
+    private Task<PortfolioRiskMetrics> CalculateRiskMetricsAsync(
         IReadOnlyDictionary<string, IReadOnlyCollection<Balance>> allBalances,
         ArbitrageConfiguration? config,
         CancellationToken cancellationToken)
@@ -242,7 +242,7 @@ public class GetPortfolioStatusHandler : IRequestHandler<GetPortfolioStatusQuery
         var riskScore = CalculateRiskScore(maxAssetExposure, maxExchangeExposure, diversificationScore);
         var riskLevel = GetRiskLevel(riskScore);
 
-        return new PortfolioRiskMetrics
+        return Task.FromResult(new PortfolioRiskMetrics
         {
             RiskScore = riskScore,
             RiskLevel = riskLevel,
@@ -250,7 +250,7 @@ public class GetPortfolioStatusHandler : IRequestHandler<GetPortfolioStatusQuery
             DiversificationScore = diversificationScore,
             ExchangeConcentrationRisk = maxExchangeExposure,
             RiskWarnings = warnings
-        };
+        });
     }
 
     private async Task<PortfolioPerformanceMetrics> CalculatePerformanceMetricsAsync(CancellationToken cancellationToken)

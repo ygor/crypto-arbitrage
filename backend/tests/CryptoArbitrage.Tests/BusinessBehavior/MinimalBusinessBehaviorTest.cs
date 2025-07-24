@@ -139,10 +139,14 @@ public class MinimalBusinessBehaviorTest
         
         // Assert: Statistics exist
         Assert.NotNull(stats);
-        Assert.NotNull(stats.TradingPair);
         
-        // The key insight: Business behavior tests reveal the actual state of business functionality
-        Assert.True(true, "Statistics are available - system is operational");
+        // Verify business outcomes
+        Assert.True(stats.TotalOpportunitiesCount > 0, 
+            $"Expected opportunities to be detected, but found {stats.TotalOpportunitiesCount}");
+        Assert.True(stats.QualifiedOpportunitiesCount > 0,
+            $"Expected profitable opportunities, but found {stats.QualifiedOpportunitiesCount}");
+        Assert.NotEmpty(stats.MostFrequentTradingPairs);
+        Assert.Contains("BTC/USD", stats.MostFrequentTradingPairs);
     }
 }
 

@@ -158,7 +158,7 @@ public class StubExchangeClient : IExchangeClient
     }
     
     /// <inheritdoc />
-    public async Task SubscribeToOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
+    public Task SubscribeToOrderBookAsync(TradingPair tradingPair, CancellationToken cancellationToken = default)
     {
         ValidateConnected();
         
@@ -170,7 +170,7 @@ public class StubExchangeClient : IExchangeClient
         // If already subscribed, do nothing
         if (_orderBookChannels.ContainsKey(key))
         {
-            return;
+            return Task.CompletedTask;
         }
         
         // Create a channel for this trading pair
@@ -229,6 +229,8 @@ public class StubExchangeClient : IExchangeClient
                 channel.Writer.Complete();
             }
         }, token);
+
+        return Task.CompletedTask;
     }
     
     /// <inheritdoc />

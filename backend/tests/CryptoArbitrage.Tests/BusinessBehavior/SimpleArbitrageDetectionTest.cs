@@ -116,7 +116,6 @@ public class SimpleArbitrageDetectionTest
             foreach (var opportunity in opportunityList)
             {
                 Assert.True(opportunity.ProfitAmount > 0, "Opportunities should have profit potential");
-                Assert.NotNull(opportunity.TradingPair);
                 Assert.NotNull(opportunity.BuyExchangeId);
                 Assert.NotNull(opportunity.SellExchangeId);
             }

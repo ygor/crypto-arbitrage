@@ -4,8 +4,11 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- Suppress MudBlazor analyzer warnings for correct @bind-Checked syntax -->
-    <NoWarn>$(NoWarn);MUD0002</NoWarn>
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);CS1998;CS8601;CS8602;CS8604;CS8619;MUD0002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,3 +1,5 @@
+#pragma warning disable CS8601 // Possible null reference assignment.
+
 using System.Reflection;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Models;

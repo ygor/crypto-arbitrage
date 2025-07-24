@@ -9,9 +9,9 @@ public class IsArbitrageRunningHandler : IRequestHandler<IsArbitrageRunningQuery
 {
     private static bool _isRunning = false;
 
-    public async Task<bool> Handle(IsArbitrageRunningQuery request, CancellationToken cancellationToken)
+    public Task<bool> Handle(IsArbitrageRunningQuery request, CancellationToken cancellationToken)
     {
-        return _isRunning;
+        return Task.FromResult(_isRunning);
     }
 
     /// <summary>

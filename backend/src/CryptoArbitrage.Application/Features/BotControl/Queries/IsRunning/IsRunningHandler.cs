@@ -9,9 +9,9 @@ public class IsRunningHandler : IRequestHandler<IsRunningQuery, bool>
 {
     private static bool _isRunning = false;
 
-    public async Task<bool> Handle(IsRunningQuery request, CancellationToken cancellationToken)
+    public Task<bool> Handle(IsRunningQuery request, CancellationToken cancellationToken)
     {
-        return _isRunning;
+        return Task.FromResult(_isRunning);
     }
 
     /// <summary>

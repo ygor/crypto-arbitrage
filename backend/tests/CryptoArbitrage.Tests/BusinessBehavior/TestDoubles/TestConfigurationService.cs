@@ -51,14 +51,19 @@ public class TestConfigurationService : IConfigurationService
     public Task<ArbitrageConfiguration> LoadConfigurationAsync(CancellationToken cancellationToken = default) => 
         Task.FromResult(_configuration);
     
-    public Task<ArbitrageConfiguration?> GetConfigurationAsync(CancellationToken cancellationToken = default) => 
-        Task.FromResult<ArbitrageConfiguration?>(_configuration);
+    public Task<ArbitrageConfiguration> GetConfigurationAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<ArbitrageConfiguration>(_configuration);
     
     public Task<RiskProfile> GetRiskProfileAsync(CancellationToken cancellationToken = default) => 
         Task.FromResult(_configuration.RiskProfile ?? new RiskProfile());
     
-    public Task<ExchangeConfiguration?> GetExchangeConfigurationAsync(string exchangeId, CancellationToken cancellationToken = default) => 
-        Task.FromResult<ExchangeConfiguration?>(new ExchangeConfiguration { ExchangeId = exchangeId });
+    public Task<ExchangeConfiguration> GetExchangeConfigurationAsync(string exchangeId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<ExchangeConfiguration>(new ExchangeConfiguration
+        {
+            ExchangeId = exchangeId,
+            ApiKey = "test_api_key",
+            // ... existing code ...
+        });
     
     public Task<IReadOnlyCollection<ExchangeConfiguration>> GetAllExchangeConfigurationsAsync(CancellationToken cancellationToken = default) => 
         Task.FromResult<IReadOnlyCollection<ExchangeConfiguration>>(new List<ExchangeConfiguration>());
@@ -78,8 +83,8 @@ public class TestConfigurationService : IConfigurationService
     public Task UpdateNotificationConfigurationAsync(NotificationConfiguration notificationConfiguration, CancellationToken cancellationToken = default) => 
         Task.CompletedTask;
     
-    public Task<ArbitrageConfiguration?> GetArbitrageConfigurationAsync(CancellationToken cancellationToken = default) => 
-        Task.FromResult<ArbitrageConfiguration?>(_configuration);
+    public Task<ArbitrageConfiguration> GetArbitrageConfigurationAsync(CancellationToken cancellationToken = default) => 
+        Task.FromResult<ArbitrageConfiguration>(_configuration);
     
     public Task UpdateArbitrageConfigurationAsync(ArbitrageConfiguration configuration, CancellationToken cancellationToken = default) => 
         Task.CompletedTask;

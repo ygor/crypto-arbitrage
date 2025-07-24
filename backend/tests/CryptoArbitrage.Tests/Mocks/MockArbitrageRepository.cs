@@ -245,7 +245,7 @@ public class MockArbitrageRepository : IArbitrageRepository
         return Task.FromResult(result);
     }
 
-    public Task<TradeResult?> GetTradeByIdAsync(string id)
+    public Task<TradeResult> GetTradeByIdAsync(string id)
     {
         _tradeResults.TryGetValue(id, out var result);
         return Task.FromResult(result);
