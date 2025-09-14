@@ -14,20 +14,31 @@ namespace CryptoArbitrage.Application.Services;
 /// 🎯 REAL BUSINESS LOGIC: Market data aggregation service
 /// 
 /// This service implements ACTUAL market data collection from multiple exchanges
-/// for real arbitrage detection.
+/// for real arbitrage detection using live exchange APIs.
 /// </summary>
 public class MarketDataAggregatorService : IMarketDataAggregator
 {
     private readonly ILogger<MarketDataAggregatorService> _logger;
+    private readonly IExchangeFactory _exchangeFactory;
+    private readonly IConfigurationService _configurationService;
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, PriceQuote>> _priceData;
+    private readonly ConcurrentDictionary<string, IExchangeClient> _exchangeClients;
+    private readonly ConcurrentDictionary<string, bool> _exchangeSeen; // track exchanges we monitor
     private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly List<Task> _monitoringTasks;
     private bool _isMonitoring = false;
 
-    public MarketDataAggregatorService(ILogger<MarketDataAggregatorService> logger)
+    public MarketDataAggregatorService(
+        ILogger<MarketDataAggregatorService> logger,
+        IExchangeFactory exchangeFactory,
+        IConfigurationService configurationService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _exchangeFactory = exchangeFactory ?? throw new ArgumentNullException(nameof(exchangeFactory));
+        _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _priceData = new ConcurrentDictionary<string, ConcurrentDictionary<string, PriceQuote>>();
+        _exchangeClients = new ConcurrentDictionary<string, IExchangeClient>();
+        _exchangeSeen = new ConcurrentDictionary<string, bool>();
         _cancellationTokenSource = new CancellationTokenSource();
         _monitoringTasks = new List<Task>();
     }
@@ -62,14 +73,21 @@ public class MarketDataAggregatorService : IMarketDataAggregator
         _logger.LogInformation("Starting market data monitoring for exchanges: {Exchanges}, pairs: {TradingPairs}",
             string.Join(", ", exchanges), string.Join(", ", tradingPairs));
 
-        var exchangeList = exchanges.ToList();
+        var exchangeList = exchanges
+            .Where(id => _exchangeFactory.GetSupportedExchanges().Contains(id, StringComparer.OrdinalIgnoreCase))
+            .ToList();
         var pairList = tradingPairs.ToList();
+
 
         // Initialize price data storage for each exchange
         foreach (var exchange in exchangeList)
         {
             _priceData.TryAdd(exchange, new ConcurrentDictionary<string, PriceQuote>());
+            _exchangeSeen[exchange] = true;
         }
+
+        // Initialize exchange clients for supported exchanges
+        await InitializeExchangeClientsAsync(exchangeList);
 
         // Start monitoring tasks for each exchange
         foreach (var exchange in exchangeList)
@@ -102,123 +120,220 @@ public class MarketDataAggregatorService : IMarketDataAggregator
             // Expected when cancellation is requested
         }
 
+        // Disconnect exchange clients
+        foreach (var client in _exchangeClients.Values)
+        {
+            try
+            {
+                if (client.IsConnected)
+                {
+                    await client.DisconnectAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error disconnecting from exchange {ExchangeId}", client.ExchangeId);
+            }
+        }
+
         _monitoringTasks.Clear();
         _priceData.Clear();
+        _exchangeClients.Clear();
         _isMonitoring = false;
 
         _logger.LogInformation("Market data monitoring stopped");
     }
 
-    private async Task MonitorExchangeAsync(string exchangeId, List<string> tradingPairs, CancellationToken cancellationToken)
+    private async Task InitializeExchangeClientsAsync(List<string> exchanges)
     {
-        _logger.LogInformation("Starting monitoring for exchange: {ExchangeId}", exchangeId);
-
-        while (!cancellationToken.IsCancellationRequested)
+        foreach (var exchangeId in exchanges)
         {
             try
             {
-                foreach (var tradingPair in tradingPairs)
+                var exchangeConfig = await _configurationService.GetExchangeConfigurationAsync(exchangeId);
+                // Always initialize real clients for supported exchanges; auth only if keys provided
+                var client = _exchangeFactory.CreateClient(exchangeId);
+
+                // Connect to the exchange
+                await client.ConnectAsync();
+
+                // Authenticate if credentials are available
+                if (!string.IsNullOrEmpty(exchangeConfig?.ApiKey) && !string.IsNullOrEmpty(exchangeConfig.ApiSecret))
                 {
-                    var priceQuote = await SimulateExchangeDataAsync(exchangeId, tradingPair);
-                    
-                    if (_priceData.TryGetValue(exchangeId, out var exchangeData))
-                    {
-                        exchangeData.AddOrUpdate(tradingPair, priceQuote, (key, oldValue) => priceQuote);
-                    }
+                    await client.AuthenticateAsync();
                 }
 
-                // Update every 2 seconds
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
+                _exchangeClients[exchangeId] = client;
+                _logger.LogInformation("Connected to {ExchangeId} (WebSocket)", exchangeId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error monitoring exchange {ExchangeId}", exchangeId);
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                _logger.LogError(ex, "Failed to initialize exchange client for {ExchangeId}", exchangeId);
             }
+        }
+    }
+
+    private async Task MonitorExchangeAsync(string exchangeId, List<string> tradingPairs, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Starting real-time monitoring for exchange: {ExchangeId}", exchangeId);
+
+        if (_exchangeClients.TryGetValue(exchangeId, out var client))
+        {
+            // Use real-time WebSocket streams for live data
+            await MonitorExchangeWithWebSocketAsync(client, tradingPairs, cancellationToken);
+        }
+        else
+        {
+            _logger.LogWarning("No exchange client available for {ExchangeId}", exchangeId);
         }
 
         _logger.LogInformation("Stopped monitoring exchange: {ExchangeId}", exchangeId);
     }
 
-    private Task<PriceQuote> SimulateExchangeDataAsync(string exchangeId, string tradingPairStr)
+    private async Task MonitorExchangeWithWebSocketAsync(IExchangeClient client, List<string> tradingPairs, CancellationToken cancellationToken)
     {
-        // 🎯 REAL BUSINESS LOGIC: Simulate realistic market data
-        // In production, this would call actual exchange APIs
-        
-        var tradingPair = TradingPair.Parse(tradingPairStr);
-        var basePrice = GetBasePrice(tradingPairStr, exchangeId);
-        
-        // Add realistic market volatility and exchange-specific spreads
-        var random = new Random();
-        var volatility = (decimal)(random.NextDouble() * 0.02 - 0.01); // ±1% volatility
-        var exchangeSpread = GetExchangeSpread(exchangeId); // Different spreads per exchange
-        
-        var currentPrice = basePrice * (1 + volatility);
-        var bidPrice = currentPrice * (1 - exchangeSpread / 2);
-        var askPrice = currentPrice * (1 + exchangeSpread / 2);
-        
-        var priceQuote = new PriceQuote(
-            exchangeId,
-            tradingPair,
-            DateTime.UtcNow,
-            bidPrice,
-            (decimal)(random.NextDouble() * 50 + 10), // Bid volume: 10-60
-            askPrice,
-            (decimal)(random.NextDouble() * 50 + 10)  // Ask volume: 10-60
-        );
+        _logger.LogInformation("Starting real-time WebSocket monitoring for {ExchangeId}", client.ExchangeId);
 
-        _logger.LogDebug("Generated price quote for {ExchangeId} {TradingPair}: Bid={Bid}, Ask={Ask}",
-            exchangeId, tradingPairStr, bidPrice, askPrice);
+        try
+        {
+            // Subscribe to order book updates for all trading pairs
+            var subscriptionTasks = new List<Task>();
+            var streamTasks = new List<Task>();
 
-        return Task.FromResult(priceQuote);
+            foreach (var tradingPairStr in tradingPairs)
+            {
+                var tradingPair = TradingPair.Parse(tradingPairStr);
+
+                // Subscribe to order book updates
+                var subscribeTask = SubscribeToOrderBookAsync(client, tradingPair, cancellationToken);
+                subscriptionTasks.Add(subscribeTask);
+
+                // Start consuming the real-time stream
+                var streamTask = ConsumeOrderBookStreamAsync(client, tradingPair, cancellationToken);
+                streamTasks.Add(streamTask);
+            }
+
+            // Wait for all subscriptions to complete
+            await Task.WhenAll(subscriptionTasks);
+            _logger.LogInformation("Successfully subscribed to {Count} trading pairs on {ExchangeId}", 
+                tradingPairs.Count, client.ExchangeId);
+
+            // Wait for all streaming tasks to complete (or cancellation)
+            await Task.WhenAll(streamTasks);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("WebSocket monitoring cancelled for {ExchangeId}", client.ExchangeId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in WebSocket monitoring for {ExchangeId}", client.ExchangeId);
+        }
     }
 
-    private decimal GetBasePrice(string tradingPair, string exchangeId)
+    private async Task SubscribeToOrderBookAsync(IExchangeClient client, TradingPair tradingPair, CancellationToken cancellationToken)
     {
-        // Different base prices for different exchanges to create arbitrage opportunities
-        var basePrices = new Dictionary<string, decimal>
+        try
         {
-            ["BTC/USD"] = 50000m,
-            ["ETH/USD"] = 3000m,
-            ["LTC/USD"] = 150m
-        };
-
-        if (!basePrices.TryGetValue(tradingPair, out var basePrice))
-        {
-            basePrice = 1000m; // Default price
+            await client.SubscribeToOrderBookAsync(tradingPair, cancellationToken);
+            _logger.LogInformation("Subscribed to order book for {TradingPair} on {ExchangeId}", 
+                tradingPair, client.ExchangeId);
         }
-
-        // Create exchange-specific price differences to generate arbitrage opportunities
-        // Increased differences to ensure profitable opportunities after fees
-        var exchangeMultipliers = new Dictionary<string, decimal>
+        catch (Exception ex)
         {
-            ["coinbase"] = 0.995m,  // 0.5% lower prices (good for buying)
-            ["kraken"] = 1.008m,    // 0.8% higher prices (good for selling)
-            ["binance"] = 1.000m    // Base prices
-        };
-
-        if (exchangeMultipliers.TryGetValue(exchangeId, out var multiplier))
-        {
-            basePrice *= multiplier;
+            _logger.LogError(ex, "Failed to subscribe to order book for {TradingPair} on {ExchangeId}", 
+                tradingPair, client.ExchangeId);
+            throw;
         }
-
-        return basePrice;
     }
 
-    private decimal GetExchangeSpread(string exchangeId)
+    private async Task ConsumeOrderBookStreamAsync(IExchangeClient client, TradingPair tradingPair, CancellationToken cancellationToken)
     {
-        // Different exchanges have different typical spreads
-        var spreads = new Dictionary<string, decimal>
-        {
-            ["coinbase"] = 0.002m,  // 0.2% spread
-            ["kraken"] = 0.003m,    // 0.3% spread
-            ["binance"] = 0.001m    // 0.1% spread (tightest)
-        };
+        _logger.LogInformation("Starting real-time order book stream consumption for {TradingPair} on {ExchangeId}", 
+            tradingPair, client.ExchangeId);
 
-        return spreads.TryGetValue(exchangeId, out var spread) ? spread : 0.002m;
+        try
+        {
+            await foreach (var orderBook in client.GetOrderBookUpdatesAsync(tradingPair, cancellationToken))
+            {
+                // Convert order book to price quote
+                var priceQuote = ConvertOrderBookToPriceQuote(orderBook);
+
+                // Update price data
+                if (_priceData.TryGetValue(client.ExchangeId, out var exchangeData))
+                {
+                    exchangeData.AddOrUpdate(tradingPair.ToString(), priceQuote, (key, oldValue) => priceQuote);
+
+                    _logger.LogDebug("Real-time price update for {ExchangeId} {TradingPair}: Bid={Bid}, Ask={Ask}",
+                        client.ExchangeId, tradingPair, priceQuote.BidPrice, priceQuote.AskPrice);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Order book stream cancelled for {TradingPair} on {ExchangeId}", 
+                tradingPair, client.ExchangeId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error consuming order book stream for {TradingPair} on {ExchangeId}", 
+                tradingPair, client.ExchangeId);
+            throw;
+        }
+    }
+
+    private PriceQuote ConvertOrderBookToPriceQuote(OrderBook orderBook)
+    {
+        if (orderBook.Bids.Any() && orderBook.Asks.Any())
+        {
+            var bestBid = orderBook.Bids.First();
+            var bestAsk = orderBook.Asks.First();
+
+            return new PriceQuote(
+                orderBook.ExchangeId,
+                orderBook.TradingPair,
+                orderBook.Timestamp,
+                bestBid.Price,
+                bestBid.Quantity,
+                bestAsk.Price,
+                bestAsk.Quantity
+            );
+        }
+        else
+        {
+            // Fallback for empty order book
+            return new PriceQuote(
+                orderBook.ExchangeId,
+                orderBook.TradingPair,
+                orderBook.Timestamp,
+                0, 0, 0, 0
+            );
+        }
+    }
+
+    // NEW METHODS to satisfy IMarketDataAggregator
+    public Task<OrderBook> GetOrderBookAsync(string exchangeId, TradingPair tradingPair, CancellationToken cancellationToken = default)
+    {
+        // If we have a connected client, ask it for a snapshot; otherwise build from last price
+        if (_exchangeClients.TryGetValue(exchangeId, out var client))
+        {
+            return client.GetOrderBookSnapshotAsync(tradingPair, cancellationToken: cancellationToken);
+        }
+
+        if (_priceData.TryGetValue(exchangeId, out var pairs) && pairs.TryGetValue(tradingPair.ToString(), out var quote))
+        {
+            var bids = new List<OrderBookEntry> { new OrderBookEntry(quote.BestBidPrice, quote.BestBidQuantity) };
+            var asks = new List<OrderBookEntry> { new OrderBookEntry(quote.BestAskPrice, quote.BestAskQuantity) };
+            return Task.FromResult(new OrderBook(exchangeId, tradingPair, quote.Timestamp, bids, asks));
+        }
+
+        // Fallback empty book
+        return Task.FromResult(new OrderBook(exchangeId, tradingPair, DateTime.UtcNow, new List<OrderBookEntry>(), new List<OrderBookEntry>()));
+    }
+
+    public Task<IReadOnlyList<string>> GetAvailableExchangesAsync(CancellationToken cancellationToken = default)
+    {
+        var exchanges = _exchangeSeen.Keys.ToList();
+        return Task.FromResult<IReadOnlyList<string>>(exchanges);
     }
 } 

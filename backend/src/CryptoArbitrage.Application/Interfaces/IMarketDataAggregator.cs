@@ -1,5 +1,6 @@
 using CryptoArbitrage.Domain.Models;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CryptoArbitrage.Application.Interfaces;
@@ -30,4 +31,14 @@ public interface IMarketDataAggregator
     /// </summary>
     /// <returns>Task representing the async operation</returns>
     Task StopMonitoringAsync();
+
+    /// <summary>
+    /// Gets a snapshot order book for the specified exchange and trading pair.
+    /// </summary>
+    Task<OrderBook> GetOrderBookAsync(string exchangeId, TradingPair tradingPair, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the list of exchanges that currently provide market data.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetAvailableExchangesAsync(CancellationToken cancellationToken = default);
 } 

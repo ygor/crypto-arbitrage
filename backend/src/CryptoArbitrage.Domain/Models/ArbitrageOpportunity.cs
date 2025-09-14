@@ -195,7 +195,9 @@ public class ArbitrageOpportunity
     public decimal EstimatedTotalValue { get; set; }
     public decimal EstimatedFees { get; set; }
     public decimal NetProfitAmount => ProfitAmount - EstimatedFees;
-    public decimal NetProfitPercentage => ProfitPercentage - (EstimatedFees / EstimatedTotalValue * 100);
+    public decimal NetProfitPercentage => EstimatedTotalValue > 0 
+        ? ProfitPercentage - (EstimatedFees / EstimatedTotalValue * 100) 
+        : ProfitPercentage;
     public DateTimeOffset CreatedAt { get; set; }
     public bool IsQualified { get; set; }
     public string? DisqualificationReason { get; set; }

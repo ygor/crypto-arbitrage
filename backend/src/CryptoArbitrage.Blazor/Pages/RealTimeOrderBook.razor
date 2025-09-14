@@ -1,0 +1,431 @@
+@page "/realtime"
+@using Microsoft.AspNetCore.SignalR.Client
+@using MudBlazor
+@using CryptoArbitrage.Blazor.ViewModels
+@using CryptoArbitrage.Blazor.Services
+@inject IJSRuntime JSRuntime
+@inject IRealTimeMarketDataService RealTimeMarketDataService
+@inject ILogger<RealTimeOrderBook> Logger
+@implements IAsyncDisposable
+
+<PageTitle>Real-Time Order Book - Crypto Arbitrage</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudText Typo="Typo.h3" GutterBottom="true" Class="d-flex align-center">
+        <MudIcon Icon="Icons.Material.Filled.CandlestickChart" Class="mr-3" />
+        Real-Time Order Book & Arbitrage Monitor
+        <MudChip T="string" Size="Size.Small" Color="@(_connectionStatus)" Class="ml-3">
+            @(_hubConnection?.State.ToString() ?? "Disconnected")
+        </MudChip>
+    </MudText>
+
+    <!-- Trading Pair Selector -->
+    <MudPaper Class="pa-4 mb-4" Elevation="2">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" @bind-Value="_selectedTradingPair" Label="Trading Pair" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("BTC/USDT")">BTC/USDT</MudSelectItem>
+                    <MudSelectItem Value="@("ETH/USDT")">ETH/USDT</MudSelectItem>
+                    <MudSelectItem Value="@("ETH/BTC")">ETH/BTC</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudText Typo="Typo.subtitle1">Last Updated: @_lastUpdateTime?.ToString("HH:mm:ss.fff")</MudText>
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
+                <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
+                          OnClick="RefreshData" 
+                          Color="Color.Primary" 
+                          Variant="Variant.Filled" 
+                          Size="Size.Small">
+                    Refresh
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_currentMarketData != null)
+    {
+        <!-- Arbitrage Opportunities Alert -->
+        @if (_currentMarketData.ArbitrageSpreads.Any(s => s.IsViable))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                <MudText Typo="Typo.h6">
+                    🚀 Live Arbitrage Opportunities Detected!
+                </MudText>
+                <MudText>
+                    Best opportunity: @_currentMarketData.ArbitrageSpreads.First().ProfitPercentage.ToString("F3")% profit
+                    (@_currentMarketData.ArbitrageSpreads.First().BuyExchange → @_currentMarketData.ArbitrageSpreads.First().SellExchange)
+                </MudText>
+            </MudAlert>
+        }
+
+        <!-- Exchange Order Books Side by Side -->
+        <MudGrid>
+            @foreach (var exchange in _currentMarketData.Exchanges)
+            {
+                <MudItem xs="12" lg="6">
+                    <MudCard Elevation="4" Class="order-book-card">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <div class="d-flex align-center justify-space-between">
+                                    <div class="d-flex align-center">
+                                        <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-2">
+                                            @exchange.ExchangeId.Substring(0, 1).ToUpper()
+                                        </MudAvatar>
+                                        <div>
+                                            <MudText Typo="Typo.h6">@exchange.ExchangeId.ToUpper()</MudText>
+                                            <MudText Typo="Typo.caption">@exchange.TradingPair</MudText>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <MudChip T="string" Size="Size.Small" 
+                                                Color="@(exchange.IsRealTime ? Color.Success : Color.Warning)">
+                                            @(exchange.IsRealTime ? "Real-Time" : "Simulated")
+                                        </MudChip>
+                                    </div>
+                                </div>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <!-- Price Summary -->
+                            <MudGrid Class="mb-4">
+                                <MudItem xs="6">
+                                    <div class="price-display bid-price">
+                                        <MudText Typo="Typo.caption">Best Bid</MudText>
+                                        <MudText Typo="Typo.h5" Class="price-value">
+                                            $@exchange.BestBidPrice.ToString("F4")
+                                        </MudText>
+                                        <MudText Typo="Typo.caption">
+                                            @exchange.BestBidQuantity.ToString("F4") @_selectedTradingPair.Split('/')[0]
+                                        </MudText>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <div class="price-display ask-price">
+                                        <MudText Typo="Typo.caption">Best Ask</MudText>
+                                        <MudText Typo="Typo.h5" Class="price-value">
+                                            $@exchange.BestAskPrice.ToString("F4")
+                                        </MudText>
+                                        <MudText Typo="Typo.caption">
+                                            @exchange.BestAskQuantity.ToString("F4") @_selectedTradingPair.Split('/')[0]
+                                        </MudText>
+                                    </div>
+                                </MudItem>
+                            </MudGrid>
+
+                            <!-- Spread Information -->
+                            <MudGrid Class="mb-4">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">Spread</MudText>
+                                    <MudText Typo="Typo.body1" Class="spread-value">
+                                        $@exchange.Spread.ToString("F4")
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">Spread %</MudText>
+                                    <MudText Typo="Typo.body1" Class="spread-percentage">
+                                        @exchange.SpreadPercentage.ToString("F3")%
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+
+                            <!-- Volume Info -->
+                            <MudDivider Class="my-3" />
+                            <MudGrid>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">Bid Volume</MudText>
+                                    <MudText Typo="Typo.body2">@exchange.TotalBidVolume.ToString("F2")</MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">Ask Volume</MudText>
+                                    <MudText Typo="Typo.body2">@exchange.TotalAskVolume.ToString("F2")</MudText>
+                                </MudItem>
+                            </MudGrid>
+                            
+                            <MudText Typo="Typo.caption" Class="mt-2">
+                                Updated: @exchange.Timestamp.ToString("HH:mm:ss.fff")
+                            </MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+
+        <!-- Arbitrage Spreads Table -->
+        @if (_currentMarketData.ArbitrageSpreads.Any())
+        {
+            <MudPaper Class="pa-4 mt-4" Elevation="2">
+                <MudText Typo="Typo.h5" GutterBottom="true">
+                    <MudIcon Icon="Icons.Material.Filled.TrendingUp" Class="mr-2" />
+                    Arbitrage Opportunities
+                </MudText>
+                
+                <MudTable Items="_currentMarketData.ArbitrageSpreads" 
+                         Hover="true" 
+                         Dense="true" 
+                         FixedHeader="true"
+                         Height="300px">
+                    <HeaderContent>
+                        <MudTh>Buy Exchange</MudTh>
+                        <MudTh>Sell Exchange</MudTh>
+                        <MudTh>Buy Price</MudTh>
+                        <MudTh>Sell Price</MudTh>
+                        <MudTh>Profit/Unit</MudTh>
+                        <MudTh>Profit %</MudTh>
+                        <MudTh>Max Qty</MudTh>
+                        <MudTh>Est. Profit</MudTh>
+                        <MudTh>Status</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.BuyExchange.ToUpper()</MudTd>
+                        <MudTd>@context.SellExchange.ToUpper()</MudTd>
+                        <MudTd>$@context.BuyPrice.ToString("F4")</MudTd>
+                        <MudTd>$@context.SellPrice.ToString("F4")</MudTd>
+                        <MudTd>
+                            <span class="@GetProfitClass(context.ProfitPerUnit)">
+                                $@context.ProfitPerUnit.ToString("F4")
+                            </span>
+                        </MudTd>
+                        <MudTd>
+                            <span class="@GetProfitClass(context.ProfitPercentage)">
+                                @context.ProfitPercentage.ToString("F3")%
+                            </span>
+                        </MudTd>
+                        <MudTd>@context.MaxTradeQuantity.ToString("F2")</MudTd>
+                        <MudTd>
+                            <span class="@GetProfitClass(context.EstimatedProfit)">
+                                $@context.EstimatedProfit.ToString("F2")
+                            </span>
+                        </MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" 
+                                    Color="@(context.IsViable ? Color.Success : Color.Default)">
+                                @(context.IsViable ? "Viable" : "Not Viable")
+                            </MudChip>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+    }
+    else
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="2">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.h6" Class="mt-4">Loading real-time market data...</MudText>
+        </MudPaper>
+    }
+</MudContainer>
+
+<style>
+    .order-book-card {
+        min-height: 350px;
+        border-left: 4px solid var(--mud-palette-primary);
+    }
+    
+    .price-display {
+        text-align: center;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.12);
+    }
+    
+    .bid-price {
+        background-color: rgba(76, 175, 80, 0.1);
+        border-color: #4CAF50;
+    }
+    
+    .ask-price {
+        background-color: rgba(244, 67, 54, 0.1);
+        border-color: #F44336;
+    }
+    
+    .price-value {
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .spread-value, .spread-percentage {
+        font-weight: 500;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .profit-positive {
+        color: #4CAF50;
+        font-weight: 600;
+    }
+    
+    .profit-negative {
+        color: #F44336;
+        font-weight: 600;
+    }
+    
+    .profit-neutral {
+        color: #666;
+    }
+    
+    .mud-table tbody tr:hover {
+        background-color: rgba(0,0,0,0.04);
+    }
+    
+    .real-time-indicator {
+        animation: pulse 2s infinite;
+    }
+    
+    @@keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+</style>
+
+@code {
+    private HubConnection? _hubConnection;
+    private string _selectedTradingPair = "BTC/USDT";
+    private RealTimeMarketDataViewModel? _currentMarketData;
+    private DateTime? _lastUpdateTime;
+    private Color _connectionStatus = Color.Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SetupSignalRConnection();
+        await RefreshData();
+    }
+
+    private async Task SetupSignalRConnection()
+    {
+        try
+        {
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl("/marketdatahub")
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<OrderBookUpdateMessage>("OrderBookUpdate", OnOrderBookUpdate);
+            _hubConnection.On<ArbitrageOpportunityUpdateMessage>("ArbitrageOpportunityUpdate", OnArbitrageOpportunityUpdate);
+
+            _hubConnection.Reconnecting += (error) =>
+            {
+                _connectionStatus = Color.Warning;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            _hubConnection.Reconnected += (connectionId) =>
+            {
+                _connectionStatus = Color.Success;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            _hubConnection.Closed += (error) =>
+            {
+                _connectionStatus = Color.Error;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            await _hubConnection.StartAsync();
+            _connectionStatus = Color.Success;
+            
+            Logger.LogInformation("SignalR connection established");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error setting up SignalR connection");
+            _connectionStatus = Color.Error;
+        }
+    }
+
+    private async Task OnOrderBookUpdate(OrderBookUpdateMessage update)
+    {
+        try
+        {
+            if (update.TradingPair == _selectedTradingPair && _currentMarketData != null)
+            {
+                var existingExchange = _currentMarketData.Exchanges.FirstOrDefault(e => e.ExchangeId == update.ExchangeId);
+                if (existingExchange != null)
+                {
+                    var index = _currentMarketData.Exchanges.IndexOf(existingExchange);
+                    _currentMarketData.Exchanges[index] = update.OrderBook;
+                    _lastUpdateTime = DateTime.Now;
+                    
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing order book update");
+        }
+    }
+
+    private async Task OnArbitrageOpportunityUpdate(ArbitrageOpportunityUpdateMessage update)
+    {
+        try
+        {
+            if (update.Opportunity.TradingPair == _selectedTradingPair && _currentMarketData != null)
+            {
+                // Update or add the arbitrage opportunity
+                var existing = _currentMarketData.ArbitrageSpreads.FirstOrDefault(s => 
+                    s.BuyExchange == update.Opportunity.BuyExchange && 
+                    s.SellExchange == update.Opportunity.SellExchange);
+                
+                if (existing != null)
+                {
+                    var index = _currentMarketData.ArbitrageSpreads.IndexOf(existing);
+                    _currentMarketData.ArbitrageSpreads[index] = update.Opportunity;
+                }
+                else
+                {
+                    _currentMarketData.ArbitrageSpreads.Add(update.Opportunity);
+                }
+                
+                // Sort by profitability
+                _currentMarketData.ArbitrageSpreads = _currentMarketData.ArbitrageSpreads
+                    .OrderByDescending(s => s.ProfitPercentage)
+                    .ToList();
+                
+                _lastUpdateTime = DateTime.Now;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing arbitrage opportunity update");
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        try
+        {
+            _currentMarketData = await RealTimeMarketDataService.GetCurrentMarketDataAsync(_selectedTradingPair);
+            _lastUpdateTime = DateTime.Now;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing market data");
+        }
+    }
+
+    private string GetProfitClass(decimal value)
+    {
+        return value switch
+        {
+            > 0 => "profit-positive",
+            < 0 => "profit-negative",
+            _ => "profit-neutral"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+} 

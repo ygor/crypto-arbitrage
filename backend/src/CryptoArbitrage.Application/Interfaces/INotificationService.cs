@@ -78,4 +78,18 @@ public interface INotificationService
     Task NotifyDailyStatisticsAsync(
         ArbitrageStatistics statistics,
         CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Sends a general notification with title, message, and optional details.
+    /// </summary>
+    /// <param name="title">The notification title.</param>
+    /// <param name="message">The notification message.</param>
+    /// <param name="details">Optional additional details.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task SendNotificationAsync(
+        string title,
+        string message,
+        string? details = null,
+        CancellationToken cancellationToken = default);
 } 

@@ -26,6 +26,8 @@ public class KrakenExchangeClient : BaseExchangeClient
     private readonly Dictionary<TradingPair, Channel<OrderBook>> _orderBookChannels = new();
     private readonly Dictionary<string, TradingPair> _subscribedPairs = new();
     private readonly Dictionary<int, string> _channelIdToSymbol = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TaskCompletionSource<bool>> _subscriptionAcks 
+        = new(System.StringComparer.OrdinalIgnoreCase);
     
     private string? _apiKey;
     private string? _apiSecret;
@@ -194,9 +196,27 @@ public class KrakenExchangeClient : BaseExchangeClient
             };
             
             var messageJson = JsonConvert.SerializeObject(subscribeMessage);
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _subscriptionAcks[symbol] = tcs;
             await SendWebSocketMessageAsync(messageJson, cancellationToken);
             
             Logger.LogInformation("Sent WebSocket subscription for order book {Symbol}", symbol);
+
+            // Wait for explicit ack or timeout
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+            try
+            {
+                var completed = await Task.WhenAny(tcs.Task, Task.Delay(Timeout.InfiniteTimeSpan, linked.Token));
+                if (completed != tcs.Task || !tcs.Task.Result)
+                {
+                    Logger.LogWarning("Timed out waiting for subscription ack for {Symbol}", symbol);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogWarning("Subscription wait canceled for {Symbol}", symbol);
+            }
         }
         catch (Exception ex)
         {
@@ -1157,6 +1177,10 @@ public class KrakenExchangeClient : BaseExchangeClient
                 var channelId = message["channelID"].ToObject<int>();
                 _channelIdToSymbol[channelId] = pair;
                 Logger.LogDebug("Mapped channel ID {ChannelId} to symbol {Symbol}", channelId, pair);
+            }
+            if (_subscriptionAcks.TryRemove(pair, out var tcs))
+            {
+                tcs.TrySetResult(true);
             }
         }
         else if (status == "error")

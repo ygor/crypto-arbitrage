@@ -270,6 +270,40 @@ public class NotificationService : INotificationService
         }
     }
     
+    /// <inheritdoc />
+    public async Task SendNotificationAsync(
+        string title,
+        string message,
+        string? details = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get notification configuration
+            var config = await _configurationService.GetNotificationConfigurationAsync(cancellationToken);
+            
+            // Build full message including details if provided
+            var fullMessage = new StringBuilder()
+                .AppendLine(message);
+            
+            if (!string.IsNullOrEmpty(details))
+            {
+                fullMessage.AppendLine($"Details: {details}");
+            }
+            
+            fullMessage.AppendLine($"Time: {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
+            
+            _logger.LogInformation("Sending general notification: {Title}", title);
+            
+            // Send notifications through all configured channels
+            await SendNotificationsAsync(fullMessage.ToString(), title, config, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending general notification: {Title}", title);
+        }
+    }
+    
     /// <summary>
     /// Sends notifications through all configured channels.
     /// </summary>

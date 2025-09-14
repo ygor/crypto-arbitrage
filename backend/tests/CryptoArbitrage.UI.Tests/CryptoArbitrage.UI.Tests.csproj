@@ -23,8 +23,9 @@
     </PackageReference>
 
     <!-- Blazor component testing -->
-    <PackageReference Include="bunit" Version="1.24.10" />
-    <PackageReference Include="bunit.web" Version="1.24.10" />
+    <PackageReference Include="bunit" Version="1.30.0" />
+    <PackageReference Include="bunit.web" Version="1.30.0" />
+    <PackageReference Include="Microsoft.JSInterop" Version="9.0.1" />
     
     <!-- Browser automation testing -->
     <PackageReference Include="Microsoft.Playwright" Version="1.40.0" />
@@ -35,7 +36,7 @@
     <!-- Additional testing utilities -->
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.1" />
   </ItemGroup>
 
   <ItemGroup>

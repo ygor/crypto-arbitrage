@@ -161,6 +161,17 @@ public class ConfigurationService : IConfigurationService
     }
     
     /// <inheritdoc />
+    public async Task<IReadOnlyCollection<ExchangeConfiguration>> GetEnabledExchangeConfigurationsAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Getting enabled exchange configurations");
+        
+        var allConfigs = await GetAllExchangeConfigurationsAsync(cancellationToken);
+        var enabledConfigs = allConfigs.Where(config => config.IsEnabled).ToList();
+        
+        return enabledConfigs;
+    }
+    
+    /// <inheritdoc />
     public Task UpdateExchangeConfigurationAsync(ExchangeConfiguration configuration, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Updating exchange configuration for {ExchangeId}", configuration.ExchangeId);

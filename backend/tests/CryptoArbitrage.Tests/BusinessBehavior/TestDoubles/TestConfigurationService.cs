@@ -22,11 +22,14 @@ public class TestConfigurationService : IConfigurationService
             {
                 MaxTradeAmount = 1000m,           // $1000 max per trade
                 DailyLossLimitPercent = 5.0m,     // 5% daily loss limit
-                MinProfitThresholdPercent = 0.5m, // 0.5% minimum profit
+                MinProfitThresholdPercent = 0.1m, // 0.1% minimum profit for testing
                 MaxCapitalPerTradePercent = 10.0m // 10% max position size
             },
             TradingPairs = new List<TradingPair>
             {
+                TradingPair.Parse("BTC/USDT"),
+                TradingPair.Parse("ETH/USDT"),
+                TradingPair.Parse("ADA/USDT"),
                 TradingPair.Parse("BTC/USD"),
                 TradingPair.Parse("ETH/USD"),
                 TradingPair.Parse("ADA/USD")
@@ -88,4 +91,40 @@ public class TestConfigurationService : IConfigurationService
     
     public Task UpdateArbitrageConfigurationAsync(ArbitrageConfiguration configuration, CancellationToken cancellationToken = default) => 
         Task.CompletedTask;
+    
+    public Task<IReadOnlyCollection<ExchangeConfiguration>> GetEnabledExchangeConfigurationsAsync(CancellationToken cancellationToken = default)
+    {
+        var enabledExchanges = new List<ExchangeConfiguration>
+        {
+            new ExchangeConfiguration { ExchangeId = "coinbase", IsEnabled = true },
+            new ExchangeConfiguration { ExchangeId = "kraken", IsEnabled = true }
+        };
+        
+        return Task.FromResult<IReadOnlyCollection<ExchangeConfiguration>>(enabledExchanges);
+    }
+    
+    public void SetLiveTradingEnabled(bool enabled)
+    {
+        if (_configuration != null)
+        {
+            _configuration.IsLiveTradingEnabled = enabled;
+        }
+    }
+    
+    public void EnablePaperTrading()
+    {
+        if (_configuration != null)
+        {
+            _configuration.IsLiveTradingEnabled = false;
+        }
+    }
+    
+    public void SetRiskThreshold(decimal maxTradeAmount, decimal minProfitPercentage)
+    {
+        if (_configuration?.RiskProfile != null)
+        {
+            _configuration.RiskProfile.MaxTradeAmount = maxTradeAmount;
+            _configuration.RiskProfile.MinProfitThresholdPercent = minProfitPercentage;
+        }
+    }
 } 

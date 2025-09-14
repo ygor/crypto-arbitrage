@@ -74,6 +74,10 @@ public static class DependencyInjection
         // Register performance monitoring
         services.AddSingleton<PerformanceMetricsService>();
         
+        // Register Prometheus metrics and system health monitoring
+        services.AddSingleton<Monitoring.PrometheusMetrics>();
+        services.AddHostedService<Monitoring.SystemHealthMonitor>();
+        
         return services;
     }
     
@@ -108,6 +112,9 @@ public static class DependencyInjection
         
         // Register migration service
         services.AddTransient<DataMigrationService>();
+        
+        // Register health check
+        services.AddTransient<HealthChecks.MongoDbHealthCheck>();
         
         return services;
     }

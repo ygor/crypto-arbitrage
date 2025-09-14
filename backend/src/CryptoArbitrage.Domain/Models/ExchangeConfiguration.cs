@@ -39,6 +39,11 @@ public class ExchangeConfiguration
     public bool UseSandbox { get; set; }
     
     /// <summary>
+    /// Whether to use real APIs instead of simulation/mocks
+    /// </summary>
+    public bool UseRealApi { get; set; }
+    
+    /// <summary>
     /// Maximum trade amount for this exchange
     /// </summary>
     public decimal MaxTradeAmount { get; set; }

@@ -23,12 +23,111 @@ public class CoinbaseExchangeClient : BaseExchangeClient
 {
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, TradingPair> _subscribedPairs = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TaskCompletionSource<bool>> _subscriptionAcks 
+        = new(System.StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<TradingPair, OrderBookState> _orderBookStates = new();
+    private const int _maxLevels = 100;
     
     private string? _apiKey;
     private string? _apiSecret;
     private string? _passphrase;
     private readonly string _baseUrl = "https://api.exchange.coinbase.com";
     private readonly string _wsUrl = "wss://ws-feed.exchange.coinbase.com";
+    
+    private sealed class PriceDescendingComparer : IComparer<decimal>
+    {
+        public int Compare(decimal x, decimal y)
+        {
+            // Descending order: higher price first
+            return y.CompareTo(x);
+        }
+    }
+
+    private sealed class OrderBookState
+    {
+        private readonly SortedDictionary<decimal, decimal> _bids; // price -> size (descending)
+        private readonly SortedDictionary<decimal, decimal> _asks; // price -> size (ascending)
+
+        public OrderBookState()
+        {
+            _bids = new SortedDictionary<decimal, decimal>(new PriceDescendingComparer());
+            _asks = new SortedDictionary<decimal, decimal>();
+        }
+
+        public void ApplySnapshot(IEnumerable<OrderBookEntry> bids, IEnumerable<OrderBookEntry> asks, int maxLevels)
+        {
+            _bids.Clear();
+            _asks.Clear();
+            foreach (var b in bids)
+            {
+                if (b.Price > 0 && b.Quantity > 0)
+                {
+                    _bids[b.Price] = b.Quantity;
+                }
+            }
+            foreach (var a in asks)
+            {
+                if (a.Price > 0 && a.Quantity > 0)
+                {
+                    _asks[a.Price] = a.Quantity;
+                }
+            }
+            TrimTo(maxLevels);
+        }
+
+        public void ApplyDelta(bool isBid, decimal price, decimal size, int maxLevels)
+        {
+            var book = isBid ? _bids : _asks;
+            if (size <= 0)
+            {
+                book.Remove(price);
+            }
+            else
+            {
+                book[price] = size;
+            }
+            // keep dictionary bounded by trimming occasionally
+            if (book.Count > maxLevels * 2)
+            {
+                TrimTo(maxLevels);
+            }
+        }
+
+        public (List<OrderBookEntry> bids, List<OrderBookEntry> asks) GetTop(int maxLevels)
+        {
+            var topBids = new List<OrderBookEntry>(Math.Min(maxLevels, _bids.Count));
+            var count = 0;
+            foreach (var kvp in _bids)
+            {
+                topBids.Add(new OrderBookEntry(kvp.Key, kvp.Value));
+                if (++count >= maxLevels) break;
+            }
+
+            var topAsks = new List<OrderBookEntry>(Math.Min(maxLevels, _asks.Count));
+            count = 0;
+            foreach (var kvp in _asks)
+            {
+                topAsks.Add(new OrderBookEntry(kvp.Key, kvp.Value));
+                if (++count >= maxLevels) break;
+            }
+
+            return (topBids, topAsks);
+        }
+
+        private void TrimTo(int maxLevels)
+        {
+            if (_bids.Count > maxLevels)
+            {
+                var toRemove = _bids.Skip(maxLevels).Select(k => k.Key).ToList();
+                foreach (var k in toRemove) _bids.Remove(k);
+            }
+            if (_asks.Count > maxLevels)
+            {
+                var toRemove = _asks.Skip(maxLevels).Select(k => k.Key).ToList();
+                foreach (var k in toRemove) _asks.Remove(k);
+            }
+        }
+    }
     
     private class CoinbaseOrderBook
     {
@@ -405,8 +504,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     {
         try
         {
-            // First try public channels that don't require authentication
-            // We'll use ticker and trades channels which provide price information
+            // Subscribe to level2 channel for full order book data
             var subscribeMessage = new
             {
                 type = "subscribe",
@@ -415,12 +513,7 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 {
                     new
                     {
-                        name = "ticker",
-                        product_ids = new[] { symbol }
-                    },
-                    new
-                    {
-                        name = "matches", // trade matches
+                        name = "level2",
                         product_ids = new[] { symbol }
                     },
                     new
@@ -437,15 +530,34 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             if (ManagedConnection?.IsConnected == true)
             {
                 Logger.LogInformation("Attempting subscription to public channels for {Symbol} with message: {Message}", symbol, messageJson);
+                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _subscriptionAcks[symbol] = tcs;
                 await SendWebSocketMessageAsync(messageJson, cancellationToken);
                 Logger.LogInformation("Public subscription request sent for {Symbol}", symbol);
                 
-                // Wait a moment to see if we get a subscription confirmation or error
-                await Task.Delay(2000, cancellationToken);
-                
-                // If we reach here without an exception, consider it successful
-                // The actual data processing will happen in ProcessWebSocketMessageAsync
-                return true;
+                // Wait for explicit ack or timeout
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+                try
+                {
+                    var completed = await Task.WhenAny(tcs.Task, Task.Delay(Timeout.InfiniteTimeSpan, linked.Token));
+                    if (completed == tcs.Task && tcs.Task.Result)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Timed out waiting for subscription ack for {Symbol}", symbol);
+                        _subscriptionAcks.TryRemove(symbol, out _);
+                        return false;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogWarning("Subscription wait canceled for {Symbol}", symbol);
+                    _subscriptionAcks.TryRemove(symbol, out _);
+                    return false;
+                }
             }
             else
             {
@@ -576,6 +688,9 @@ public class CoinbaseExchangeClient : BaseExchangeClient
             // Remove cached order book
             OrderBooks.Remove(tradingPair);
             
+            // Remove state
+            _orderBookStates.Remove(tradingPair);
+            
             Logger.LogDebug("Cleaned up order book resources for {TradingPair}", tradingPair);
         }
         catch (Exception ex)
@@ -633,12 +748,22 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                                     productIdsElement.ValueKind == JsonValueKind.Array)
                                 {
                                     var channelName = nameElement.GetString();
-                                    var productIds = string.Join(", ", productIdsElement.EnumerateArray()
+                                    var productIds = productIdsElement.EnumerateArray()
                                         .Select(p => p.GetString())
-                                        .Where(p => p != null));
+                                        .Where(p => !string.IsNullOrEmpty(p))
+                                        .ToList();
                                     
                                     Logger.LogInformation("Coinbase subscribed to channel {ChannelName} for products: {ProductIds}", 
-                                        channelName, productIds);
+                                        channelName, string.Join(", ", productIds));
+
+                                    // Signal subscription ack per product id
+                                    foreach (var pid in productIds)
+                                    {
+                                        if (!string.IsNullOrEmpty(pid) && _subscriptionAcks.TryRemove(pid, out var tcs))
+                                        {
+                                            tcs.TrySetResult(true);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -771,22 +896,17 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 return;
             }
             
-            // Check if we have the order book
-            if (!OrderBooks.TryGetValue(tradingPair, out var orderBook))
+            // Ensure state exists
+            if (!_orderBookStates.TryGetValue(tradingPair, out var state))
             {
-                // Skip this update if we don't have an order book yet
-                // The snapshot will come first in the WebSocket feed
-                Logger.LogWarning("Received level2 update for {TradingPair} but no order book snapshot yet", tradingPair);
+                // Skip until snapshot initializes the state
+                Logger.LogWarning("Received level2 update for {TradingPair} but no order book state yet", tradingPair);
                 return;
             }
             
             // Process the updates
             if (root.TryGetProperty("changes", out var changesElement) && changesElement.ValueKind == JsonValueKind.Array)
             {
-                // Convert to mutable lists for updating
-                var bids = new List<OrderBookEntry>(orderBook.Bids);
-                var asks = new List<OrderBookEntry>(orderBook.Asks);
-                
                 foreach (var change in changesElement.EnumerateArray())
                 {
                     if (change.ValueKind != JsonValueKind.Array || change.GetArrayLength() != 3)
@@ -813,33 +933,20 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                         continue;
                     }
                     
-                    // Update or remove the entry
-                    if (side == "buy")
-                    {
-                        UpdateOrderBookSide(bids, price, size);
-                    }
-                    else if (side == "sell")
-                    {
-                        UpdateOrderBookSide(asks, price, size);
-                    }
+                    state.ApplyDelta(side == "buy", price, size, _maxLevels);
                 }
                 
-                // Sort the order book
-                bids = bids.OrderByDescending(e => e.Price).Take(100).ToList();
-                asks = asks.OrderBy(e => e.Price).Take(100).ToList();
-                
-                // Create a new order book
+                // Build top-N snapshot for downstream consumers
+                var (bidsTop, asksTop) = state.GetTop(_maxLevels);
                 var updatedOrderBook = new OrderBook(
                     ExchangeId,
                     tradingPair,
                     DateTime.UtcNow,
-                    bids,
-                    asks);
+                    bidsTop,
+                    asksTop);
                 
-                // Update the cached order book
                 OrderBooks[tradingPair] = updatedOrderBook;
                 
-                // Publish the updated order book
                 if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
                 {
                     await channel.Writer.WriteAsync(updatedOrderBook, cancellationToken);
@@ -944,29 +1051,27 @@ public class CoinbaseExchangeClient : BaseExchangeClient
                 }
             }
             
-            // Sort the order book
-            bids = bids.OrderByDescending(e => e.Price).Take(100).ToList();
-            asks = asks.OrderBy(e => e.Price).Take(100).ToList();
+            // Initialize or update state, then produce top-N
+            if (!_orderBookStates.TryGetValue(tradingPair, out var state))
+            {
+                state = new OrderBookState();
+                _orderBookStates[tradingPair] = state;
+            }
+            state.ApplySnapshot(bids, asks, _maxLevels);
+            var (bidsTop, asksTop) = state.GetTop(_maxLevels);
             
-            Logger.LogInformation("Successfully processed order book snapshot for {ProductId} with {BidCount} bids and {AskCount} asks", 
-                productId, bids.Count, asks.Count);
-            
-            // Create a new order book
             var orderBook = new OrderBook(
                 ExchangeId,
                 tradingPair,
                 DateTime.UtcNow,
-                bids,
-                asks);
+                bidsTop,
+                asksTop);
             
-            // Update the cached order book
             OrderBooks[tradingPair] = orderBook;
             
-            // Publish the updated order book
             if (OrderBookChannels.TryGetValue(tradingPair, out var channel))
             {
                 await channel.Writer.WriteAsync(orderBook, cancellationToken);
-                Logger.LogInformation("Published initial order book for {TradingPair} from WebSocket snapshot", tradingPair);
             }
         }
         catch (Exception ex)

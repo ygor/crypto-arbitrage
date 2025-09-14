@@ -268,6 +268,29 @@ public class PaperTradingService : IPaperTradingService
     }
 
     /// <inheritdoc/>
+    public async Task<TradeResult> ExecuteTradeAsync(string exchangeId, TradingPair tradingPair, OrderSide orderSide, decimal quantity, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Executing paper trade on {Exchange}: {Side} {Quantity} {TradingPair}", 
+            exchangeId, orderSide, quantity, tradingPair);
+        
+        try
+        {
+            // Delegate to the appropriate simulation method based on order side
+            return orderSide switch
+            {
+                OrderSide.Buy => await SimulateMarketBuyOrderAsync(exchangeId, tradingPair, quantity, cancellationToken),
+                OrderSide.Sell => await SimulateMarketSellOrderAsync(exchangeId, tradingPair, quantity, cancellationToken),
+                _ => CreateFailedTradeResult(exchangeId, tradingPair, quantity, orderSide.ToString(), $"Unsupported order side: {orderSide}")
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing paper trade on {Exchange}", exchangeId);
+            return CreateFailedTradeResult(exchangeId, tradingPair, quantity, orderSide.ToString(), ex.Message);
+        }
+    }
+
+    /// <inheritdoc/>
     public Task<IReadOnlyDictionary<string, IReadOnlyCollection<Balance>>> GetAllBalancesAsync(CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<string, IReadOnlyCollection<Balance>>();

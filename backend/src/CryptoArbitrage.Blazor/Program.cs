@@ -51,6 +51,13 @@ else
 // Add Blazor-specific services (ViewModels and AutoMapper)
 builder.Services.AddBlazorServices();
 
+// Add SignalR for real-time updates
+builder.Services.AddSignalR();
+
+// Add real-time market data service
+builder.Services.AddHostedService<CryptoArbitrage.Blazor.Services.RealTimeMarketDataService>();
+builder.Services.AddScoped<CryptoArbitrage.Blazor.Services.IRealTimeMarketDataService, CryptoArbitrage.Blazor.Services.RealTimeMarketDataService>();
+
 // Configure options from appsettings
 builder.Services.Configure<CryptoArbitrage.Blazor.Services.CryptoArbitrageOptions>(
     builder.Configuration.GetSection("CryptoArbitrage"));
@@ -107,6 +114,10 @@ app.UseRouting();
 
 // Map Blazor hub and pages
 app.MapBlazorHub();
+
+// Map SignalR hub for real-time market data
+app.MapHub<CryptoArbitrage.Blazor.Hubs.MarketDataHub>("/marketdatahub");
+
 app.MapFallbackToPage("/_Host");
 app.MapRazorPages();
 

@@ -119,5 +119,15 @@ public class ArbitrageConfiguration
     /// <summary>
     /// Gets or sets the list of enabled exchanges.
     /// </summary>
-    public List<string> EnabledExchanges { get; set; } = new List<string> { "coinbase", "kraken", "binance" };
+    public List<string> EnabledExchanges { get; set; } = new List<string> { "coinbase", "kraken" };
+    
+    /// <summary>
+    /// Gets or sets the list of enabled trading pairs as strings.
+    /// </summary>
+    public List<string> EnabledTradingPairs { get; set; } = new List<string>();
+    
+    /// <summary>
+    /// Gets or sets whether live trading is enabled (not paper trading).
+    /// </summary>
+    public bool IsLiveTradingEnabled { get; set; } = false;
 } 

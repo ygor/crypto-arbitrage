@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using MediatR;
 using CryptoArbitrage.Domain.Models;
+using System.Collections.Concurrent;
 
 namespace CryptoArbitrage.Api.Hubs;
 
@@ -12,6 +13,8 @@ public class MarketDataHub : Hub
 {
     private readonly ILogger<MarketDataHub> _logger;
     private readonly IMediator _mediator;
+    private static readonly ConcurrentDictionary<string, DateTime> _lastSentByGroup = new();
+    private static readonly TimeSpan _minInterval = TimeSpan.FromMilliseconds(75);
 
     public MarketDataHub(
         ILogger<MarketDataHub> logger,
@@ -119,6 +122,13 @@ public class MarketDataHub : Hub
         try
         {
             var groupName = $"quotes_{tradingPair.BaseCurrency}_{tradingPair.QuoteCurrency}";
+            var now = DateTime.UtcNow;
+            var last = _lastSentByGroup.GetOrAdd(groupName, now.AddSeconds(-1));
+            if (now - last < _minInterval)
+            {
+                return; // coalesce
+            }
+            _lastSentByGroup[groupName] = now;
             
             var update = new
             {
@@ -157,6 +167,13 @@ public class MarketDataHub : Hub
         try
         {
             var groupName = $"quotes_{priceQuote.TradingPair.BaseCurrency}_{priceQuote.TradingPair.QuoteCurrency}";
+            var now = DateTime.UtcNow;
+            var last = _lastSentByGroup.GetOrAdd(groupName, now.AddSeconds(-1));
+            if (now - last < _minInterval)
+            {
+                return; // coalesce
+            }
+            _lastSentByGroup[groupName] = now;
             
             await Clients.Group(groupName).SendAsync("PriceQuoteUpdate", priceQuote);
             

@@ -47,6 +47,13 @@ public interface IConfigurationService
     Task<IReadOnlyCollection<ExchangeConfiguration>> GetAllExchangeConfigurationsAsync(CancellationToken cancellationToken = default);
     
     /// <summary>
+    /// Gets all enabled exchange configurations.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A collection of enabled exchange configurations.</returns>
+    Task<IReadOnlyCollection<ExchangeConfiguration>> GetEnabledExchangeConfigurationsAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
     /// Gets the notification configuration.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>

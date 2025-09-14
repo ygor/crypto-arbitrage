@@ -420,7 +420,12 @@ public abstract class BaseExchangeClient : IExchangeClient, IDisposable
         // Create a channel for this trading pair if it doesn't exist
         if (!OrderBookChannels.TryGetValue(tradingPair, out _))
         {
-            OrderBookChannels[tradingPair] = Channel.CreateUnbounded<OrderBook>();
+            OrderBookChannels[tradingPair] = Channel.CreateBounded<OrderBook>(new BoundedChannelOptions(256)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = false,
+                SingleWriter = false
+            });
             
             // Derived classes should override this to implement subscription logic
             // They should fetch an initial snapshot and then handle updates

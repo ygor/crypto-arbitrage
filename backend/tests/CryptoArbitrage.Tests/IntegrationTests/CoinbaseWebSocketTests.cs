@@ -189,6 +189,29 @@ public class CoinbaseWebSocketTests
         Assert.NotNull(orderBookChannelsField); // Fail test if field doesn't exist
         orderBookChannelsField.SetValue(client, orderBookChannels);
         
+        // Initialize internal order book state by processing a snapshot first
+        var initSnapshotMessage = @"{
+            ""type"": ""snapshot"",
+            ""product_id"": ""BTC-USD"",
+            ""bids"": [
+                [""34000.01"", ""1.5""],
+                [""34000.00"", ""2.5""],
+                [""33999.99"", ""0.75""]
+            ],
+            ""asks"": [
+                [""34001.01"", ""0.5""],
+                [""34002.50"", ""1.25""],
+                [""34005.00"", ""3.0""]
+            ]
+        }";
+        var method = typeof(CoinbaseExchangeClient).GetMethod(
+            "ProcessWebSocketMessageAsync", 
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(method); // Fail test if method doesn't exist
+        var initTask = method.Invoke(client, new object[] { initSnapshotMessage, CancellationToken.None });
+        Assert.NotNull(initTask);
+        await (Task)initTask;
+        
         // Create a level2 update message that would come from the WebSocket
         var updateMessage = @"{
             ""type"": ""l2update"",
@@ -200,12 +223,6 @@ public class CoinbaseWebSocketTests
             ],
             ""time"": ""2025-05-21T12:01:00Z""
         }";
-        
-        // Access the ProcessWebSocketMessageAsync method using reflection
-        var method = typeof(CoinbaseExchangeClient).GetMethod(
-            "ProcessWebSocketMessageAsync", 
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        Assert.NotNull(method); // Fail test if method doesn't exist
         
         // Act
         var task = method.Invoke(client, new object[] { updateMessage, CancellationToken.None });

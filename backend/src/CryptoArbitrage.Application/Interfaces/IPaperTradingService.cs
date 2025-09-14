@@ -72,4 +72,15 @@ public interface IPaperTradingService
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task ResetAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Executes a simulated trade on the specified exchange.
+    /// </summary>
+    /// <param name="exchangeId">The exchange ID.</param>
+    /// <param name="tradingPair">The trading pair.</param>
+    /// <param name="orderSide">The side of the order (buy or sell).</param>
+    /// <param name="quantity">The quantity to trade.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The simulated result of the trade operation.</returns>
+    Task<TradeResult> ExecuteTradeAsync(string exchangeId, TradingPair tradingPair, OrderSide orderSide, decimal quantity, CancellationToken cancellationToken = default);
 } 

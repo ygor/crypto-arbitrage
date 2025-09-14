@@ -153,6 +153,7 @@ public class ConfigurationLoader
                 {
                     ExchangeId = exchangeId,
                     IsEnabled = bool.Parse(exchange["Enabled"] ?? "false"),
+                    UseRealApi = bool.Parse(exchange["UseRealApi"] ?? "false"),
                     ApiKey = exchange["ApiKey"] ?? string.Empty,
                     ApiSecret = exchange["ApiSecret"] ?? string.Empty,
                     AdditionalApiParams = new Dictionary<string, string>(),

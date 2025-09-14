@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CryptoArbitrage.Domain.Models;
 
 /// <summary>
@@ -21,6 +23,7 @@ public readonly record struct TradingPair
     /// <param name="baseCurrency">The base currency of the trading pair.</param>
     /// <param name="quoteCurrency">The quote currency of the trading pair.</param>
     /// <exception cref="ArgumentException">Thrown when either the base or quote currency is null or empty.</exception>
+    [JsonConstructor]
     public TradingPair(string baseCurrency, string quoteCurrency)
     {
         if (string.IsNullOrWhiteSpace(baseCurrency))

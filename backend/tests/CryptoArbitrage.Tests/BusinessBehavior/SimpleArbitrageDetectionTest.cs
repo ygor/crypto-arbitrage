@@ -38,6 +38,7 @@ public class SimpleArbitrageDetectionTest
         // Register test doubles
         services.AddSingleton<IConfigurationService, TestConfigurationService>();
         services.AddSingleton<IArbitrageRepository, SimpleArbitrageRepositoryStub>();
+        services.AddSingleton<IExchangeFactory, CryptoArbitrage.Tests.BusinessBehavior.TestExchangeFactory>();
         
         return services.BuildServiceProvider();
     }

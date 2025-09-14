@@ -9,6 +9,7 @@ using CryptoArbitrage.Application.Features.BotControl.Queries.IsRunning;
 using CryptoArbitrage.Application.Features.BotControl.Queries.GetStatistics;
 using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Domain.Models;
+using CryptoArbitrage.Application.Services;
 
 namespace CryptoArbitrage.Application.Tests.Integration;
 
@@ -32,12 +33,44 @@ public class VerticalSliceIntegrationTests : IDisposable
         var mockConfigurationService = new Mock<IConfigurationService>();
         var mockPaperTradingService = new Mock<IPaperTradingService>();
         var mockRepository = new Mock<IArbitrageRepository>();
+        var mockDetectionService = new Mock<IArbitrageDetectionService>();
+        
+        // Configure configuration service to return a valid configuration
+        mockConfigurationService.Setup(s => s.GetConfigurationAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ArbitrageConfiguration
+            {
+                EnabledExchanges = new List<string> { "coinbase", "kraken" },
+                TradingPairs = new List<TradingPair> { new("BTC", "USD"), new("ETH", "USD") },
+                RiskProfile = new RiskProfile { MaxTradeAmount = 1m, MinProfitThresholdPercent = 0.01m }
+            });
+        
+        // Configure repository to return non-null statistics
+        mockRepository.Setup(r => r.GetStatisticsAsync(It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((DateTimeOffset start, DateTimeOffset end, CancellationToken ct) => new ArbitrageStatistics
+            {
+                Id = Guid.NewGuid(),
+                TradingPair = "OVERALL",
+                CreatedAt = DateTime.UtcNow,
+                StartTime = start,
+                EndTime = end
+            });
+        
+        // Configure detection service to simulate running state after start/stop
+        var isRunning = false;
+        mockDetectionService.SetupGet(s => s.IsRunning).Returns(() => isRunning);
+        mockDetectionService
+            .Setup(s => s.StartDetectionAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Callback(() => isRunning = true)
+            .Returns(() => Task.CompletedTask);
+        mockDetectionService.Setup(s => s.StopDetectionAsync()).Callback(() => isRunning = false).Returns(() => Task.CompletedTask);
+        mockDetectionService.Setup(s => s.ScanForOpportunitiesAsync()).ReturnsAsync(new List<ArbitrageOpportunity>());
         
         // Register mocked dependencies
         services.AddSingleton(mockExchangeFactory.Object);
         services.AddSingleton(mockConfigurationService.Object);
         services.AddSingleton(mockPaperTradingService.Object);
         services.AddSingleton(mockRepository.Object);
+        services.AddSingleton(mockDetectionService.Object);
         
         // Add logging
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));

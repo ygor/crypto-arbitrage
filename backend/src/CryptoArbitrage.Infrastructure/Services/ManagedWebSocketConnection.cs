@@ -249,31 +249,46 @@ public class ManagedWebSocketConnection : IAsyncDisposable
         if (_webSocket == null)
             return;
 
-        var buffer = new byte[16384]; // 16KB buffer
-        var messageBuilder = new StringBuilder();
+        var bufferPool = System.Buffers.ArrayPool<byte>.Shared;
+        byte[]? receiveBuffer = null;
+        byte[]? accumulator = null;
 
         try
         {
+            receiveBuffer = bufferPool.Rent(32 * 1024); // 32KB receive buffer
+            accumulator = bufferPool.Rent(128 * 1024); // 128KB initial accumulator
+            var totalCount = 0;
+
             while (_webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
                 WebSocketReceiveResult result;
-                messageBuilder.Clear();
+                totalCount = 0;
 
                 do
                 {
-                    result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                    
+                    result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), cancellationToken);
+
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         _logger.LogInformation("WebSocket close message received for connection {ConnectionId}", ConnectionId);
                         await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close received", cancellationToken);
                         break;
                     }
-                    
-                    if (result.MessageType == WebSocketMessageType.Text)
+
+                    if (result.MessageType == WebSocketMessageType.Text && result.Count > 0)
                     {
-                        var messageChunk = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        messageBuilder.Append(messageChunk);
+                        // Ensure accumulator has enough space
+                        if (accumulator.Length - totalCount < result.Count)
+                        {
+                            var newSize = Math.Max(accumulator.Length * 2, totalCount + result.Count);
+                            var newAccumulator = bufferPool.Rent(newSize);
+                            Buffer.BlockCopy(accumulator, 0, newAccumulator, 0, totalCount);
+                            bufferPool.Return(accumulator);
+                            accumulator = newAccumulator;
+                        }
+
+                        Buffer.BlockCopy(receiveBuffer, 0, accumulator, totalCount, result.Count);
+                        totalCount += result.Count;
                     }
                 }
                 while (!result.EndOfMessage && _webSocket.State == WebSocketState.Open);
@@ -283,9 +298,10 @@ public class ManagedWebSocketConnection : IAsyncDisposable
                     break;
                 }
 
-                if (result.MessageType == WebSocketMessageType.Text && messageBuilder.Length > 0)
+                if (result.MessageType == WebSocketMessageType.Text && totalCount > 0)
                 {
-                    var message = messageBuilder.ToString();
+                    // Decode UTF-8 once per message
+                    var message = Encoding.UTF8.GetString(accumulator, 0, totalCount);
                     await HandleMessageReceived(message, cancellationToken);
                 }
             }
@@ -309,6 +325,9 @@ public class ManagedWebSocketConnection : IAsyncDisposable
         }
         finally
         {
+            if (receiveBuffer != null) bufferPool.Return(receiveBuffer);
+            if (accumulator != null) bufferPool.Return(accumulator);
+            
             // Notify disconnection
             if (OnDisconnected != null)
             {

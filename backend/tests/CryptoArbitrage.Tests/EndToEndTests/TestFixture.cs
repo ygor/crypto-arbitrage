@@ -235,6 +235,24 @@ public class TestFixture : IDisposable
                 It.IsAny<DateTimeOffset>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        
+        // Ensure statistics queries return a populated object
+        MockArbitrageRepository.Setup(r => r.GetStatisticsAsync(
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((DateTimeOffset start, DateTimeOffset end, CancellationToken ct) => new ArbitrageStatistics
+            {
+                Id = Guid.NewGuid(),
+                TradingPair = "OVERALL",
+                CreatedAt = DateTime.UtcNow,
+                StartTime = start,
+                EndTime = end,
+                TotalOpportunitiesCount = 1,
+                QualifiedOpportunitiesCount = 1,
+                TotalTradesCount = 45,
+                MostFrequentTradingPairs = new List<string> { "BTC/USD" }
+            });
     }
     
     private void SetupPaperTradingServiceMock()
