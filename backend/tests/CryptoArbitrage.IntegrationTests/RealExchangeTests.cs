@@ -15,7 +15,6 @@ namespace CryptoArbitrage.IntegrationTests;
 /// Integration tests that connect to real exchange public APIs
 /// These tests verify our message schemas against actual exchange responses
 /// </summary>
-[Collection("RealExchange")]
 public class RealExchangeTests : IDisposable
 {
     private readonly ITestOutputHelper _output;
