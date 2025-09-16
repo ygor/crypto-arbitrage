@@ -1,4 +1,5 @@
 using CryptoArbitrage.Application.Interfaces;
+using CryptoArbitrage.Domain.Exceptions;
 using CryptoArbitrage.Domain.Models;
 using Microsoft.Extensions.Logging;
 using System;
@@ -158,13 +159,33 @@ public class MarketDataAggregatorService : IMarketDataAggregator
                 await client.ConnectAsync();
 
                 // Authenticate if credentials are available
+                bool isAuthenticated = false;
                 if (!string.IsNullOrEmpty(exchangeConfig?.ApiKey) && !string.IsNullOrEmpty(exchangeConfig.ApiSecret))
                 {
-                    await client.AuthenticateAsync();
+                    try
+                    {
+                        await client.AuthenticateAsync();
+                        isAuthenticated = true;
+                        _logger.LogInformation("Authenticated with {ExchangeId}", exchangeId);
+                    }
+                    catch (ArgumentException ex) when (ex.Message.Contains("Base64") || ex.Message.Contains("API"))
+                    {
+                        _logger.LogWarning("Invalid credentials for {ExchangeId}, continuing with public-only mode: {Message}", exchangeId, ex.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Authentication failed for {ExchangeId}, continuing with public-only mode", exchangeId);
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("No credentials provided for {ExchangeId}, using public-only mode", exchangeId);
                 }
 
                 _exchangeClients[exchangeId] = client;
-                _logger.LogInformation("Connected to {ExchangeId} (WebSocket)", exchangeId);
+                _logger.LogInformation("Connected to {ExchangeId} (WebSocket) - {Mode}", 
+                    exchangeId, 
+                    isAuthenticated ? "Authenticated" : "Public-only");
             }
             catch (Exception ex)
             {
@@ -202,21 +223,41 @@ public class MarketDataAggregatorService : IMarketDataAggregator
 
             foreach (var tradingPairStr in tradingPairs)
             {
-                var tradingPair = TradingPair.Parse(tradingPairStr);
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(tradingPairStr))
+                    {
+                        _logger.LogWarning("Skipping empty trading pair for {ExchangeId}", client.ExchangeId);
+                        continue;
+                    }
 
-                // Subscribe to order book updates
-                var subscribeTask = SubscribeToOrderBookAsync(client, tradingPair, cancellationToken);
-                subscriptionTasks.Add(subscribeTask);
+                    var tradingPair = TradingPair.Parse(tradingPairStr);
 
-                // Start consuming the real-time stream
-                var streamTask = ConsumeOrderBookStreamAsync(client, tradingPair, cancellationToken);
-                streamTasks.Add(streamTask);
+                    // Subscribe to order book updates
+                    var subscribeTask = SubscribeToOrderBookAsync(client, tradingPair, cancellationToken);
+                    subscriptionTasks.Add(subscribeTask);
+
+                    // Start consuming the real-time stream
+                    var streamTask = ConsumeOrderBookStreamAsync(client, tradingPair, cancellationToken);
+                    streamTasks.Add(streamTask);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse trading pair '{TradingPairStr}' for {ExchangeId}", tradingPairStr, client.ExchangeId);
+                }
             }
 
-            // Wait for all subscriptions to complete
-            await Task.WhenAll(subscriptionTasks);
-            _logger.LogInformation("Successfully subscribed to {Count} trading pairs on {ExchangeId}", 
-                tradingPairs.Count, client.ExchangeId);
+            // Wait for all subscriptions to complete (but don't fail if some fail)
+            try
+            {
+                await Task.WhenAll(subscriptionTasks);
+                _logger.LogInformation("Completed subscription attempts for {Count} trading pairs on {ExchangeId}", 
+                    tradingPairs.Count, client.ExchangeId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Some subscriptions failed for {ExchangeId}, continuing with available ones", client.ExchangeId);
+            }
 
             // Wait for all streaming tasks to complete (or cancellation)
             await Task.WhenAll(streamTasks);
@@ -235,15 +276,35 @@ public class MarketDataAggregatorService : IMarketDataAggregator
     {
         try
         {
+            // Validate that the client is properly connected before attempting subscription
+            if (!client.IsConnected)
+            {
+                _logger.LogWarning("Skipping subscription for {TradingPair} on {ExchangeId} - client not connected", 
+                    tradingPair, client.ExchangeId);
+                return;
+            }
+
             await client.SubscribeToOrderBookAsync(tradingPair, cancellationToken);
             _logger.LogInformation("Subscribed to order book for {TradingPair} on {ExchangeId}", 
                 tradingPair, client.ExchangeId);
+        }
+        catch (ExchangeClientException ex)
+        {
+            _logger.LogWarning("Exchange-specific error subscribing to {TradingPair} on {ExchangeId}: {Message}", 
+                tradingPair, client.ExchangeId, ex.Message);
+            // Don't throw - continue with other subscriptions
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Invalid operation subscribing to {TradingPair} on {ExchangeId}: {Message}", 
+                tradingPair, client.ExchangeId, ex.Message);
+            // Don't throw - continue with other subscriptions
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to subscribe to order book for {TradingPair} on {ExchangeId}", 
                 tradingPair, client.ExchangeId);
-            throw;
+            // Don't throw - continue with other subscriptions
         }
     }
 

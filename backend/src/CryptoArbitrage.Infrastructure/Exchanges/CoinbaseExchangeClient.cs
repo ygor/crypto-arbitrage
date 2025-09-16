@@ -264,6 +264,27 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         
         Logger.LogInformation("Authenticating with Coinbase");
         
+        // Validate credential formats before attempting authentication
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new ArgumentException("Coinbase API key cannot be null or empty", nameof(apiKey));
+        }
+        
+        if (string.IsNullOrWhiteSpace(apiSecret))
+        {
+            throw new ArgumentException("Coinbase API secret cannot be null or empty", nameof(apiSecret));
+        }
+        
+        // Validate that the API secret is valid Base64 (Coinbase requirement)
+        try
+        {
+            Convert.FromBase64String(apiSecret);
+        }
+        catch (FormatException ex)
+        {
+            throw new ArgumentException("Coinbase API secret must be a valid Base64 string. Please check your configuration.", nameof(apiSecret), ex);
+        }
+        
         try
         {
             // For Coinbase, we also need a passphrase
@@ -504,23 +525,16 @@ public class CoinbaseExchangeClient : BaseExchangeClient
     {
         try
         {
-            // Subscribe to level2 channel for full order book data
+            // Subscribe to level2 channel for full order book data using object format
+            // This format is more reliable across different Coinbase deployments
             var subscribeMessage = new
             {
                 type = "subscribe",
                 product_ids = new[] { symbol },
-                channels = new[]
+                channels = new object[]
                 {
-                    new
-                    {
-                        name = "level2",
-                        product_ids = new[] { symbol }
-                    },
-                    new
-                    {
-                        name = "heartbeat",
-                        product_ids = new[] { symbol }
-                    }
+                    new { name = "level2", product_ids = new[] { symbol } },
+                    new { name = "heartbeat", product_ids = new[] { symbol } }
                 }
             };
 
@@ -1631,11 +1645,25 @@ public class CoinbaseExchangeClient : BaseExchangeClient
         string requestBody,
         string apiSecret)
     {
+        // Validate API secret format before attempting Base64 decoding
+        if (string.IsNullOrEmpty(apiSecret))
+        {
+            throw new ArgumentException("Coinbase API secret cannot be null or empty", nameof(apiSecret));
+        }
+
         // The message string is: timestamp + method + requestPath + body
         var messageString = $"{timestamp}{method}{endpoint}{requestBody}";
         
         // Convert the API secret from base64
-        var decodedSecret = Convert.FromBase64String(apiSecret);
+        byte[] decodedSecret;
+        try
+        {
+            decodedSecret = Convert.FromBase64String(apiSecret);
+        }
+        catch (FormatException ex)
+        {
+            throw new ArgumentException($"Coinbase API secret must be a valid Base64 string. Invalid secret format provided.", nameof(apiSecret), ex);
+        }
         
         // Compute the HMAC-SHA256 signature
         using var hmac = new HMACSHA256(decodedSecret);

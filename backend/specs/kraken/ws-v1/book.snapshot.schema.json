@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/kraken/ws-v1/book.snapshot.schema.json",
+  "title": "Kraken WS v1 Book Snapshot",
+  "type": "array",
+  "minItems": 4,
+  "maxItems": 4,
+  "prefixItems": [
+    { "type": ["integer", "number"] },
+    {
+      "type": "object",
+      "required": ["as", "bs"],
+      "properties": {
+        "as": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "prefixItems": [
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" }
+            ]
+          }
+        },
+        "bs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "prefixItems": [
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" }
+            ]
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    { "type": "string" },
+    { "type": "string" }
+  ]
+} 

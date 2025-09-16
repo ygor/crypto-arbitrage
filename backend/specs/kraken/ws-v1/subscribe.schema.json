@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.kraken.com/ws/v1/subscribe",
+  "title": "Kraken WebSocket v1 Subscribe Message",
+  "description": "Schema for Kraken WebSocket v1 subscription messages",
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "const": "subscribe"
+    },
+    "reqid": {
+      "type": "integer",
+      "description": "Request ID for tracking the subscription"
+    },
+    "pair": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Array of currency pairs to subscribe to"
+    },
+    "subscription": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["book", "ticker", "trade", "spread", "ohlc"]
+        },
+        "depth": {
+          "type": "integer",
+          "enum": [10, 25, 100, 500, 1000],
+          "description": "Order book depth (only for book subscription)"
+        },
+        "interval": {
+          "type": "integer",
+          "description": "OHLC interval in minutes (only for ohlc subscription)"
+        },
+        "token": {
+          "type": "string",
+          "description": "Authentication token for private channels"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["event", "pair", "subscription"],
+  "additionalProperties": false
+} 

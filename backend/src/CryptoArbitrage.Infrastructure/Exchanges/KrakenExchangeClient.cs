@@ -116,6 +116,27 @@ public class KrakenExchangeClient : BaseExchangeClient
         
         Logger.LogInformation("Authenticating with Kraken");
         
+        // Validate credential formats before attempting authentication
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new ArgumentException("Kraken API key cannot be null or empty", nameof(apiKey));
+        }
+        
+        if (string.IsNullOrWhiteSpace(apiSecret))
+        {
+            throw new ArgumentException("Kraken API secret cannot be null or empty", nameof(apiSecret));
+        }
+        
+        // Validate that the API secret is valid Base64 (Kraken requirement)
+        try
+        {
+            Convert.FromBase64String(apiSecret);
+        }
+        catch (FormatException ex)
+        {
+            throw new ArgumentException("Kraken API secret must be a valid Base64 string. Please check your configuration.", nameof(apiSecret), ex);
+        }
+        
         try
         {
             _apiKey = apiKey;
@@ -1011,7 +1032,21 @@ public class KrakenExchangeClient : BaseExchangeClient
     
     private string GenerateKrakenSignature(string endpoint, string nonce, string postData, string apiSecret)
     {
-        var decodedSecret = Convert.FromBase64String(apiSecret);
+        // Validate API secret format before attempting Base64 decoding
+        if (string.IsNullOrEmpty(apiSecret))
+        {
+            throw new ArgumentException("Kraken API secret cannot be null or empty", nameof(apiSecret));
+        }
+
+        byte[] decodedSecret;
+        try
+        {
+            decodedSecret = Convert.FromBase64String(apiSecret);
+        }
+        catch (FormatException ex)
+        {
+            throw new ArgumentException($"Kraken API secret must be a valid Base64 string. Invalid secret format provided.", nameof(apiSecret), ex);
+        }
         
         // Create the SHA256 hash of the nonce and the post data
         using var sha256 = SHA256.Create();

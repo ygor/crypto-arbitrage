@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/coinbase/ws/error.schema.json",
+  "title": "Coinbase WebSocket Error",
+  "type": "object",
+  "required": ["type", "message"],
+  "properties": {
+    "type": { "const": "error" },
+    "message": { "type": "string" },
+    "reason": { "type": "string" }
+  },
+  "additionalProperties": true
+} 

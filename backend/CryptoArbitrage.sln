@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoArbitrage.Worker", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoArbitrage.Tests", "tests\CryptoArbitrage.Tests\CryptoArbitrage.Tests.csproj", "{58FE0A85-3E0D-49E0-BC49-96E59D6C076D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoArbitrage.IntegrationTests", "tests\CryptoArbitrage.IntegrationTests\CryptoArbitrage.IntegrationTests.csproj", "{F9F9F9F9-F9F9-F9F9-F9F9-F9F9F9F9F9F9}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoArbitrage.Api", "src\CryptoArbitrage.Api\CryptoArbitrage.Api.csproj", "{763B74E5-3B76-42EF-BB85-FEE4CE197D72}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoArbitrage.Blazor", "src\CryptoArbitrage.Blazor\CryptoArbitrage.Blazor.csproj", "{A8F7E2C1-9D3B-4E5F-8A7C-1B2E3F4A5D6E}"
@@ -49,6 +51,10 @@ Global
 		{58FE0A85-3E0D-49E0-BC49-96E59D6C076D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58FE0A85-3E0D-49E0-BC49-96E59D6C076D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58FE0A85-3E0D-49E0-BC49-96E59D6C076D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9F9F9F9-F9F9-F9F9-F9F9-F9F9F9F9F9F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9F9F9F9-F9F9-F9F9-F9F9-F9F9F9F9F9F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9F9F9F9-F9F9-F9F9-F9F9-F9F9F9F9F9F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9F9F9F9-F9F9-F9F9-F9F9-F9F9F9F9F9F9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{763B74E5-3B76-42EF-BB85-FEE4CE197D72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{763B74E5-3B76-42EF-BB85-FEE4CE197D72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{763B74E5-3B76-42EF-BB85-FEE4CE197D72}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -66,5 +72,6 @@ Global
 		{763B74E5-3B76-42EF-BB85-FEE4CE197D72} = {ED8E20A7-0782-456A-B730-DA00D5320603}
 		{A8F7E2C1-9D3B-4E5F-8A7C-1B2E3F4A5D6E} = {ED8E20A7-0782-456A-B730-DA00D5320603}
 		{58FE0A85-3E0D-49E0-BC49-96E59D6C076D} = {287F2DE9-7F55-4DA2-B326-D651E01A957F}
+		{F9F9F9F9-F9F9-F9F9-F9F9-F9F9F9F9F9F9} = {287F2DE9-7F55-4DA2-B326-D651E01A957F}
 	EndGlobalSection
 EndGlobal

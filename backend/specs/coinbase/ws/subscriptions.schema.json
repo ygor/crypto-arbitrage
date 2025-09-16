@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/coinbase/ws/subscriptions.schema.json",
+  "title": "Coinbase WebSocket Subscriptions Ack",
+  "type": "object",
+  "required": ["type", "channels"],
+  "properties": {
+    "type": { "const": "subscriptions" },
+    "channels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "product_ids"],
+        "properties": {
+          "name": { "type": "string" },
+          "product_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+} 

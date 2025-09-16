@@ -351,7 +351,18 @@ public abstract class BaseExchangeClient : IExchangeClient, IDisposable
         // Check if we have API credentials
         if (string.IsNullOrEmpty(config.ApiKey) || string.IsNullOrEmpty(config.ApiSecret))
         {
-            throw new InvalidOperationException($"API credentials for {ExchangeId} not found in configuration");
+            throw new InvalidOperationException($"API credentials for {ExchangeId} not found in configuration. Please ensure both ApiKey and ApiSecret are provided.");
+        }
+        
+        // Basic validation of credential formats
+        if (string.IsNullOrWhiteSpace(config.ApiKey))
+        {
+            throw new ArgumentException($"API key for {ExchangeId} cannot be null or whitespace", nameof(config.ApiKey));
+        }
+        
+        if (string.IsNullOrWhiteSpace(config.ApiSecret))
+        {
+            throw new ArgumentException($"API secret for {ExchangeId} cannot be null or whitespace", nameof(config.ApiSecret));
         }
         
         // Authenticate with derived class implementation

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/kraken/ws-v2/book.snapshot.schema.json",
+  "title": "Kraken WS v2 Book Snapshot",
+  "type": "object",
+  "required": ["channel", "type", "data"],
+  "properties": {
+    "channel": { "pattern": "^book(-\\d+)?$" },
+    "type": { "const": "snapshot" },
+    "data": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["symbol", "bids", "asks"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "bids": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["limit_price", "order_qty"],
+              "properties": {
+                "limit_price": { "type": "number" },
+                "order_qty": { "type": "number" }
+              },
+              "additionalProperties": true
+            }
+          },
+          "asks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["limit_price", "order_qty"],
+              "properties": {
+                "limit_price": { "type": "number" },
+                "order_qty": { "type": "number" }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+} 

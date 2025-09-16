@@ -26,10 +26,12 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.20.72" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+          <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.1" />
     <PackageReference Include="Bogus" Version="35.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+    <PackageReference Include="JsonSchema.Net" Version="6.0.0" />
+    <PackageReference Include="JsonSchema.Net.Data" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,6 +40,13 @@
     <ProjectReference Include="..\..\src\CryptoArbitrage.Infrastructure\CryptoArbitrage.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\CryptoArbitrage.Worker\CryptoArbitrage.Worker.csproj" />
     <ProjectReference Include="..\..\src\CryptoArbitrage.Api\CryptoArbitrage.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\specs\**\*.json">
+      <Link>specs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
