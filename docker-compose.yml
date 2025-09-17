@@ -46,6 +46,12 @@ services:
       - CryptoArbitrage__IsEnabled=true
       - CryptoArbitrage__MinimumProfitPercentage=0.5
       - DOTNET_RUNNING_IN_CONTAINER=true
+      # Exchange API Credentials from .env file
+      - COINBASE_API_KEY=${COINBASE_API_KEY}
+      - COINBASE_API_SECRET=${COINBASE_API_SECRET}
+      - COINBASE_PASSPHRASE=${COINBASE_PASSPHRASE}
+      - KRAKEN_API_KEY=${KRAKEN_API_KEY}
+      - KRAKEN_API_SECRET=${KRAKEN_API_SECRET}
     volumes:
       - ./appsettings.json:/app/appsettings.json:ro
     networks:
@@ -71,6 +77,12 @@ services:
       - CryptoArbitrage__IsEnabled=true
       - CryptoArbitrage__MinimumProfitPercentage=0.5
       - DOTNET_RUNNING_IN_CONTAINER=true
+      # Exchange API Credentials from .env file
+      - COINBASE_API_KEY=${COINBASE_API_KEY}
+      - COINBASE_API_SECRET=${COINBASE_API_SECRET}
+      - COINBASE_PASSPHRASE=${COINBASE_PASSPHRASE}
+      - KRAKEN_API_KEY=${KRAKEN_API_KEY}
+      - KRAKEN_API_SECRET=${KRAKEN_API_SECRET}
     volumes:
       - ./appsettings.json:/app/appsettings.json:ro
     networks:
@@ -97,6 +109,12 @@ services:
       - CryptoArbitrage__IsEnabled=true
       - CryptoArbitrage__MinimumProfitPercentage=0.5
       - DOTNET_RUNNING_IN_CONTAINER=true
+      # Exchange API Credentials from .env file
+      - COINBASE_API_KEY=${COINBASE_API_KEY}
+      - COINBASE_API_SECRET=${COINBASE_API_SECRET}
+      - COINBASE_PASSPHRASE=${COINBASE_PASSPHRASE}
+      - KRAKEN_API_KEY=${KRAKEN_API_KEY}
+      - KRAKEN_API_SECRET=${KRAKEN_API_SECRET}
     volumes:
       - ./appsettings.json:/app/appsettings.json:ro
     networks:

@@ -20,7 +20,16 @@ read -p "Enter your choice (1-3): " choice
 case $choice in
   1)
     echo -e "${GREEN}Starting with Docker Compose...${NC}"
-    docker-compose up --build
+    
+    # Check if .env file exists
+    if [ -f "backend/.env" ]; then
+      echo -e "${BLUE}Loading environment variables from backend/.env${NC}"
+      docker-compose --env-file backend/.env up --build
+    else
+      echo -e "${YELLOW}No .env file found at backend/.env - using default values${NC}"
+      echo -e "${YELLOW}To use real exchange APIs, create backend/.env with your credentials${NC}"
+      docker-compose up --build
+    fi
     if [ $? -eq 0 ]; then
       echo -e "${GREEN}Services started successfully.${NC}"
       echo -e "Access the Blazor application at: http://localhost:7001"
@@ -54,6 +63,14 @@ case $choice in
 
     # Create logs directory if it doesn't exist
     mkdir -p logs
+
+    # Check if .env file exists
+    if [ -f "backend/.env" ]; then
+      echo -e "${BLUE}✅ Found backend/.env - will load environment variables${NC}"
+    else
+      echo -e "${YELLOW}⚠️  No backend/.env file found - running in simulation mode${NC}"
+      echo -e "${YELLOW}   To use real APIs, create backend/.env with your credentials${NC}"
+    fi
 
     # Start the Blazor service (includes direct RPC access to services)
     echo -e "${GREEN}Starting Blazor Frontend with direct RPC access...${NC}"

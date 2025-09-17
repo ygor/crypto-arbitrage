@@ -11,6 +11,10 @@ using CryptoArbitrage.Application.Interfaces;
 using CryptoArbitrage.Application.Services;
 using CryptoArbitrage.Infrastructure.Repositories;
 using CryptoArbitrage.Infrastructure.Services;
+using DotNetEnv;
+
+// Load environment variables from .env file
+Env.Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()

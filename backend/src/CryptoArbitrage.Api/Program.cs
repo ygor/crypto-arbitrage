@@ -11,6 +11,10 @@ using Serilog.Events;
 using System.Reflection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json;
+using DotNetEnv;
+
+// Load environment variables from .env file
+Env.Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 
 var builder = WebApplication.CreateBuilder(args);
 
